@@ -451,3 +451,24 @@ Notes:
 - **Type-aware linting is available but not on** — `oxlint --type-aware` (via `tsgolint`, which runs on
   typescript-go / TS 7) adds rules like `no-floating-promises`. Enable it deliberately if a sketch wants
   deeper semantic checks; the default `pnpm lint` stays syntax-only + fast.
+
+## Widgets and location data (this sketch)
+
+One location switcher (the toolbar title menu) drives every screen. Location
+records live in `src/data/locations.ts`; the selection is `useLocationStore`.
+**Whenever a new widget is added, add its dummy data to EVERY location in
+`locations.ts` and read it through `useLocation()`** — never hardcode widget
+content — so switching locations visibly changes the widget.
+
+### Glass: never put it under a fading ancestor
+
+`backdrop-filter` only refracts what is behind it if no ancestor is a *backdrop root*. Besides
+`filter`, `clip-path` and `mask`, that includes **any `opacity < 1`**. A `<LiquidGlass>` inside a
+fading wrapper refracts nothing for the whole fade, then **snaps in** the frame opacity hits 1. So:
+
+- Animate glass with `transform` (scale / translate) only — never opacity on it or an ancestor.
+- To fade glass *content*, put the opacity on the content (children), not the glass element.
+- To hand off between glass and something else, cross-fade the *other* thing and flip the glass with
+  `visibility`; don't fade the glass itself.
+- Glass measures its layout size (`offsetSize`), so scaling it is fine.
+

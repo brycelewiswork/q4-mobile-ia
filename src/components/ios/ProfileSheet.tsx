@@ -1,0 +1,375 @@
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
+import { IconCheck, IconPencil } from "@tabler/icons-react"
+import { LiquidGlass } from "@/components/ui/liquid-glass"
+import { IconStarFilled } from "@tabler/icons-react"
+import { Card, Chevron } from "@/components/ios/list"
+import { PAGES, type PageId } from "@/components/ios/ProfilePages"
+import { Sheet } from "@/components/ios/Sheet"
+import { EASE, SPRING_FAST } from "@/lib/motion"
+import { cn } from "@/lib/utils"
+import { LOCATIONS, USER_EARNINGS, type Location } from "@/data/locations"
+
+const SPRING = { type: "spring" as const, ...SPRING_FAST.snappy }
+const GAP = 12
+const ROUNDED = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif'
+const PLUS_JAKARTA = '"Plus Jakarta Sans", -apple-system, system-ui, sans-serif'
+
+
+// ---------------------------------------------------------------------------
+// Carousel pages
+// ---------------------------------------------------------------------------
+
+function PinCard({ loc }: { loc: Location }) {
+  const p = loc.profile
+  return (
+    <div
+      className="relative flex h-[228px] flex-col justify-between overflow-hidden rounded-[10px] p-4 tracking-[-0.43px]"
+      style={{ boxShadow: "0 4px 6px rgba(0,0,0,0.08), 0 24px 30px -16px rgba(0,0,0,0.15)" }}
+    >
+      <div aria-hidden className="absolute inset-0">
+        <img src="/phone/pin-bg.jpg" alt="" className="absolute left-1/2 top-[calc(50%-23.5px)] h-[627px] w-[518px] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover" />
+        <div className="absolute inset-0 bg-[#8f55e5] mix-blend-hue" />
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: "linear-gradient(162.7deg, rgba(143,85,229,0.65) 38.5%, rgba(79,47,127,0.65) 70.9%)" }}
+        />
+      </div>
+      <div className="relative flex items-center gap-3">
+        <img src="/phone/pin-logo.svg" alt="" className="h-8 w-[22.229px]" />
+        <div className="min-w-0">
+          <p className="truncate text-[17px] font-[590] leading-5 text-white">{p.business}</p>
+          <p className="truncate text-[15px] leading-[17px] text-[#dadada]">{p.address}</p>
+        </div>
+      </div>
+      <div className="relative font-bold" style={{ fontFamily: PLUS_JAKARTA }}>
+        <p className="text-[16px] leading-6 text-[#dadada]">PIN</p>
+        <p className="text-[24px] leading-7 tracking-[0.24px] text-white">{p.pin}</p>
+      </div>
+      <img src="/phone/pin-chip.svg" alt="" className="absolute left-[274px] top-[111px] h-[49.259px] w-14" />
+    </div>
+  )
+}
+
+function ShoutoutCard({ loc }: { loc: Location }) {
+  const s = loc.profile.shoutout
+  return (
+    <Card className="flex h-[228px] flex-col gap-1 overflow-hidden p-4 text-[14px] leading-5 tracking-[-0.43px] text-[#2c2935]">
+      <p>Shoutouts</p>
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <p>{s.quote}</p>
+        <p className="text-right">{s.author}</p>
+      </div>
+    </Card>
+  )
+}
+
+function StatsCard({ loc }: { loc: Location }) {
+  const s = loc.profile.stats
+  const Stat = ({ value, label }: { value: ReactNode; label: string }) => (
+    <div>
+      <div className="text-[18px] font-[590] leading-5 text-[#2c2935]">{value}</div>
+      <p className="text-[14px] leading-5 text-[#747182]">{label}</p>
+    </div>
+  )
+  return (
+    <Card className="flex h-[228px] flex-col gap-1 overflow-hidden p-4 tracking-[-0.43px]">
+      <p className="text-[14px] leading-5 text-[#2c2935]">Stats</p>
+      <div className="flex min-h-0 flex-1">
+        <div className="flex flex-1 flex-col justify-between">
+          <Stat value={s.onTime} label="On-time rate" />
+          <Stat value={s.shifts} label="Shifts worked" />
+          <Stat value={s.hours} label="Hours/week" />
+        </div>
+        <div className="flex flex-1 flex-col justify-between">
+          <Stat
+            value={
+              <span className="flex items-center gap-[2px]">
+                <span className="flex items-baseline gap-[2px]">
+                  {s.rating}
+                  <span className="text-[15px] text-[#928fa0]">/5</span>
+                </span>
+                <IconStarFilled size={12} />
+              </span>
+            }
+            label="Avg shift rating"
+          />
+          <Stat value={s.missedClockOuts} label="Missed clock-outs" />
+          <Stat value={s.noShows} label="No-shows" />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Carousel: drag or flick either way, tap a dot, or use ←/→ when focused.
+// ---------------------------------------------------------------------------
+
+function Carousel({ pages }: { pages: { key: string; label: string; node: ReactNode }[] }) {
+  const [page, setPage] = useState(0)
+  const x = useMotionValue(0)
+  const frame = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  const last = pages.length - 1
+
+  useLayoutEffect(() => {
+    setWidth(frame.current?.offsetWidth ?? 0)
+  }, [])
+
+  const go = useCallback(
+    (to: number) => {
+      const next = Math.max(0, Math.min(last, to))
+      setPage(next)
+      animate(x, -next * (width + GAP), SPRING)
+    },
+    [last, x, width],
+  )
+
+  return (
+    <div className="px-1">
+      <div
+        ref={frame}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label={pages[page].label}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") go(page + 1)
+          if (e.key === "ArrowLeft") go(page - 1)
+        }}
+        // Clip sideways so neighbours don't peek in; leave the bottom open for the PIN card's shadow.
+        className="[overflow-x:clip] pb-8 -mb-8 outline-none"
+      >
+        <motion.div
+          drag="x"
+          dragDirectionLock
+          dragElastic={0.14}
+          dragMomentum={false}
+          dragConstraints={{ left: -last * (width + GAP), right: 0 }}
+          style={{ x, gap: GAP }}
+          onDragEnd={(_, info) => {
+            const swipe = info.offset.x + info.velocity.x * 0.2
+            const threshold = width / 4
+            go(swipe < -threshold ? page + 1 : swipe > threshold ? page - 1 : page)
+          }}
+          className="flex cursor-grab active:cursor-grabbing"
+        >
+          {pages.map((p, i) => (
+            <div
+              key={p.key}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${i + 1} of ${pages.length}`}
+              className="w-full shrink-0"
+            >
+              {p.node}
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      <div className="flex h-11 items-center justify-center">
+        <div className="flex gap-2 rounded-full px-3 py-2">
+          {pages.map((p, i) => (
+            <button
+              key={p.key}
+              aria-label={`Page ${i + 1}: ${p.label}`}
+              aria-current={i === page}
+              onClick={() => go(i)}
+              className="-m-[6px] p-[6px]"
+            >
+              <span
+                className="block size-2 rounded-full transition-colors duration-200"
+                style={{ backgroundColor: i === page ? "#1a1a1a" : "#ccccd0" }}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Settings rows
+// ---------------------------------------------------------------------------
+
+type Row = { icon: string; label: string; trailing?: string; page: PageId }
+
+function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }) {
+  return (
+    <Card className="overflow-hidden">
+      {rows.map((r, i) => (
+        <button key={r.label} onClick={() => onOpen(r.page)} className="flex h-[52px] w-full items-center pr-4 text-left active:bg-black/[0.04]">
+          <span className="flex size-[52px] shrink-0 items-center justify-center pr-2">
+            <img src={r.icon} alt="" className="size-5" />
+          </span>
+          <span className={cn("flex h-full min-w-0 flex-1 items-center gap-4 tracking-[-0.43px]", i > 0 && "border-t border-[#ebebeb]")}>
+            <span className="flex-1 truncate text-[17px] leading-[22px] text-[#2c2935]">{r.label}</span>
+            {r.trailing && <span className="text-[17px] leading-[22px] text-[#5a5666]">{r.trailing}</span>}
+            <Chevron />
+          </span>
+        </button>
+      ))}
+    </Card>
+  )
+}
+
+const WORK_ROWS: Row[] = [
+  { label: "Team", page: "team" },
+  { label: "Task Manager", page: "tasks" },
+  { label: "Manager Log", page: "log" },
+  { label: "Payroll", page: "payroll" },
+].map((r) => ({ ...r, icon: "/phone/row-money.svg", page: r.page as PageId }))
+
+const ACCOUNT_ROWS: Row[] = [
+  { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
+  { icon: "/phone/row-calendar.svg", label: "Calendar Sync", trailing: "Not Connected", page: "calendar" },
+  { icon: "/phone/row-bell.svg", label: "Notifications & Alerts", page: "notifications" },
+  { icon: "/phone/row-lock.svg", label: "Password & Security", page: "security" },
+  { icon: "/phone/row-help.svg", label: "Support", page: "support" },
+]
+
+const ACTIONS = [
+  { icon: "/phone/act-safety.svg", label: "Health Insurance" },
+  { icon: "/phone/act-gift.svg", label: "Refer for $100" },
+  { icon: "/phone/act-money.svg", label: "Cash out" },
+]
+
+// ---------------------------------------------------------------------------
+// The sheet
+// ---------------------------------------------------------------------------
+
+function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
+  const p = loc.profile
+
+  const pages = [
+    { key: "pin", label: "PIN card", node: <PinCard loc={loc} /> },
+    { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} /> },
+    { key: "stats", label: "Stats", node: <StatsCard loc={loc} /> },
+  ]
+
+  return (
+      <div className="flex flex-col gap-4">
+        <Card className="py-1">
+          <button onClick={() => onOpen("account")} className="flex h-[68px] w-full items-center px-4 text-left active:bg-black/[0.04]">
+            <div className="flex size-[68px] shrink-0 items-center justify-center pr-2">
+              <div
+                className="flex size-[60px] items-center justify-center rounded-full bg-gradient-to-b from-[#beacff] to-[#937ee2] text-[30px] font-bold tracking-[-0.54px] text-white"
+                style={{ fontFamily: PLUS_JAKARTA }}
+              >
+                BL
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 pl-2 tracking-[-0.43px]">
+              <p className="text-[17px] leading-[22px] text-[#2c2935]">Bryce Lewis</p>
+              <p className="truncate text-[15px] leading-5 text-[#5a5666]">blewis@joinhomebase.com</p>
+            </div>
+            <Chevron />
+          </button>
+        </Card>
+
+        <Carousel key={loc.id} pages={pages} />
+
+        <div className="flex gap-4 tracking-[-0.43px]">
+          {[
+            { label: "Earnings", value: USER_EARNINGS.period.amount, sub: USER_EARNINGS.period.payday },
+            { label: "Time off balance", value: p.timeOff.balance, sub: p.timeOff.plan },
+          ].map((c) => (
+            <Card key={c.label} className="flex min-w-0 flex-1 flex-col p-3">
+              <p className="text-[14px] leading-5 text-[#2c2935]">{c.label}</p>
+              <p className="text-[22px] font-bold text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{c.value}</p>
+              <p className="truncate text-[14px] leading-5 text-[#747182]">{c.sub}</p>
+            </Card>
+          ))}
+        </div>
+
+        <RowGroup rows={WORK_ROWS} onOpen={onOpen} />
+        <RowGroup rows={ACCOUNT_ROWS} onOpen={onOpen} />
+
+        <div className="flex gap-2">
+          {ACTIONS.map((a) => (
+            <button
+              key={a.label}
+              className="flex min-w-0 flex-1 flex-col items-center gap-[3px] rounded-full bg-white px-[17px] py-2 active:bg-black/[0.04]"
+            >
+              <img src={a.icon} alt="" className="size-5" />
+              <span className="whitespace-nowrap text-[11px] font-[510] tracking-[-0.43px] text-[#0088ff]">{a.label}</span>
+            </button>
+          ))}
+        </div>
+
+      </div>
+  )
+}
+
+type Dir = "push" | "pop"
+
+// Push: the new page slides in from the right while the old page slides fully off
+// to the left. Pop is the exact reverse. Either way a page always travels a full
+// screen width, so nothing stops short and then pops out of existence.
+const PAGE_VARIANTS = {
+  enter: (d: Dir) => ({ x: d === "push" ? "100%" : "-100%" }),
+  center: { x: 0 },
+  exit: (d: Dir) => ({ x: d === "push" ? "-100%" : "100%" }),
+}
+
+/**
+ * The Settings sheet with iOS push navigation: rows push a page in from the
+ * right, the back button pops it.
+ */
+export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+  const [nav, setNav] = useState<{ page: PageId | null; dir: Dir; arg?: string }>({ page: null, dir: "push" })
+  const { page, dir, arg } = nav
+  const [editing, setEditing] = useState(false)
+  const go = (next: { page: PageId | null; dir: Dir; arg?: string }) => {
+    setEditing(false)
+    setNav(next)
+  }
+  const Page = page ? PAGES[page].Component : null
+
+  return (
+    <Sheet
+      title={page === "location" ? (LOCATIONS.find((l) => l.id === arg)?.name ?? "Location") : page ? PAGES[page].title : "Settings"}
+      onClose={onClose}
+      onBack={page ? () => go({ page: page === "personal" || page === "resume" || page === "location" ? "account" : null, dir: "pop" }) : undefined}
+      action={
+        page && PAGES[page].action === "edit" ? (
+          <LiquidGlass mode="small" accent="#8f55e5" radius={999} className="absolute right-4 top-4 flex size-11 items-center justify-center">
+            <button
+              onClick={() => setEditing((e) => !e)}
+              aria-label={editing ? "Done editing" : "Edit"}
+              className="flex size-9 items-center justify-center rounded-full text-white"
+            >
+              {editing ? <IconCheck size={22} stroke={2.5} /> : <IconPencil size={20} stroke={2.25} />}
+            </button>
+          </LiquidGlass>
+        ) : undefined
+      }
+      resetKey={page ?? "root"}
+      edgeBlur={{ top: { strength: 16, steps: 5, height: 84 }, bottom: false }}
+    >
+      <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+        <motion.div
+          key={page ? `${page}:${arg ?? ""}` : "root"}
+          custom={dir}
+          variants={PAGE_VARIANTS}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.38, ease: EASE.apple }}
+          // Full sheet width INCLUDING the 16px side padding, so -100% / 100% is genuinely
+          // off-screen. Opaque, so the page underneath never shows through mid-slide.
+          className="relative min-h-full bg-[#f3f2f6] px-4"
+        >
+          {Page ? (
+            <Page loc={loc} editing={editing} arg={arg} onOpen={(p, a) => go({ page: p, dir: "push", arg: a })} />
+          ) : (
+            <Root loc={loc} onOpen={(p) => go({ page: p, dir: "push" })} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </Sheet>
+  )
+}
