@@ -722,6 +722,8 @@ export function Home() {
           progress={halfP}
           height={sheetHeightFor(clockState.status)}
           hideTitle
+          // Employees: the sheet grows out of the accessory. Owners and managers have no accessory: a normal bottom sheet.
+          variant={userType === "employee" ? "morph" : "slide"}
           title="Time Clock"
           onClosed={closeHalf}
           collapsed={userType === "employee" ? <AccessoryContent title={title} subtitle={subtitle} active={clockState.status === "in"} /> : null}

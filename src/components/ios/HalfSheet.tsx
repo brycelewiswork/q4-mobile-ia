@@ -41,6 +41,7 @@ export function HalfSheet({
   edgeBlur,
   height = TO.height,
   hideTitle,
+  variant = "morph",
   children,
 }: {
   /** 0 = collapsed into the accessory, 1 = open. Owned by the parent so the accessory can cross-fade with it. */
@@ -51,6 +52,8 @@ export function HalfSheet({
   onClosed: () => void
   /** Keep `title` for screen readers but don't draw it in the toolbar (the content provides its own heading). */
   hideTitle?: boolean
+  /** `morph` grows out of the bottom accessory. `slide` is a normal bottom sheet: it just slides up from the bottom edge at its final size. */
+  variant?: "morph" | "slide"
   /** Open height in px (Figma half sheet = 459). */
   height?: number
   /** Scroll-edge blur over the content, top and bottom independently (tint can be turned off per edge). Default: none. */
@@ -58,6 +61,7 @@ export function HalfSheet({
   /** A render prop gets `close(then?)`: plays the collapse into the accessory, then runs `then` (state changes that would otherwise flash mid-collapse). */
   children?: ReactNode | ((close: (then?: () => void) => void) => ReactNode)
 }) {
+  const slide = variant === "slide"
   const surface = useRef<HTMLDivElement>(null)
   const openHeight = useMotionValue(height)
   useEffect(() => {
@@ -124,7 +128,7 @@ export function HalfSheet({
       }
       if (e.cancelable) e.preventDefault()
       // ~300px of travel = fully collapsed. Pulling up does nothing.
-      p.set(clamp01(1 - Math.max(dy - 6, 0) / 300))
+      p.set(clamp01(1 - Math.max(dy - 6, 0) / (slide ? openHeight.get() + 14 : 300)))
       samples.push({ t: performance.now(), y })
       if (samples.length > 6) samples.shift()
     }
@@ -156,23 +160,24 @@ export function HalfSheet({
       window.removeEventListener("pointerup", onPointerUp)
       window.removeEventListener("pointercancel", onPointerUp)
     }
-  }, [p, close])
+  }, [p, close, slide, openHeight])
 
   // Surface geometry, all derived from p. `bottom` keeps the safe-area term (it fades out as the sheet floats 6px off the edge).
-  const left = useTransform(p, (v) => lerp(FROM.inset, TO.inset, v))
-  const bottom = useTransform(
-    p,
-    (v) => `calc(var(--safe-bottom) * ${1 - v} + ${lerp(FROM.bottom, TO.bottom, v)}px)`,
+  const left = useTransform(p, (v) => (slide ? TO.inset : lerp(FROM.inset, TO.inset, v)))
+  const bottom = useTransform(p, (v) =>
+    slide ? `${TO.bottom}px` : `calc(var(--safe-bottom) * ${1 - v} + ${lerp(FROM.bottom, TO.bottom, v)}px)`,
   )
-  const surfaceHeight = useTransform([p, openHeight], ([v, h]: number[]) => lerp(FROM.height, h, v))
-  const radiusTop = useTransform(p, (v) => lerp(FROM.radius, TO.radiusTop, v))
-  const radiusBottom = useTransform(p, (v) => lerp(FROM.radius, TO.radiusBottom, v))
+  const surfaceHeight = useTransform([p, openHeight], ([v, h]: number[]) => (slide ? h : lerp(FROM.height, h, v)))
+  const radiusTop = useTransform(p, (v) => (slide ? TO.radiusTop : lerp(FROM.radius, TO.radiusTop, v)))
+  const radiusBottom = useTransform(p, (v) => (slide ? TO.radiusBottom : lerp(FROM.radius, TO.radiusBottom, v)))
   const scrim = useTransform(p, (v) => 0.2 * clamp01(v))
-  // The real glass accessory is the surface at p≈0, so the CSS surface only fades in once it has moved off it.
-  const surfaceOpacity = useTransform(p, (v) => clamp01(v / HANDOFF))
+  // Slide variant: the whole sheet rides up from below the screen edge. Transform only, so the glass never fades.
+  const slideY = useTransform([p, openHeight], ([v, h]: number[]) => (slide ? (1 - v) * (h + TO.bottom + 8) : 0))
+  // Morph variant: the real glass accessory is the surface at p≈0, so the CSS surface only fades in once it has moved off it.
+  const surfaceOpacity = useTransform(p, (v) => (slide ? 1 : clamp01(v / HANDOFF)))
   // Cross-fade: the accessory content is gone by p≈.3, the sheet content arrives by p≈.85.
   const collapsedOpacity = useTransform(p, (v) => 1 - clamp01(v / 0.3))
-  const openOpacity = useTransform(p, (v) => clamp01((v - 0.5) / 0.35))
+  const openOpacity = useTransform(p, (v) => (slide ? 1 : clamp01((v - 0.5) / 0.35)))
 
   return (
     <div ref={setLayer} className="absolute inset-0 z-[44]">
@@ -193,6 +198,7 @@ export function HalfSheet({
           borderBottomLeftRadius: radiusBottom,
           borderBottomRightRadius: radiusBottom,
           opacity: surfaceOpacity,
+          y: slideY,
           touchAction: "none",
           // Figma "medium" glass: white lighten fill + hairline sides + soft deep shadow.
           backgroundColor: "rgba(255,255,255,0.78)",
