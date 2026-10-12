@@ -32,3 +32,6 @@ vite-cache
 *.sln
 *.sw?
 *.tmp.*
+
+# Vercel project link
+.vercel
