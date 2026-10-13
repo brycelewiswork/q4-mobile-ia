@@ -6,7 +6,6 @@ import {
   IconCurrencyDollar,
   IconCalendarEvent,
   IconCalendarPlus,
-  IconEdit,
   IconPlus,
   IconSearch,
   IconSelector,
@@ -228,7 +227,6 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
         {/* Like iOS: every action beside the bell shares ONE glass container. Buttons are 36pt on an 8pt gap, so icons sit 44pt apart (the Figma 18pt gap read wide for a group). */}
         <LiquidGlass mode="small" radius={999} className="flex h-11 items-center justify-center gap-2 px-1">
           {actions}
-          {!hideBell && <BellButton unread={unread} onClick={onBell} />}
           {/* Owners and managers get the time clock up here (no bottom accessory): the same clock icon, with the green dot while clocked in. */}
           {manager && showClock && (
             <button onClick={onClock} aria-haspopup="dialog" className="flex size-9 items-center justify-center rounded-full active:opacity-60" aria-label="Time clock">
@@ -238,6 +236,7 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
               </span>
             </button>
           )}
+          {!hideBell && <BellButton unread={unread} onClick={onBell} />}
         </LiquidGlass>
         <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
           <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
@@ -808,7 +807,7 @@ function IosHome() {
                 <IconSearch size={24} stroke={1.75} />
               </button>
               <button aria-label="New message" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconEdit size={24} stroke={1.75} />
+                <IconPlus size={24} stroke={1.75} />
               </button>
             </>
           ) : undefined
