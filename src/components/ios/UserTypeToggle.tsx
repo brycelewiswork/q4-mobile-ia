@@ -19,7 +19,6 @@ export function UserTypeToggle() {
   return (
     <div className="flex items-center gap-6 text-[13px] text-[#5a5666] dark:text-neutral-400">
       <div className="flex items-center gap-3">
-      <span className="font-[510]">Viewing as</span>
       <SegmentedControl
         className="w-[420px]"
         value={type}
@@ -33,7 +32,6 @@ export function UserTypeToggle() {
       </div>
       {/* Android only exists as the structure cut, so its detail switch is locked to Structure. */}
       <div className="flex items-center gap-3">
-        <span className="font-[510]">Detail</span>
         <SegmentedControl
           className="w-[190px]"
           value={platform === "android" ? "structure" : detail}
@@ -42,13 +40,12 @@ export function UserTypeToggle() {
             if (platform === "android") setPlatform("ios")
           }}
           options={[
-            { id: "full", label: "Full" },
             { id: "structure", label: "Structure" },
+            { id: "full", label: "Full" },
           ]}
         />
       </div>
       <div className="flex items-center gap-3">
-        <span className="font-[510]">Platform</span>
         <SegmentedControl
           className="w-[150px]"
           value={platform}

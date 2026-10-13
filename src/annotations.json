@@ -149,5 +149,20 @@
     "body": "Move shoutouts to a more visible spot, along with Achievements for better feature adoption.",
     "side": "left",
     "platform": "android"
+  },
+  {
+    "id": "6a9ba3df-d246-4cec-8b31-26627f467809",
+    "selector": ":scope > div:nth-child(1) > section:nth-child(5) > div:nth-child(1)",
+    "title": "Manager Log promoted",
+    "body": "No reason not to promote Manager Log to a full card that allows for better discovery. It still allows users to tap through for a full page experience",
+    "side": "right"
+  },
+  {
+    "id": "f7a23c2f-d36c-4bb4-84ba-af2c668a9df3",
+    "selector": "[aria-label=\"Settings\"] > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(3) > button:nth-child(2) > div:nth-child(1)",
+    "title": "Time off balance",
+    "body": "Stays in the settings area. But, we can show data at a glance for better status and less taps. ",
+    "side": "right",
+    "platform": "ios"
   }
 ]

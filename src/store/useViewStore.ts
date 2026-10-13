@@ -36,7 +36,7 @@ const fromUrl = (): Partial<Pick<State, "detail" | "platform">> => {
 export const useViewStore = create<State>()(
   persist(
     (set) => ({
-      detail: "full",
+      detail: "structure",
       platform: "ios",
       notes: true,
       setNotes: (notes) => set({ notes }),
