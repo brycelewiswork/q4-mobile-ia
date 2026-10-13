@@ -1,3 +1,6 @@
+import { Bar } from "@/components/wire/Wire"
+import { useStructure } from "@/store/useViewStore"
+import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
 import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconDots, IconMessages, IconPlus, IconSearch, IconX } from "@tabler/icons-react"
@@ -23,10 +26,12 @@ type Msg = { role: "user" | "assistant"; text: string }
  * header padding from it. `y` is only the slide in/out and dismiss offset, so glass never sees opacity.
  */
 export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+  const locName = useLocName()
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const [H, setH] = useState(874)
+  const wire = useStructure()
   const first = usePersonStore((p) => p.firstName || p.name.split(" ")[0])
   const [kb, setKb] = useState(false)
   const [text, setText] = useState("")
@@ -184,7 +189,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
   const openConversation = (title: string) => {
     setThread([
       { role: "user", text: title },
-      { role: "assistant", text: `Here's where we left off on “${title}” for ${loc.name}.` },
+      { role: "assistant", text: `Here's where we left off on “${title}” for ${locName(loc)}.` },
     ])
     backToChat()
   }
@@ -196,7 +201,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
     input.current?.blur()
     setThread((m) => [...m, { role: "user", text: t }])
     window.setTimeout(
-      () => setThread((m) => [...m, { role: "assistant", text: `On it. I'm pulling this together from ${loc.name}'s schedule and timecard data.` }]),
+      () => setThread((m) => [...m, { role: "assistant", text: `On it. I'm pulling this together from ${locName(loc)}'s schedule and timecard data.` }]),
       900,
     )
   }
@@ -253,7 +258,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
         <motion.div style={{ paddingTop: headerTop }} className="relative flex h-auto shrink-0 items-start justify-between px-4">
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button aria-label="Conversations" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconMessages size={22} stroke={1.75} />
+              <IconMessages size={24} stroke={1.75} />
             </button>
           </LiquidGlass>
           <h2 className="pointer-events-none flex h-11 items-center gap-[6px] text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
@@ -262,7 +267,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
           </h2>
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button onClick={close} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconX size={20} stroke={2.25} />
+              <IconX size={24} stroke={2} />
             </button>
           </LiquidGlass>
         </motion.div>
@@ -270,9 +275,16 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
         <div data-scroll className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {thread.length === 0 ? (
             <>
-              <h1 className="text-[28px] font-[590] leading-[34px] tracking-[-0.43px] text-black text-balance">
-                {`Hi ${first}, let’s tackle today. What’s on your mind?`}
-              </h1>
+              {wire ? (
+                <div aria-hidden className="flex flex-col gap-3 pt-2">
+                  <Bar w="100%" h={22} />
+                  <Bar w="70%" h={22} />
+                </div>
+              ) : (
+                <h1 className="text-[28px] font-[590] leading-[34px] tracking-[-0.43px] text-black text-balance">
+                  {`Hi ${first}, let’s tackle today. What’s on your mind?`}
+                </h1>
+              )}
               <div className="flex flex-col gap-2 pt-5">
                 {loc.assistant.map((s) => (
                   <button
@@ -281,7 +293,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
                     className="flex items-center gap-3 rounded-[20px] bg-[#ebe8ef] p-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-black active:opacity-70"
                   >
                     <IconBoltFilled size={24} className="shrink-0 text-[#8f55e5]" />
-                    {s}
+                    {wire ? <Bar w="75%" h={12} /> : s}
                   </button>
                 ))}
               </div>
@@ -342,7 +354,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
           <motion.div style={{ paddingTop: headerTop }} className="relative flex shrink-0 items-start justify-between px-4">
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
               <button onClick={backToChat} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconArrowLeft size={22} stroke={1.75} />
+                <IconArrowLeft size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
             <h2 className="pointer-events-none flex h-11 items-center text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">Conversations</h2>
@@ -355,7 +367,7 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
                 aria-label="New conversation"
                 className="flex size-9 items-center justify-center rounded-full text-[#141414]"
               >
-                <IconPlus size={22} stroke={1.75} />
+                <IconPlus size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           </motion.div>
@@ -388,8 +400,17 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
                         onClick={() => openConversation(c.title)}
                         className="flex min-h-[44px] min-w-0 flex-1 items-center justify-between gap-3 py-3 text-left active:opacity-60"
                       >
-                        <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>
-                        <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{c.time}</span>
+                        {wire ? (
+                          <>
+                            <Bar w="60%" h={12} />
+                            <Bar w={36} h={10} />
+                          </>
+                        ) : (
+                          <>
+                            <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>
+                            <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{c.time}</span>
+                          </>
+                        )}
                       </button>
                       <button aria-label="More" className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#2c2935] active:opacity-60">
                         <IconDots size={20} />

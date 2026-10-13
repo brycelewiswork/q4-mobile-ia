@@ -61,7 +61,7 @@ export type Location = {
       missedClockOuts: number
       noShows: number
     }
-    timeOff: { balance: string; plan: string }
+    timeOff: { balance: string; plan: string; accrual: string; upcoming: { range: string; status: "Approved" | "Pending" }[] }
     availability: Availability[]
   }
 
@@ -85,7 +85,8 @@ export type Location = {
   requests: RequestItem[]
 
   // Profile pages
-  team: { name: string; role: string; status: "on" | "scheduled" | "off"; detail: string }[]
+  /** `seen`: when they were last active ("2d"); `phone`: whether the Team list offers a call button. */
+  team: { name: string; role: string; status: "on" | "scheduled" | "off"; detail: string; seen: string; phone: boolean }[]
   messages: Message[]
   /** Suggested prompts on the assistant sheet. */
   assistant: string[]
@@ -144,13 +145,13 @@ export const HOUR_LABELS = ["Now", "1", "2", "3", "4", "5", "6", "7"] as const
  * chart, the Shifts page and the clock can never disagree. Hours are decimal; today is Wednesday.
  */
 export const USER_SCHEDULE: ({ loc: string; start: number; end: number } | null)[] = [
-  { loc: "east44", start: 12, end: 20 }, // Mon
+  null, // Mon — available, not scheduled
   { loc: "east44", start: 12, end: 20 }, // Tue
   { loc: "montgomery", start: 8.5, end: 14 }, // Wed — today
-  { loc: "harbor", start: 8, end: 16 }, // Thu
+  null, // Thu
   { loc: "montgomery", start: 14, end: 20 }, // Fri
-  { loc: "montgomery", start: 14, end: 20.2 }, // Sat
-  null, // Sun — available, not scheduled
+  { loc: "harbor", start: 8, end: 16 }, // Sat
+  null, // Sun
 ]
 const TODAY_INDEX = 2
 const weekAt = (locId: string): Location["employee"]["week"] =>
@@ -177,7 +178,7 @@ export const LOCATIONS: Location[] = [
         author: "Rosie Atkins",
       },
       stats: { onTime: "33%", shifts: 49, hours: 22, rating: "4.3", missedClockOuts: 3, noShows: 2 },
-      timeOff: { balance: "120 hr", plan: "Full-time salaried" },
+      timeOff: { balance: "120 hr", plan: "Full-time salaried", accrual: "Accrues 4.6 hr every pay period", upcoming: [{ range: "Nov 24 – Nov 28", status: "Approved" }, { range: "Dec 23 – Dec 26", status: "Pending" }] },
       availability: [
         { kind: "blocked", range: "3:00 - 6:00 PM" },
         { kind: "available" },
@@ -209,11 +210,11 @@ export const LOCATIONS: Location[] = [
       { title: "Equipment service visit", when: "Sat · 9a" },
     ],
     team: [
-      { name: "Jason Reyes", role: "Floor lead", status: "scheduled", detail: "Starts 9:00a" },
-      { name: "Kelli Moore", role: "Front desk", status: "on", detail: "Since 6:02a" },
-      { name: "Rosie Atkins", role: "Trainer", status: "on", detail: "Since 7:30a" },
-      { name: "Devon Park", role: "Maintenance", status: "off", detail: "Off today" },
-      { name: "Imani Brooks", role: "Front desk", status: "scheduled", detail: "Starts 2:00p" },
+      { name: "Jason Reyes", role: "Floor lead", status: "scheduled", detail: "Starts 9:00a", seen: "2d", phone: true },
+      { name: "Kelli Moore", role: "Front desk", status: "on", detail: "Since 6:02a", seen: "5h", phone: false },
+      { name: "Rosie Atkins", role: "Trainer", status: "on", detail: "Since 7:30a", seen: "1d", phone: true },
+      { name: "Devon Park", role: "Maintenance", status: "off", detail: "Off today", seen: "3d", phone: true },
+      { name: "Imani Brooks", role: "Front desk", status: "scheduled", detail: "Starts 2:00p", seen: "12m", phone: false },
     ],
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Jason: Reminder — quarterly meeting Thursday at 4", time: "9:30 am", unread: true },
@@ -291,7 +292,7 @@ export const LOCATIONS: Location[] = [
         author: "Dana Kim",
       },
       stats: { onTime: "94%", shifts: 31, hours: 28, rating: "4.8", missedClockOuts: 0, noShows: 0 },
-      timeOff: { balance: "64 hr", plan: "Part-time hourly" },
+      timeOff: { balance: "64 hr", plan: "Part-time hourly", accrual: "Accrues 1 hr for every 30 worked", upcoming: [{ range: "Nov 3", status: "Approved" }] },
       availability: [
         { kind: "all-day" },
         { kind: "all-day" },
@@ -322,10 +323,10 @@ export const LOCATIONS: Location[] = [
     ],
     events: [{ title: "Fire inspection", when: "Wed · 10a" }],
     team: [
-      { name: "Priya Nair", role: "Baker", status: "on", detail: "Since 5:00a" },
-      { name: "Marcus Tran", role: "Counter", status: "on", detail: "Since 6:30a" },
-      { name: "Dana Kim", role: "Shift lead", status: "scheduled", detail: "Starts 12:00p" },
-      { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today" },
+      { name: "Priya Nair", role: "Baker", status: "on", detail: "Since 5:00a", seen: "1w", phone: true },
+      { name: "Marcus Tran", role: "Counter", status: "on", detail: "Since 6:30a", seen: "4h", phone: true },
+      { name: "Dana Kim", role: "Shift lead", status: "scheduled", detail: "Starts 12:00p", seen: "6d", phone: false },
+      { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today", seen: "2d", phone: true },
     ],
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
@@ -374,7 +375,7 @@ export const LOCATIONS: Location[] = [
       ],
     },
     employee: {
-      greeting: "Good morning! You’re not scheduled at East 44th St. today. Your next shift is Monday at 12pm.",
+      greeting: "Good morning! You’re not scheduled at East 44th St. today. Your next shift is Tuesday at 12pm.",
       week: weekAt("east44"),
       todayIndex: 2,
       shiftmates: { photos: [1, 3], extra: 0 },
@@ -403,7 +404,7 @@ export const LOCATIONS: Location[] = [
         author: "Alex Rivera",
       },
       stats: { onTime: "71%", shifts: 18, hours: 36, rating: "4.1", missedClockOuts: 5, noShows: 1 },
-      timeOff: { balance: "38 hr", plan: "Full-time hourly" },
+      timeOff: { balance: "38 hr", plan: "Full-time hourly", accrual: "Accrues 1 hr for every 40 worked", upcoming: [] },
       availability: [
         { kind: "available" },
         { kind: "available" },
@@ -440,12 +441,12 @@ export const LOCATIONS: Location[] = [
       { title: "Spin class launch", when: "Sat · 8a" },
     ],
     team: [
-      { name: "Alex Rivera", role: "General manager", status: "on", detail: "Since 8:00a" },
-      { name: "Sam Wu", role: "Front desk", status: "on", detail: "Late · 9 min" },
-      { name: "Jordan Pierce", role: "Trainer", status: "scheduled", detail: "Starts 11:00a" },
-      { name: "Nia Cole", role: "Floor lead", status: "scheduled", detail: "Starts 2:00p" },
-      { name: "Theo Grant", role: "Maintenance", status: "off", detail: "Off today" },
-      { name: "Mina Sato", role: "Front desk", status: "off", detail: "Off today" },
+      { name: "Alex Rivera", role: "General manager", status: "on", detail: "Since 8:00a", seen: "5h", phone: true },
+      { name: "Sam Wu", role: "Front desk", status: "on", detail: "Late · 9 min", seen: "1d", phone: false },
+      { name: "Jordan Pierce", role: "Trainer", status: "scheduled", detail: "Starts 11:00a", seen: "3d", phone: true },
+      { name: "Nia Cole", role: "Floor lead", status: "scheduled", detail: "Starts 2:00p", seen: "12m", phone: true },
+      { name: "Theo Grant", role: "Maintenance", status: "off", detail: "Off today", seen: "1w", phone: false },
+      { name: "Mina Sato", role: "Front desk", status: "off", detail: "Off today", seen: "4h", phone: true },
     ],
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Alex: Fire drill Friday at 10 — please be on site", time: "9:30 am", unread: true },
@@ -498,7 +499,7 @@ export const LOCATIONS: Location[] = [
       ],
     },
     employee: {
-      greeting: "Good morning! You’re not scheduled at Harbor Point today. Your next shift is Thursday at 8am.",
+      greeting: "Good morning! You’re not scheduled at Harbor Point today. Your next shift is Saturday at 8am.",
       week: weekAt("harbor"),
       todayIndex: 2,
       shiftmates: { photos: [2, 3, 0], extra: 7 },

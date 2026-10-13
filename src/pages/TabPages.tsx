@@ -3,19 +3,21 @@ import { IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, I
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { GlassChip } from "@/components/ios/GlassChip"
 import { Card, ListRow, SectionHeader } from "@/components/ios/list"
+import { roleColor } from "@/lib/roleColor"
 import { cn } from "@/lib/utils"
 import { USER_EARNINGS, type Location, type Message } from "@/data/locations"
 import { WeekCalendar } from "@/components/ios/WeekCalendar"
 import { dayLabel, payPeriodOf, rangeLabel, weekdayIndex, weeksFromBase } from "@/lib/dates"
 import { useDateStore } from "@/store/useDateStore"
+import { shiftKey, useShiftsStore } from "@/store/useShiftsStore"
+import { useStructure } from "@/store/useViewStore"
+import { Bar, WireCard, WireList } from "@/components/wire/Wire"
 
 /** The big title each tab page opens with. */
 export function PageTitle({ children }: { children: string }) {
   return <h1 className="pb-3 pt-3 text-[34px] font-bold leading-[41px] tracking-[0.4px] text-black">{children}</h1>
 }
 
-const ROLE_COLORS = ["#5b5bf0", "#0a84d8", "#8f55e5", "#12857a", "#e0852b"]
-const roleColor = (role: string) => ROLE_COLORS[[...role].reduce((n, c) => n + c.charCodeAt(0), 0) % ROLE_COLORS.length]
 
 type Row = { who: string; role: string; start: number; end: number; mine?: boolean; open?: boolean }
 
@@ -64,26 +66,35 @@ export function ShiftsPage({ loc }: { loc: Location }) {
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const day = weekdayIndex(date)
   // The data is a pattern, so different weeks reshuffle it a little.
-  const all = dayRows(loc, (((day + weeksFromBase(date) * 3) % 7) + 7) % 7)
+  const added = useShiftsStore((st) => st.added[shiftKey(loc.id, date)])
+  const all = [...dayRows(loc, (((day + weeksFromBase(date) * 3) % 7) + 7) % 7), ...(added ?? [])].sort((a, b) => a.start - b.start)
   const rows = all.filter((r) => (filter === "mine" ? r.mine : filter === "open" ? r.open : true))
   // The day's summary ignores the filters: covered hours are the staffed shifts, open shifts are still to fill.
   const staffed = all.filter((r) => !r.open)
   const hours = Math.round(staffed.reduce((n, r) => n + (r.end - r.start), 0))
   const openCount = all.length - staffed.length
+  const wire = useStructure()
 
   return (
     <>
-      <WeekCalendar label={dayLabel(date)} />
+      <WeekCalendar label={dayLabel(date)} workingDots />
 
       {/* The hero on the left; the shift filter is a dropdown on the right, level with it. */}
       <div className="flex items-start justify-between gap-3 pb-4 pt-1 tracking-[-0.43px]">
-        <div>
-          <p className="text-[28px] font-[590] leading-[30px] text-black">{`${hours} hrs`}</p>
-          <p className="text-[15px] font-[510] leading-5 text-[#939393]">
-            {`Covered by ${staffed.length} ${staffed.length === 1 ? "person" : "people"}`}
-            {openCount > 0 && ` · ${openCount} open`}
-          </p>
-        </div>
+        {wire ? (
+          <div className="flex flex-col gap-2 pt-1">
+            <Bar w={90} h={26} />
+            <Bar w={150} h={12} />
+          </div>
+        ) : (
+          <div>
+            <p className="text-[28px] font-[590] leading-[30px] text-black">{`${hours} hrs`}</p>
+            <p className="text-[15px] font-[510] leading-5 text-[#939393]">
+              {`Covered by ${staffed.length} ${staffed.length === 1 ? "person" : "people"}`}
+              {openCount > 0 && ` · ${openCount} open`}
+            </p>
+          </div>
+        )}
         <GlassChip onClick={(e) => setMenu(e.currentTarget)}>
           <span className="flex items-center gap-1">
             {FILTERS.find((f) => f.id === filter)!.label}
@@ -100,7 +111,7 @@ export function ShiftsPage({ loc }: { loc: Location }) {
       />
 
       {/* One container, a row per shift, hairline dividers between. */}
-      <Card className="overflow-hidden">
+      {wire ? <WireList rows={6} trailing /> : <Card className="overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No shifts</p>
         ) : (
@@ -108,33 +119,34 @@ export function ShiftsPage({ loc }: { loc: Location }) {
             // The padding is on the outer row and the divider on the inner one, so dividers stop 16px short of both edges.
             <div key={`${r.who}-${i}`} className="px-4">
             <div className={cn("flex items-center gap-3 py-3 tracking-[-0.43px]", i > 0 && "border-t border-[#ebebeb]")}>
-              <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
-                <span className="flex max-w-full items-center gap-2">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#ece6fb] text-[11px] font-[590] leading-none text-[#6b3fc4]">
-                    {r.open ? "?" : initialsOf(r.who)}
-                  </span>
-                  <span className="min-w-0 truncate text-[17px] font-[590] leading-[22px] text-black">{r.who}</span>
+              {/* The role's color: a vertical bar down the left of the row. */}
+              <span aria-hidden className="w-1 shrink-0 self-stretch rounded-full" style={{ backgroundColor: roleColor(r.role) }} />
+              {/* The avatar leads, then the name over the role. */}
+              <span className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ece6fb] text-[15px] font-[590] leading-none text-[#6b3fc4]">
+                  {r.open ? "?" : initialsOf(r.who)}
                 </span>
-                {/* The clock-in sheet's role pill, shrunk, under the name, tinted with its dot's color. */}
-                <span
-                  className="inline-flex max-w-full shrink-0 items-center gap-[5px] rounded-full py-[1px] pl-[7px] pr-2 text-[13px] font-normal leading-5 tracking-[-0.08px] text-[#2c2935]"
-                  style={{ backgroundColor: `${roleColor(r.role)}1a` }} // the dot's color at ~10%
-                >
-                  <span aria-hidden className="size-[6px] shrink-0 rounded-full" style={{ backgroundColor: roleColor(r.role) }} />
-                  <span className="truncate">{r.role}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-[17px] font-[590] leading-5 text-black">{r.who}</span>
+                  <span className="-mt-px truncate text-[15px] leading-[18px] text-[#8e8e93]">{r.role}</span>
                 </span>
               </span>
-              {/* Start, the duration (small, between), end. */}
-              <span className="flex shrink-0 flex-col items-end text-right text-[15px] leading-5 text-black">
-                {clock(r.start)}
-                <span className="text-[12px] leading-4 text-[#b0afb8]">{`${Math.round(r.end - r.start)}h`}</span>
-                {clock(r.end)}
+              {/* Start in the primary color, end secondary beneath it. */}
+              <span className="flex shrink-0 flex-col items-end text-right text-[15px] leading-5">
+                <span className="text-black">{clock(r.start)}</span>
+                <span className="flex items-center gap-[6px] text-[#8e8e93]">
+                  {/* Long shifts (8h or more) run into overtime: an orange tonal pill to the left of the end time. */}
+                  {r.end - r.start >= 8 && (
+                    <span className="rounded-full bg-[rgba(242,153,74,0.2)] px-[6px] py-[1px] text-[11px] font-[590] leading-4 text-[#b8620a]">Overtime</span>
+                  )}
+                  {clock(r.end)}
+                </span>
               </span>
             </div>
             </div>
           ))
         )}
-      </Card>
+      </Card>}
     </>
   )
 }
@@ -151,6 +163,7 @@ export function TimePage({ loc }: { loc: Location }) {
   const roles = Array.from(new Set(loc.timesheets.map((t) => t.role)))
   const pending = loc.timesheets.filter((t) => !resolved[t.id] && (role === "all" || t.role === role))
   const p = loc.payroll
+  const wire = useStructure()
   return (
     <>
       <WeekCalendar label={view === "day" ? dayLabel(date) : rangeLabel(...payPeriodOf(date))} />
@@ -196,12 +209,18 @@ export function TimePage({ loc }: { loc: Location }) {
             className="flex items-center justify-between pb-2 text-left tracking-[-0.43px]"
           >
             <h2 className="text-[15px] font-[590] leading-5 text-[#747182]">
-              Needs review <span className="text-[#b9b8c1]">{pending.length}</span>
+              Needs review{!wire && <> <span className="text-[#b9b8c1]">{pending.length}</span></>}
             </h2>
             <IconChevronUp size={20} stroke={3} className={cn("text-[#747182] transition-transform duration-200", !open && "rotate-180")} />
           </button>
 
-          {open && (
+          {open && wire && (
+            <div className="flex flex-col gap-2">
+              <WireCard h={150} />
+              <WireCard h={150} />
+            </div>
+          )}
+          {open && !wire && (
             <div className="flex flex-col gap-2">
               {pending.length === 0 && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">All caught up</Card>}
               {pending.map((t) => (
@@ -247,12 +266,16 @@ export function TimePage({ loc }: { loc: Location }) {
       ) : (
         <div className="pt-2">
           <SectionHeader>Pay period</SectionHeader>
-          <Card className="overflow-hidden">
-            <ListRow first title="Period" trailing={p.period} />
-            <ListRow title="Hours" trailing={p.hours} />
-            <ListRow title="Gross pay" trailing={p.gross} />
-            <ListRow title="Next payday" trailing={p.nextPayday} />
-          </Card>
+          {wire ? (
+            <WireList rows={4} avatar={false} trailing />
+          ) : (
+            <Card className="overflow-hidden">
+              <ListRow first title="Period" trailing={p.period} />
+              <ListRow title="Hours" trailing={p.hours} />
+              <ListRow title="Gross pay" trailing={p.gross} />
+              <ListRow title="Next payday" trailing={p.nextPayday} />
+            </Card>
+          )}
         </div>
       )}
     </>
@@ -261,6 +284,18 @@ export function TimePage({ loc }: { loc: Location }) {
 
 /** Money (employees): what they've earned and been paid. Earnings belong to the person; pay stubs come from the location. */
 export function MoneyPage({ loc }: { loc: Location }) {
+  const wire = useStructure()
+  if (wire) {
+    return (
+      <>
+        <WireCard title="This pay period" h={110} className="mt-4" />
+        <SectionHeader>Today</SectionHeader>
+        <WireList rows={2} avatar={false} trailing />
+        <SectionHeader>Recent pay stubs</SectionHeader>
+        <WireList rows={3} avatar={false} trailing />
+      </>
+    )
+  }
   return (
     <>
       <Card className="mt-4 p-4 tracking-[-0.43px]">
@@ -314,6 +349,7 @@ export function ChatPage({ loc }: { loc: Location }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
   const rows = loc.messages.filter((m) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true))
   const toggle = (f: "unread" | "threads") => setFilter((cur) => (cur === f ? "all" : f))
+  const wire = useStructure()
   return (
     <>
       <div className="flex gap-2 pb-4 pt-4">
@@ -327,7 +363,7 @@ export function ChatPage({ loc }: { loc: Location }) {
           Threads
         </GlassChip>
       </div>
-      <Card className="overflow-hidden">
+      {wire ? <WireList rows={7} /> : <Card className="overflow-hidden">
         {rows.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</p>}
         {rows.map((m, i) => (
           <button key={m.id} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]")}>
@@ -344,7 +380,7 @@ export function ChatPage({ loc }: { loc: Location }) {
             </span>
           </button>
         ))}
-      </Card>
+      </Card>}
     </>
   )
 }

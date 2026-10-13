@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
 import { IconChevronLeft, IconX } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { EdgeBlur, type EdgeBlurConfig } from "@/components/ios/EdgeBlur"
+import { OverlayRoot } from "@/components/ios/HalfSheet"
 import { SPRING_FAST } from "@/lib/motion"
 
 const SPRING = { type: "spring" as const, ...SPRING_FAST.snappy }
@@ -25,6 +26,7 @@ export function Sheet({
   action,
   closeSide = "right",
   edgeBlur = { top: true },
+  footer,
   children,
 }: {
   title: string
@@ -35,6 +37,8 @@ export function Sheet({
   closeSide?: "left" | "right"
   /** Replaces the close (X) button, e.g. an Edit button. The sheet still closes by drag, scrim tap or Escape. */
   action?: ReactNode
+  /** Pinned to the bottom of the sheet over the scrolling content (e.g. a search bar). */
+  footer?: ReactNode
   /** Scroll returns to the top whenever this changes (a new page was pushed/popped). */
   resetKey?: string
   /**
@@ -45,6 +49,8 @@ export function Sheet({
   /** Rendered edge to edge: the content owns its own horizontal padding (so pages can slide fully off-screen). */
   children: ReactNode
 }) {
+  // Menus opened from inside the sheet render into its own layer (see ContextMenu).
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   // Start fully below the screen, then spring up.
@@ -163,13 +169,14 @@ export function Sheet({
       className={`absolute top-4 flex size-11 items-center justify-center ${closeSide === "left" ? "left-4" : "right-4"}`}
     >
       <button onClick={dismiss} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-        <IconX size={20} stroke={2.25} />
+        <IconX size={24} stroke={2} />
       </button>
     </LiquidGlass>
   )
 
   return (
-    <div className="absolute inset-0 z-[45]">
+    <div ref={setLayer} className="absolute inset-0 z-[45]">
+      <OverlayRoot.Provider value={layer}>
       <motion.div className="absolute inset-0 bg-black" style={{ opacity: scrim }} onClick={dismiss} />
       <motion.div
         ref={sheetRef}
@@ -193,6 +200,7 @@ export function Sheet({
 
         {/* Header floats over the content; edge blur softens what scrolls under it. */}
         <EdgeBlur {...edgeBlur} radius={38} />
+        {footer && <div className="absolute inset-x-0 bottom-0 z-10">{footer}</div>}
         <div data-sheet-handle className="absolute inset-x-0 top-0 z-20 h-[70px] touch-none">
             <div className="flex justify-center pt-[6px]">
               <div className="h-1 w-[60px] rounded-full bg-[#c3c3c6]" />
@@ -203,7 +211,7 @@ export function Sheet({
             {onBack && (
               <LiquidGlass mode="small" radius={999} className="absolute left-4 top-4 flex size-11 items-center justify-center">
                 <button onClick={onBack} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                  <IconChevronLeft size={22} stroke={2.25} />
+                  <IconChevronLeft size={24} stroke={2} />
                 </button>
               </LiquidGlass>
             )}
@@ -217,6 +225,7 @@ export function Sheet({
             )}
         </div>
       </motion.div>
+      </OverlayRoot.Provider>
     </div>
   )
 }

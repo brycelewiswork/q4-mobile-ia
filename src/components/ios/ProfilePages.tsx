@@ -1,30 +1,75 @@
+import { HomePage } from "@/pages/HomePages"
+import { useLocName } from "@/store/useViewStore"
+import { useStructure } from "@/store/useViewStore"
+import { WireCard, WireList, WireValue } from "@/components/wire/Wire"
 import { useState, type ComponentType } from "react"
-import { IconBan, IconCheck, IconCircleCheckFilled } from "@tabler/icons-react"
+import { IconBan, IconCheck, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled } from "@tabler/icons-react"
+import { ContextMenu } from "@/components/ios/ContextMenu"
+import { GlassChip } from "@/components/ios/GlassChip"
 import { Card, GroupFooter, GroupLabel, Initials, ListRow, SectionHeader, Switch } from "@/components/ios/list"
 import { LOCATIONS, type Availability, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
-import { useLocationStore } from "@/store/useLocationStore"
 import { usePersonStore, type Person } from "@/store/usePersonStore"
 import { cn } from "@/lib/utils"
 
 const ROUNDED = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif'
 
+/** Earnings from the Settings cards: the same page the Home widget opens. */
+function Earnings({ loc }: PageProps) {
+  return <HomePage id="earnings" loc={loc} />
+}
+
+/** Time off: the balance at this location, how it accrues, and what's booked. */
+function TimeOff({ loc }: PageProps) {
+  const t = loc.profile.timeOff
+  if (useStructure()) {
+    return (
+      <div className="flex flex-col gap-4">
+        <WireCard title="Balance" h={110} />
+        <div>
+          <GroupLabel>Upcoming</GroupLabel>
+          <WireList rows={2} avatar={false} trailing />
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="p-4 tracking-[-0.43px]">
+        <p className="text-[14px] leading-5 text-[#2c2935]">Balance</p>
+        <p className="text-[34px] font-bold leading-[41px] text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{t.balance}</p>
+        <p className="text-[14px] leading-5 text-[#747182]">{t.plan}</p>
+        <p className="text-[14px] leading-5 text-[#747182]">{t.accrual}</p>
+      </Card>
+      <div>
+        <GroupLabel>Upcoming</GroupLabel>
+        <Card className="overflow-hidden">
+          {t.upcoming.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">Nothing booked</p>}
+          {t.upcoming.map((u, i) => (
+            <ListRow key={u.range} first={i === 0} title={u.range} trailing={u.status} />
+          ))}
+        </Card>
+      </div>
+    </div>
+  )
+}
+
 export type PageId =
   | "account"
   | "personal"
   | "resume"
-  | "location"
   | "team"
   | "tasks"
-  | "log"
   | "payroll"
   | "locations"
   | "calendar"
   | "notifications"
   | "security"
   | "support"
+  | "earnings"
+  | "timeoff"
 
-type PageProps = { loc: Location; editing?: boolean; arg?: string; onOpen?: (p: PageId, arg?: string) => void }
+type PageProps = { loc: Location; editing?: boolean; arg?: string; /** The Team page's search text (the field is pinned to the sheet's bottom). */ query?: string; onOpen?: (p: PageId, arg?: string) => void }
 
 // ---------------------------------------------------------------------------
 
@@ -36,6 +81,7 @@ const NEXT: Record<Availability["kind"], Availability> = {
 }
 
 function AvailabilityValue({ a }: { a: Availability }) {
+  if (useStructure()) return <WireValue>{null}</WireValue>
   if (a.kind === "available") return <span className="text-[#2c2935]">Available</span>
   if (a.kind === "all-day") return <span>All day</span>
   return (
@@ -47,6 +93,7 @@ function AvailabilityValue({ a }: { a: Availability }) {
 }
 
 function Account({ loc, onOpen }: PageProps) {
+  const locName = useLocName()
   const [days, setDays] = useState(loc.profile.availability)
   const [editing, setEditing] = useState(false)
   const name = usePersonStore((p) => p.name)
@@ -73,8 +120,8 @@ function Account({ loc, onOpen }: PageProps) {
       </div>
 
       <Card className="overflow-hidden">
-        <ListRow first chevron onClick={() => onOpen?.("personal")} title="Personal Information" trailing={name} />
-        <ListRow chevron onClick={() => undefined} title="Shared Name" trailing={name} />
+        <ListRow first chevron onClick={() => onOpen?.("personal")} title="Personal Information" trailing={<WireValue>{name}</WireValue>} />
+        <ListRow chevron onClick={() => undefined} title="Shared Name" trailing={<WireValue>{name}</WireValue>} />
       </Card>
 
       <Card className="overflow-hidden">
@@ -86,15 +133,10 @@ function Account({ loc, onOpen }: PageProps) {
         <SectionHeader>Locations</SectionHeader>
         <Card className="overflow-hidden">
           {LOCATIONS.filter((l) => multi || l.id === loc.id).map((l, i) => (
-            <ListRow key={l.id} first={i === 0} chevron onClick={() => onOpen?.("location", l.id)} title={l.name} />
+            <ListRow key={l.id} first={i === 0} chevron onClick={() => onOpen?.("locations")} title={locName(l)} />
           ))}
         </Card>
       </div>
-
-      <Card className="overflow-hidden">
-        <ListRow first chevron onClick={() => undefined} title="Terms of service" />
-        <ListRow chevron onClick={() => undefined} title="Privacy policy" />
-      </Card>
 
       <div>
         <Card>
@@ -102,7 +144,6 @@ function Account({ loc, onOpen }: PageProps) {
             Sign Out
           </button>
         </Card>
-        <p className="px-4 pb-[6px] pt-2 text-[13px] leading-[18px] tracking-[-0.08px] text-[#5a5666]">Version 5.22 (5271)</p>
       </div>
     </div>
   )
@@ -143,7 +184,7 @@ function Field({
           />
         ) : (
           <span className="flex items-center gap-1">
-            {value || "--"}
+            <WireValue>{value || "--"}</WireValue>
             {extra}
           </span>
         )
@@ -189,65 +230,74 @@ function Resume({ editing }: PageProps) {
   )
 }
 
-/** One of the user's locations (Account Settings > Locations): per-location clock-in and geofence options. */
-function LocationSettings({ arg }: PageProps) {
-  const l = LOCATIONS.find((x) => x.id === arg) ?? LOCATIONS[0]
-  const [mobile, setMobile] = useState(true)
-  const [geofence, setGeofence] = useState(false)
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Card className="overflow-hidden">
-          <ListRow first title="Mobile app clock-in" trailing={<Switch checked={mobile} onChange={setMobile} label="Mobile app clock-in" />} />
-        </Card>
-        <GroupFooter>Allow employees to use the time clock from their mobile device.</GroupFooter>
-      </div>
-      <div>
-        <Card className="overflow-hidden">
-          <ListRow first title="Geofence" trailing={<Switch checked={geofence} onChange={setGeofence} label="Geofence" />} />
-        </Card>
-        <GroupFooter>{`Long press on the map to mark the location of ${l.profile.business}.`}</GroupFooter>
-      </div>
-      <Card>
-        <button className="flex h-[52px] w-full items-center px-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-[#ff2428] active:bg-black/[0.04]">
-          Don’t work here anymore?
-        </button>
-      </Card>
-    </div>
-  )
-}
+/** The Team list: who works here, with a call and a message button. Search is pinned to the sheet's bottom. */
+function Team({ loc, query = "" }: PageProps) {
+  const locName = useLocName()
+  const canSwitch = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const wire = useStructure()
+  const [scope, setScope] = useState<"here" | "all">(canSwitch ? "all" : "here")
+  const [menu, setMenu] = useState<HTMLElement | null>(null)
+  const pool = (scope === "all" ? LOCATIONS : [loc]).flatMap((l) => l.team.map((m) => ({ ...m, key: `${l.id}-${m.name}` })))
+  const q = query.trim().toLowerCase()
+  const people = pool
+    .filter((m) => !q || m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const circle = "flex size-9 shrink-0 items-center justify-center rounded-full bg-[rgba(120,120,128,0.16)] text-[#0088ff] active:opacity-60"
 
-const STATUS = {
-  on: { label: "Clocked in", color: "#34c759" },
-  scheduled: { label: "Scheduled", color: "#8e8e93" },
-  off: { label: "Off", color: "#c7c7cc" },
-} as const
-
-function Team({ loc }: PageProps) {
-  const on = loc.team.filter((m) => m.status === "on").length
   return (
-    <div>
-      <GroupLabel>{`${on} of ${loc.team.length} clocked in`}</GroupLabel>
-      <Card className="overflow-hidden">
-        {loc.team.map((m, i) => (
-          <ListRow
-            key={m.name}
-            first={i === 0}
-            leading={<Initials name={m.name} />}
-            title={m.name}
-            subtitle={m.role}
-            trailing={
-              <span className="flex flex-col items-end">
-                <span className="flex items-center gap-[6px] text-[15px] leading-5 text-[#2c2935]">
-                  <span className="size-2 rounded-full" style={{ backgroundColor: STATUS[m.status].color }} />
-                  {STATUS[m.status].label}
-                </span>
-                <span className="text-[13px] leading-[18px] text-[#747182]">{m.detail}</span>
-              </span>
-            }
+    // Bottom padding clears the pinned search bar.
+    <div className="pb-[110px]">
+      {canSwitch && (
+        <div className="flex pb-3">
+          <GlassChip onClick={(e) => setMenu(e.currentTarget)}>
+            <span className="flex items-center gap-2">
+              {scope === "all" ? "All locations" : locName(loc)}
+              {/* SF Symbol line.3.horizontal.decrease: three lines, each shorter, centered. */}
+              <span aria-hidden className="block h-4 w-5 bg-[#141414]" style={{ maskImage: "url(/phone/sf-filter.svg)", WebkitMaskImage: "url(/phone/sf-filter.svg)", maskSize: "100% 100%", WebkitMaskSize: "100% 100%", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }} />
+            </span>
+          </GlassChip>
+          <ContextMenu
+            anchor={menu}
+            items={[
+              { id: "all", label: "All locations" },
+              { id: "here", label: locName(loc) },
+            ]}
+            selectedId={scope}
+            align="left"
+            onSelect={(id) => setScope(id as "all" | "here")}
+            onClose={() => setMenu(null)}
           />
+        </div>
+      )}
+      {wire ? <WireList rows={8} trailing /> : <Card className="overflow-hidden">
+        {people.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No one matches</p>}
+        {people.map((m, i) => (
+          <div key={m.key} className="flex items-center gap-3 pl-4 pr-4">
+            <span className="relative shrink-0">
+              <Initials name={m.name} size={44} />
+              {m.status === "on" && (
+                <span aria-label="Clocked in" className="absolute -bottom-[2px] -right-[2px] flex size-[16px] items-center justify-center rounded-[5px] bg-[#34c759] ring-2 ring-white">
+                  <IconClockFilled size={10} className="text-white" />
+                </span>
+              )}
+            </span>
+            <div className={cn("flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 tracking-[-0.43px]", i > 0 && "border-t border-[#ebebeb]")}>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[17px] leading-[22px] text-black">{m.name}</p>
+                <p className="truncate text-[15px] leading-5 text-[#7f7f7f]">{`${m.role} • ${m.seen}`}</p>
+              </div>
+              {m.phone && (
+                <button aria-label={`Call ${m.name}`} className={circle}>
+                  <IconPhoneFilled size={18} />
+                </button>
+              )}
+              <button aria-label={`Message ${m.name}`} className={circle}>
+                <IconMessageCircleFilled size={18} />
+              </button>
+            </div>
+          </div>
         ))}
-      </Card>
+      </Card>}
     </div>
   )
 }
@@ -258,6 +308,7 @@ function Tasks({ loc }: PageProps) {
     Object.fromEntries(loc.tasks.map((t) => [t.id, t.done])),
   )
   const count = Object.values(done).filter(Boolean).length
+  if (useStructure()) return <WireList rows={4} avatar={false} trailing />
   return (
     <div>
       <GroupLabel>{`${count} of ${loc.tasks.length} done`}</GroupLabel>
@@ -287,21 +338,23 @@ function Tasks({ loc }: PageProps) {
   )
 }
 
-function ManagerLog({ loc }: PageProps) {
-  return (
-    <div className="flex flex-col gap-3">
-      {loc.managerLog.map((e) => (
-        <Card key={e.when + e.author} className="p-4 tracking-[-0.43px]">
-          <p className="text-[13px] leading-[18px] text-[#747182]">{`${e.author} · ${e.when}`}</p>
-          <p className="pt-1 text-[17px] leading-[22px] text-[#2c2935]">{e.note}</p>
-        </Card>
-      ))}
-    </div>
-  )
-}
-
 function Payroll({ loc }: PageProps) {
   const p = loc.payroll
+  if (useStructure()) {
+    return (
+      <div className="flex flex-col gap-4">
+        <WireCard title="Next payday" h={110} />
+        <div className="flex gap-4">
+          <WireCard title="Hours" h={80} className="flex-1" />
+          <WireCard title="Gross pay" h={80} className="flex-1" />
+        </div>
+        <div>
+          <GroupLabel>Recent pay stubs</GroupLabel>
+          <WireList rows={3} avatar={false} trailing />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-4 tracking-[-0.43px]">
@@ -332,23 +385,47 @@ function Payroll({ loc }: PageProps) {
   )
 }
 
-function Locations({ loc }: PageProps) {
-  const setLocation = useLocationStore((s) => s.setLocation)
+/**
+ * Every location the user works at, on one page — not tied to the business selected on Home. Each is its own
+ * card: the name and PIN, then that location's own clock-in settings.
+ */
+function Locations() {
+  const locName = useLocName()
+  const wire = useStructure()
+  const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const [on, setOn] = useState<Record<string, { mobile: boolean; geofence: boolean }>>({})
+  // Which location's settings are being edited. The switches only respond while their card is.
+  const [editing, setEditing] = useState<string | null>(null)
+  const get = (id: string) => on[id] ?? { mobile: true, geofence: false }
+  const set = (id: string, patch: Partial<{ mobile: boolean; geofence: boolean }>) => setOn((o) => ({ ...o, [id]: { ...get(id), ...patch } }))
   return (
-    <div>
-      <Card className="overflow-hidden">
-        {LOCATIONS.map((l, i) => (
-          <ListRow
-            key={l.id}
-            first={i === 0}
-            onClick={() => setLocation(l.id)}
-            leading={<span className="flex w-5 justify-center">{l.id === loc.id && <IconCheck size={20} stroke={2.5} className="text-[#8f55e5]" />}</span>}
-            title={l.name}
-            subtitle={l.profile.address}
-          />
-        ))}
-      </Card>
-      <GroupFooter>The selected location controls what you see on every screen.</GroupFooter>
+    <div className="flex flex-col gap-2">
+      {LOCATIONS.filter((_, i) => multi || i === 0).map((l) => {
+        const isEditing = editing === l.id
+        return (
+          <section key={l.id}>
+            <SectionHeader action={isEditing ? "Done" : "Edit"} onAction={() => setEditing(isEditing ? null : l.id)}>
+              {locName(l)}
+            </SectionHeader>
+            <Card className="overflow-hidden">
+              <ListRow first title="PIN" trailing={<WireValue w={56}>{l.profile.pin}</WireValue>} />
+              <ListRow title="Mobile app clock-in" trailing={<Switch disabled={!isEditing} checked={get(l.id).mobile} onChange={(v) => set(l.id, { mobile: v })} label={`Mobile app clock-in, ${locName(l)}`} />} />
+              <ListRow title="Geofence" trailing={<Switch disabled={!isEditing} checked={get(l.id).geofence} onChange={(v) => set(l.id, { geofence: v })} label={`Geofence, ${locName(l)}`} />} />
+            </Card>
+          </section>
+        )
+      })}
+      {/* A past location: greyed out, no PIN, nothing to set. */}
+      {multi && (
+        <section>
+          <SectionHeader>
+            <span className="text-[#b9b8c1]">{wire ? `Location ${LOCATIONS.length + 1}` : "Homebase Admin"}</span>
+          </SectionHeader>
+          <Card className="overflow-hidden">
+            <ListRow first title={<span className="text-[#b9b8c1]">You no longer work here</span>} />
+          </Card>
+        </section>
+      )}
     </div>
   )
 }
@@ -403,6 +480,7 @@ function Notifications() {
 }
 
 function Security() {
+  const wire = useStructure()
   const [faceId, setFaceId] = useState(true)
   const [twoFactor, setTwoFactor] = useState(false)
   return (
@@ -418,8 +496,14 @@ function Security() {
       <div>
         <GroupLabel>Signed in on</GroupLabel>
         <Card className="overflow-hidden">
-          <ListRow first title="iPhone 17" subtitle="This device" />
-          <ListRow title="Chrome on Mac" subtitle="Last active yesterday" />
+          {wire ? (
+            <WireList rows={2} avatar={false} />
+          ) : (
+            <>
+              <ListRow first title="iPhone 17" subtitle="This device" />
+              <ListRow title="Chrome on Mac" subtitle="Last active yesterday" />
+            </>
+          )}
         </Card>
       </div>
     </div>
@@ -445,14 +529,14 @@ export const PAGES: Record<PageId, { title: string; Component: ComponentType<Pag
   account: { title: "Account Settings", Component: Account },
   personal: { title: "Personal Information", Component: PersonalInformation, action: "edit" },
   resume: { title: "Resume", Component: Resume, action: "edit" },
-  location: { title: "Location", Component: LocationSettings },
   team: { title: "Team", Component: Team },
   tasks: { title: "Task Manager", Component: Tasks },
-  log: { title: "Manager Log", Component: ManagerLog },
   payroll: { title: "Payroll", Component: Payroll },
   locations: { title: "Locations", Component: Locations },
   calendar: { title: "Calendar Sync", Component: Calendar },
   notifications: { title: "Notifications & Alerts", Component: Notifications },
   security: { title: "Password & Security", Component: Security },
   support: { title: "Support", Component: Support },
+  earnings: { title: "Earnings", Component: Earnings },
+  timeoff: { title: "Time off", Component: TimeOff },
 }

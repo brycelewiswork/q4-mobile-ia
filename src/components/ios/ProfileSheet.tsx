@@ -1,3 +1,5 @@
+import { Bar, BarLines } from "@/components/wire/Wire"
+import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
 import { IconCheck, IconPencil } from "@tabler/icons-react"
@@ -5,10 +7,11 @@ import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
 import { PAGES, type PageId } from "@/components/ios/ProfilePages"
+import { SearchBar } from "@/components/ios/SearchBar"
 import { Sheet } from "@/components/ios/Sheet"
 import { EASE, SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
-import { LOCATIONS, USER_EARNINGS, type Location } from "@/data/locations"
+import { USER_EARNINGS, type Location } from "@/data/locations"
 
 const SPRING = { type: "spring" as const, ...SPRING_FAST.snappy }
 const GAP = 12
@@ -21,6 +24,8 @@ const PLUS_JAKARTA = '"Plus Jakarta Sans", -apple-system, system-ui, sans-serif'
 // ---------------------------------------------------------------------------
 
 function PinCard({ loc }: { loc: Location }) {
+  const locName = useLocName()
+  const wire = useStructure()
   const p = loc.profile
   return (
     <div
@@ -28,8 +33,8 @@ function PinCard({ loc }: { loc: Location }) {
       style={{ boxShadow: "0 4px 6px rgba(0,0,0,0.08), 0 24px 30px -16px rgba(0,0,0,0.15)" }}
     >
       <div aria-hidden className="absolute inset-0">
-        <img src="/phone/pin-bg.jpg" alt="" className="absolute left-1/2 top-[calc(50%-23.5px)] h-[627px] w-[518px] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover" />
-        <div className="absolute inset-0 bg-[#8f55e5] mix-blend-hue" />
+        {wire ? <div className="absolute inset-0 bg-[#8f55e5]" /> : <img src="/phone/pin-bg.jpg" alt="" className="absolute left-1/2 top-[calc(50%-23.5px)] h-[627px] w-[518px] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover" />}
+        {!wire && <div className="absolute inset-0 bg-[#8f55e5] mix-blend-hue" />}
         <div
           className="absolute inset-0"
           style={{ backgroundImage: "linear-gradient(162.7deg, rgba(143,85,229,0.65) 38.5%, rgba(79,47,127,0.65) 70.9%)" }}
@@ -38,13 +43,13 @@ function PinCard({ loc }: { loc: Location }) {
       <div className="relative flex items-center gap-3">
         <img src="/phone/pin-logo.svg" alt="" className="h-8 w-[22.229px]" />
         <div className="min-w-0">
-          <p className="truncate text-[17px] font-[590] leading-5 text-white">{p.business}</p>
-          <p className="truncate text-[15px] leading-[17px] text-[#dadada]">{p.address}</p>
+          <p className="truncate text-[17px] font-[590] leading-5 text-white">{locName(loc)}</p>
+          {!wire && <p className="truncate text-[15px] leading-[17px] text-[#dadada]">{p.address}</p>}
         </div>
       </div>
       <div className="relative font-bold" style={{ fontFamily: PLUS_JAKARTA }}>
         <p className="text-[16px] leading-6 text-[#dadada]">PIN</p>
-        <p className="text-[24px] leading-7 tracking-[0.24px] text-white">{p.pin}</p>
+        {wire ? <span aria-hidden className="mt-1 block h-[14px] w-24 rounded-full bg-white/40" /> : <p className="text-[24px] leading-7 tracking-[0.24px] text-white">{p.pin}</p>}
       </div>
       <img src="/phone/pin-chip.svg" alt="" className="absolute left-[274px] top-[111px] h-[49.259px] w-14" />
     </div>
@@ -53,12 +58,22 @@ function PinCard({ loc }: { loc: Location }) {
 
 function ShoutoutCard({ loc }: { loc: Location }) {
   const s = loc.profile.shoutout
+  const wire = useStructure()
   return (
     <Card className="flex h-[228px] flex-col gap-1 overflow-hidden p-4 text-[14px] leading-5 tracking-[-0.43px] text-[#2c2935]">
       <p>Shoutouts</p>
       <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <p>{s.quote}</p>
-        <p className="text-right">{s.author}</p>
+        {wire ? (
+          <>
+            <BarLines lines={3} />
+            <Bar w={80} h={10} className="self-end" />
+          </>
+        ) : (
+          <>
+            <p>{s.quote}</p>
+            <p className="text-right">{s.author}</p>
+          </>
+        )}
       </div>
     </Card>
   )
@@ -66,9 +81,10 @@ function ShoutoutCard({ loc }: { loc: Location }) {
 
 function StatsCard({ loc }: { loc: Location }) {
   const s = loc.profile.stats
+  const wire = useStructure()
   const Stat = ({ value, label }: { value: ReactNode; label: string }) => (
     <div>
-      <div className="text-[18px] font-[590] leading-5 text-[#2c2935]">{value}</div>
+      {wire ? <Bar w={44} h={14} className="mb-[3px] mt-[3px]" /> : <div className="text-[18px] font-[590] leading-5 text-[#2c2935]">{value}</div>}
       <p className="text-[14px] leading-5 text-[#747182]">{label}</p>
     </div>
   )
@@ -219,7 +235,6 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
 const WORK_ROWS: Row[] = [
   { label: "Team", page: "team" },
   { label: "Task Manager", page: "tasks" },
-  { label: "Manager Log", page: "log" },
   { label: "Payroll", page: "payroll" },
 ].map((r) => ({ ...r, icon: "/phone/row-money.svg", page: r.page as PageId }))
 
@@ -242,6 +257,7 @@ const ACTIONS = [
 // ---------------------------------------------------------------------------
 
 function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
+  const wire = useStructure()
   const p = loc.profile
 
   const pages = [
@@ -259,12 +275,12 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
                 className="flex size-[60px] items-center justify-center rounded-full bg-gradient-to-b from-[#beacff] to-[#937ee2] text-[30px] font-bold tracking-[-0.54px] text-white"
                 style={{ fontFamily: PLUS_JAKARTA }}
               >
-                BL
+                {wire ? "FL" : "BL"}
               </div>
             </div>
             <div className="min-w-0 flex-1 pl-2 tracking-[-0.43px]">
-              <p className="text-[17px] leading-[22px] text-[#2c2935]">Bryce Lewis</p>
-              <p className="truncate text-[15px] leading-5 text-[#5a5666]">blewis@joinhomebase.com</p>
+              <p className="text-[17px] leading-[22px] text-[#2c2935]">{wire ? ANON.name : "Bryce Lewis"}</p>
+              <p className="truncate text-[15px] leading-5 text-[#5a5666]">{wire ? ANON.email : "blewis@joinhomebase.com"}</p>
             </div>
             <Chevron />
           </button>
@@ -274,14 +290,22 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
 
         <div className="flex gap-4 tracking-[-0.43px]">
           {[
-            { label: "Earnings", value: USER_EARNINGS.period.amount, sub: USER_EARNINGS.period.payday },
-            { label: "Time off balance", value: p.timeOff.balance, sub: p.timeOff.plan },
+            { label: "Earnings", page: "earnings" as PageId, value: USER_EARNINGS.period.amount, sub: USER_EARNINGS.period.payday },
+            { label: "Time off balance", page: "timeoff" as PageId, value: p.timeOff.balance, sub: p.timeOff.plan },
           ].map((c) => (
-            <Card key={c.label} className="flex min-w-0 flex-1 flex-col p-3">
+            <button key={c.label} onClick={() => onOpen(c.page)} className="flex min-w-0 flex-1 text-left active:opacity-80">
+            <Card className="flex min-w-0 flex-1 flex-col p-3">
               <p className="text-[14px] leading-5 text-[#2c2935]">{c.label}</p>
-              <p className="text-[22px] font-bold text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{c.value}</p>
-              <p className="truncate text-[14px] leading-5 text-[#747182]">{c.sub}</p>
+              {wire ? (
+                <div className="flex flex-col gap-2 pb-1 pt-2"><Bar w={70} h={20} /><Bar w={100} h={10} /></div>
+              ) : (
+                <>
+                  <p className="text-[22px] font-bold text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{c.value}</p>
+                  <p className="truncate text-[14px] leading-5 text-[#747182]">{c.sub}</p>
+                </>
+              )}
             </Card>
+            </button>
           ))}
         </div>
 
@@ -295,9 +319,19 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
               className="flex min-w-0 flex-1 flex-col items-center gap-[3px] rounded-full bg-white px-[17px] py-2 active:bg-black/[0.04]"
             >
               <img src={a.icon} alt="" className="size-5" />
-              <span className="whitespace-nowrap text-[11px] font-[510] tracking-[-0.43px] text-[#0088ff]">{a.label}</span>
+              <span className="whitespace-nowrap text-[11px] font-[510] tracking-[-0.43px] text-[#0088ff]">{wire && a.label.startsWith("Refer") ? "Refer a friend" : a.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* Footer: the logo, small, then the version and legal links as quiet subtext. */}
+        <div className="flex flex-col items-center gap-3 pb-4 pt-6">
+          <img src="/phone/logo-h.png" alt="Homebase" className="h-7 w-auto" />
+          <p className="flex items-center gap-2 text-[13px] leading-[18px] tracking-[-0.08px] text-[#928fa0]">
+            <span>Version 5.22 (5271)</span>
+            <span aria-hidden>•</span>
+            <button className="active:opacity-60">Terms &amp; privacy</button>
+          </p>
         </div>
 
       </div>
@@ -323,17 +357,20 @@ export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => v
   const [nav, setNav] = useState<{ page: PageId | null; dir: Dir; arg?: string }>({ page: null, dir: "push" })
   const { page, dir, arg } = nav
   const [editing, setEditing] = useState(false)
+  // The Team page's search, whose field is pinned to the bottom of the sheet (Figma "iOS Toolbar", bottom, search).
+  const [teamQuery, setTeamQuery] = useState("")
   const go = (next: { page: PageId | null; dir: Dir; arg?: string }) => {
     setEditing(false)
+    setTeamQuery("")
     setNav(next)
   }
   const Page = page ? PAGES[page].Component : null
 
   return (
     <Sheet
-      title={page === "location" ? (LOCATIONS.find((l) => l.id === arg)?.name ?? "Location") : page ? PAGES[page].title : "Settings"}
+      title={page ? PAGES[page].title : "Settings"}
       onClose={onClose}
-      onBack={page ? () => go({ page: page === "personal" || page === "resume" || page === "location" ? "account" : null, dir: "pop" }) : undefined}
+      onBack={page ? () => go({ page: page === "personal" || page === "resume" ? "account" : null, dir: "pop" }) : undefined}
       action={
         page && PAGES[page].action === "edit" ? (
           <LiquidGlass mode="small" accent="#8f55e5" radius={999} className="absolute right-4 top-4 flex size-11 items-center justify-center">
@@ -342,13 +379,14 @@ export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => v
               aria-label={editing ? "Done editing" : "Edit"}
               className="flex size-9 items-center justify-center rounded-full text-white"
             >
-              {editing ? <IconCheck size={22} stroke={2.5} /> : <IconPencil size={20} stroke={2.25} />}
+              {editing ? <IconCheck size={24} stroke={2.25} /> : <IconPencil size={22} stroke={2} />}
             </button>
           </LiquidGlass>
         ) : undefined
       }
       resetKey={page ?? "root"}
-      edgeBlur={{ top: { strength: 16, steps: 5, height: 84 }, bottom: false }}
+      edgeBlur={{ top: { strength: 16, steps: 5, height: 84 }, bottom: page === "team" ? { strength: 16, steps: 5, height: 130 } : false }}
+      footer={page === "team" ? <SearchBar value={teamQuery} onChange={setTeamQuery} placeholder="Search your team…" /> : undefined}
     >
       <AnimatePresence mode="popLayout" initial={false} custom={dir}>
         <motion.div
@@ -364,7 +402,7 @@ export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => v
           className="relative min-h-full bg-[#f3f2f6] px-4"
         >
           {Page ? (
-            <Page loc={loc} editing={editing} arg={arg} onOpen={(p, a) => go({ page: p, dir: "push", arg: a })} />
+            <Page loc={loc} editing={editing} arg={arg} query={teamQuery} onOpen={(p, a) => go({ page: p, dir: "push", arg: a })} />
           ) : (
             <Root loc={loc} onOpen={(p) => go({ page: p, dir: "push" })} />
           )}

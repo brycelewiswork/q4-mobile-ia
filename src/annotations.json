@@ -1,0 +1,153 @@
+[
+  {
+    "id": "location-switcher",
+    "selector": "[data-anno=\"location-title\"]",
+    "side": "left",
+    "title": "One switcher drives every screen",
+    "body": "Location can be changed from any page that links to the same switcher. Data for all locations shows as a widget on the home page."
+  },
+  {
+    "id": "profile",
+    "selector": "[data-anno=\"profile\"]",
+    "title": "Settings moves to the left",
+    "body": "Android typically launches a settings menu from the top left instead of iOS' top right position.",
+    "side": "left",
+    "platform": "android"
+  },
+  {
+    "id": "earnings",
+    "selector": "[data-anno=\"earnings\"]",
+    "side": "left",
+    "title": "Widgets open full pages",
+    "body": "Tapping a card pushes a page over the tab bar rather than a sheet. Earnings and shiftmates need room for detail, and a page keeps a back button. This allows progressive disclosure and keeps clutter to a minimum."
+  },
+  {
+    "id": "shiftmates",
+    "selector": "[data-anno=\"shiftmates\"]",
+    "side": "right",
+    "users": [
+      "employee"
+    ],
+    "title": "Shiftmates (proposed)",
+    "body": "Data from Alvin and real-world users show that employees care about who they're working with. Let's make it a moment of mini-delight to see your fellow workers before your shift. "
+  },
+  {
+    "id": "clock-accessory",
+    "selector": "[data-anno=\"clock-accessory\"]",
+    "side": "left",
+    "platform": "ios",
+    "users": [
+      "employee"
+    ],
+    "title": "Employees use the clock regularly",
+    "body": "We promote the timeclock to a delightful, always-available accessory bar that gives quick options for breaks and shift status."
+  },
+  {
+    "id": "status",
+    "selector": "[data-anno=\"status\"]",
+    "side": "left",
+    "users": [
+      "oam",
+      "multi"
+    ],
+    "title": "Today at a glance",
+    "body": "One card, three lenses: people, sales and foot traffic, each against plan by hour. It replaces three separate reports."
+  },
+  {
+    "id": "fab",
+    "selector": "[data-anno=\"fab\"]",
+    "side": "right",
+    "platform": "android",
+    "title": "The main action is a button, not a menu",
+    "body": "On Android each tab has one floating action: clock in on Home for employees, add shift, new message. iOS tucks the same actions into toolbar menus."
+  },
+  {
+    "id": "nav-bar",
+    "selector": "[data-anno=\"nav-bar\"]",
+    "side": "left",
+    "platform": "android",
+    "title": "Split nav, labeled",
+    "body": "Tabs sit together on the left and the assistant stands alone on the right. Employees have no assistant, so their tabs spread evenly across the bottom"
+  },
+  {
+    "id": "c80ad548-e0c0-41ae-b368-77c08b4c7b9c",
+    "selector": "div:nth-of-type(1) > div > div:nth-of-type(1)",
+    "title": "All Locations",
+    "body": "Multiple locations sees a single card that combines data across all locations, similar to the top section that exists for multi-location users today. ",
+    "side": "right",
+    "users": [
+      "multi"
+    ]
+  },
+  {
+    "id": "ffe6a838-a190-4e42-8f74-04768ee267de",
+    "selector": "[data-anno=\"profile\"] > span:nth-child(1)",
+    "title": "Settings",
+    "body": "Remove the More tab bar option. Combine Profile, options, and settings into a single area with better information hierarchy. ",
+    "side": "right"
+  },
+  {
+    "id": "41576b66-5dcb-4f20-a0ec-932b2df09d85",
+    "selector": "[data-anno=\"all-locations\"] > div:nth-child(1) > div:nth-child(1)",
+    "title": "All locations widget",
+    "body": "Users who run multiple locations get an overview and a list they can tap into each store for more detail. ",
+    "side": "right"
+  },
+  {
+    "id": "966f7015-ab75-4167-b660-c97c7a8e4ef4",
+    "selector": "[aria-label=\"Notifications, 4 unread\"]",
+    "title": "Requests",
+    "body": "Requests moves to a first-class button in the toolbar because it's accessed often. Burying it also buries the notification badge so owners miss genuinely urgent requests.",
+    "side": "right"
+  },
+  {
+    "id": "6d6547cb-d0cc-462d-981c-9aad95d50ec1",
+    "selector": "[data-anno=\"drawer-earnings\"]",
+    "title": "Earnings promoted as quick display",
+    "body": "Earnings used to tap into the Money screen. It still will, but shows clear information that may prevent the need to even tap further in. ",
+    "side": "left"
+  },
+  {
+    "id": "f2d4c95f-26b1-4e71-8ead-6cb5edde171d",
+    "selector": "[data-anno=\"drawer-timeoff\"]",
+    "title": "Time off balance",
+    "body": "Previously linked to a very simple full page that didn't need to be a full page. We can show that information right here (and still have a full page version if needed)",
+    "side": "right"
+  },
+  {
+    "id": "c07f269e-2bcd-4095-add6-af943b073399",
+    "selector": "[data-anno=\"drawer-account\"]",
+    "title": "Settings (old)",
+    "body": "Settings data used to be buried one level too deep, requiring a separate tap. At only 4 options, we should move it to the main area, especially after better reorganization. ",
+    "side": "left"
+  },
+  {
+    "id": "68f1f2e9-f0c7-46b4-a913-fc0d671cafc0",
+    "selector": "[data-anno=\"drawer-actions\"]",
+    "title": "Features and Growth",
+    "body": "Three list items in the \"More\" menu were sales options disguised as settings. I pulled them out while keeping them accessible. ",
+    "side": "left"
+  },
+  {
+    "id": "f0919ba2-b9bf-4bc4-a00d-02b6424e5eba",
+    "selector": "[data-anno=\"drawer-profile\"]",
+    "title": "Untangling Profile",
+    "body": "Previously Profile was a combination of user data, some public, some private. This treatment allows us to organize and highlight the most important things. ",
+    "side": "left"
+  },
+  {
+    "id": "724c76b1-f92c-4fc7-b8c7-e794564115d9",
+    "selector": "[data-anno=\"pin-card\"]",
+    "title": "Pin Card",
+    "body": "We can use the PIN that used to live further down the page as an opportunity to add interest and branding for businesses. ",
+    "side": "left"
+  },
+  {
+    "id": "226cf1e1-5218-4728-a48f-035b35f39242",
+    "selector": "[data-anno=\"drawer-carousel\"] > div:nth-child(2)",
+    "title": "Praise gets more view",
+    "body": "Move shoutouts to a more visible spot, along with Achievements for better feature adoption.",
+    "side": "left",
+    "platform": "android"
+  }
+]

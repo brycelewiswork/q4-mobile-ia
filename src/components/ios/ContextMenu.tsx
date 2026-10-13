@@ -23,12 +23,15 @@ export function ContextMenu({
   onSelect,
   onClose,
   container,
+  align = "right",
 }: {
   /** The element that was tapped. `null` = closed. */
   anchor: HTMLElement | null
   items: MenuItem[]
   /** Omit for an ACTION menu (no check column, items can carry trailing icons). */
   selectedId?: string
+  /** Which edge of the anchor the menu lines up with. Right (default) suits an anchor on the right of the screen; use left for one on the left. */
+  align?: "left" | "right"
   /** Where to render, when not inside a HalfSheet. Must be a screen-sized positioned element. */
   container?: HTMLElement | null
   onSelect: (id: string) => void
@@ -36,7 +39,7 @@ export function ContextMenu({
 }) {
   const overlay = useOverlayRoot()
   const root = container ?? overlay
-  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number; above: boolean } | null>(null)
+  const [pos, setPos] = useState<{ right?: number; left?: number; top?: number; bottom?: number; above: boolean } | null>(null)
 
   useLayoutEffect(() => {
     if (!anchor || !root) return setPos(null)
@@ -45,10 +48,10 @@ export function ContextMenu({
     const s = r.width / root.offsetWidth // the phone frame is scaled; position in local px
     const menuH = items.length * ROW + PAD * 2
     const below = (r.bottom - a.bottom) / s
-    const right = (r.right - a.right) / s
-    if (below >= menuH + 12) setPos({ right, top: (a.bottom - r.top) / s + 6, above: false })
-    else setPos({ right, bottom: (r.bottom - a.top) / s + 6, above: true })
-  }, [anchor, root, items.length])
+    const side = align === "left" ? { left: (a.left - r.left) / s } : { right: (r.right - a.right) / s }
+    if (below >= menuH + 12) setPos({ ...side, top: (a.bottom - r.top) / s + 6, above: false })
+    else setPos({ ...side, bottom: (r.bottom - a.top) / s + 6, above: true })
+  }, [anchor, root, items.length, align])
 
   useEffect(() => {
     if (!anchor) return
@@ -77,9 +80,10 @@ export function ContextMenu({
             transition={{ type: "spring", ...SPRING_FAST.snappy }}
             style={{
               right: pos.right,
+              left: pos.left,
               top: pos.top,
               bottom: pos.bottom,
-              transformOrigin: pos.above ? "bottom right" : "top right",
+              transformOrigin: `${pos.above ? "bottom" : "top"} ${align}`,
             }}
             className="absolute w-max max-w-[calc(100%-32px)]"
             onPointerDown={(e) => e.stopPropagation()}

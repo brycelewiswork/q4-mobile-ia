@@ -229,7 +229,7 @@ export function HalfSheet({
           <div className="relative z-10 flex items-start justify-end px-4 pt-4">
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
               <button onClick={() => close()} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconX size={20} stroke={2.25} />
+                <IconX size={24} stroke={2} />
               </button>
             </LiquidGlass>
             {!hideTitle && (

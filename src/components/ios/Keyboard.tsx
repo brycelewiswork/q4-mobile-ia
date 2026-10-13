@@ -63,7 +63,7 @@ export function Keyboard({
 
   return (
     <div
-      className="flex flex-col items-end pt-6 tracking-normal"
+      className="ios-keyboard flex flex-col items-end pt-6 tracking-normal"
       style={{
         height: KEYBOARD_H,
         borderTopLeftRadius: 27,

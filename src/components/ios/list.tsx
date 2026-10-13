@@ -112,10 +112,13 @@ export function Switch({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
+  /** Looks the same, but doesn't respond (e.g. a page that's only editable after Edit). */
+  disabled?: boolean
 }) {
   return (
     <button
@@ -124,7 +127,7 @@ export function Switch({
       aria-label={label}
       onClick={(e) => {
         e.stopPropagation()
-        onChange(!checked)
+        if (!disabled) onChange(!checked)
       }}
       className="relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200"
       style={{ backgroundColor: checked ? "#34c759" : "rgba(120,120,128,0.32)" }}

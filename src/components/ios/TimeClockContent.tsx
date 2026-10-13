@@ -1,10 +1,15 @@
-import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react"
+import { Bar } from "@/components/wire/Wire"
+import { useLocName } from "@/store/useViewStore"
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react"
 import { motion } from "motion/react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
+import { roleColor } from "@/lib/roleColor"
 import { Popover } from "@/components/ios/Popover"
 import { ListRow } from "@/components/ios/list"
 import { LOCATIONS, type Location } from "@/data/locations"
 import { useLocationStore } from "@/store/useLocationStore"
+import { useStructure } from "@/store/useViewStore"
+import { cn } from "@/lib/utils"
 import {
   NOW_MIN,
   nextShiftDay,
@@ -65,6 +70,7 @@ const toMinutes = (t: string) => {
 
 /** Shift progress: a simple bar, start time left and end time right. */
 function ShiftProgress({ shift, top }: { shift: string; top: number }) {
+  const wire = useStructure()
   const [start, end] = shiftRange(shift)
   const a = toMinutes(start)
   const b = toMinutes(end)
@@ -82,8 +88,17 @@ function ShiftProgress({ shift, top }: { shift: string; top: number }) {
         <div className="h-full rounded-[3px] bg-[#8f55e5]" style={{ width: `${pct * 100}%` }} />
       </div>
       <div className="mt-[6px] flex justify-between text-[15px] font-[510] leading-5 tracking-[-0.24px] text-[#5a5666]">
-        <span>{start}</span>
-        <span>{end}</span>
+        {wire ? (
+          <>
+            <Bar w={52} h={10} className="mt-[5px]" />
+            <Bar w={52} h={10} className="mt-[5px]" />
+          </>
+        ) : (
+          <>
+            <span>{start}</span>
+            <span>{end}</span>
+          </>
+        )}
       </div>
     </div>
   )
@@ -115,34 +130,67 @@ const Glyph = ({ src, color = ACTION_INK }: { src: string; color?: string }) => 
   />
 )
 
-type Tile = { icon: string; label: string; onClick: () => void; muted?: boolean }
+type Tile = { icon: string; label: string; onClick: () => void; muted?: boolean; /** Two taps: the first arms it (it grows and turns primary), the second confirms. */ confirm?: string }
 
-/** Figma's action tiles: 68pt tall, 16pt radius — purple, so they read as actions. */
+const PRIMARY = "#8f55e5"
+const TILE_SPRING = { type: "spring" as const, stiffness: 420, damping: 38 }
+
+/**
+ * Figma's action tiles: 68pt tall, 16pt radius — purple, so they read as actions.
+ * A tile with `confirm` is a two-step action: the first tap makes it span the whole row in the primary
+ * color (the others fold away), the second tap does it. Tapping anywhere else puts it back.
+ */
 function ActionTiles({ top, tiles }: { top: number; tiles: Tile[] }) {
+  const [armed, setArmed] = useState<string | null>(null)
+  const row = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!armed) return
+    const off = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-armed]")) setArmed(null)
+    }
+    document.addEventListener("pointerdown", off)
+    return () => document.removeEventListener("pointerdown", off)
+  }, [armed])
+
   return (
-    <div className="absolute inset-x-4 flex gap-3" style={{ top }}>
-      {tiles.map((t) => (
-        <button
-          key={t.label}
-          onClick={t.onClick}
-          className="relative flex h-[68px] flex-1 flex-col items-center gap-[2px] overflow-hidden rounded-[16px] px-1 py-3 active:opacity-60"
-          style={{ backgroundColor: t.muted ? MUTED_FILL : ACTION_FILL }}
-        >
-          <Glyph src={t.icon} color={t.muted ? MUTED_INK : ACTION_INK} />
-          <span className="relative text-[13px] font-[590] leading-[18px] tracking-[-0.43px]" style={{ color: t.muted ? MUTED_INK : ACTION_INK }}>
-            {t.label}
-          </span>
-        </button>
-      ))}
+    <div ref={row} className="absolute inset-x-4 flex" style={{ top }}>
+      {tiles.map((t, i) => {
+        const on = armed === t.label
+        const folded = armed !== null && !on
+        const ink = on ? "#ffffff" : t.muted ? MUTED_INK : ACTION_INK
+        return (
+          <motion.button
+            key={t.label}
+            data-armed={on ? "" : undefined}
+            aria-label={on && t.confirm ? t.confirm : t.label}
+            onClick={() => (t.confirm && !on ? setArmed(t.label) : t.onClick())}
+            initial={false}
+            animate={{
+              flexGrow: folded ? 0 : 1,
+              marginLeft: i === 0 ? 0 : folded ? 0 : 12,
+              opacity: folded ? 0 : 1,
+              backgroundColor: on ? PRIMARY : t.muted ? MUTED_FILL : ACTION_FILL,
+            }}
+            transition={TILE_SPRING}
+            style={{ flexBasis: 0, minWidth: 0, pointerEvents: folded ? "none" : undefined }}
+            className="relative flex h-[68px] flex-col items-center gap-[2px] overflow-hidden rounded-[16px] py-3 active:opacity-60"
+          >
+            <Glyph src={t.icon} color={ink} />
+            <span className="relative whitespace-nowrap text-[13px] font-[590] leading-[18px] tracking-[-0.43px]" style={{ color: ink }}>
+              {on && t.confirm ? t.confirm : t.label}
+            </span>
+          </motion.button>
+        )
+      })}
     </div>
   )
 }
 
-const TAG_DOTS = ["#8f55e5", "#64c3c4", "#f0a04b", "#e6708f", "#6a9ff0"]
 
 /** Role as a tag: a colored dot (stable per role) + the role name. The tag opens the role menu. */
 function RoleTag({ role, onClick }: { role: string; onClick: (e: MouseEvent<HTMLElement>) => void }) {
-  const dot = TAG_DOTS[[...role].reduce((n, c) => n + c.charCodeAt(0), 0) % TAG_DOTS.length]
+  const dot = roleColor(role)
   return (
     <button
       onClick={onClick}
@@ -178,7 +226,9 @@ const Fade = ({ children }: { children: ReactNode }) => (
  * `close(then)` collapses the sheet into the accessory and runs `then` after.
  */
 export function TimeClockContent({ loc, close }: { loc: Location; close: (then?: () => void) => void }) {
+  const locName = useLocName()
   const st = useClock(loc)
+  const wire = useStructure()
   const clock = useTimeClockStore()
   const setLocation = useLocationStore((s) => s.setLocation)
 
@@ -196,14 +246,14 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
   const closeMenu = () => setMenu(null)
 
   const heading =
-    st.status === "out" ? (today ? "Ready to clock in" : "Not scheduled today") : st.status === "break" ? `On a ${st.breakKind}` : `Clocked in at ${st.clockedInAt}`
+    st.status === "out" ? (today ? "Ready to clock in" : "Not scheduled today") : st.status === "break" ? `On a ${st.breakKind}` : wire ? "Clocked in" : `Clocked in at ${st.clockedInAt}`
 
   const subtitles =
     st.status === "break"
-      ? [`Back at ${st.breakEndsAt}`, loc.name, role]
-      : [loc.name, shift, role]
+      ? [...(wire ? [] : [`Back at ${st.breakEndsAt}`]), locName(loc), role]
+      : [locName(loc), ...(wire ? [] : [shift]), role]
 
-  const clockOut: Tile = { icon: "/phone/tile-clock-out.svg", label: "Clock out", muted: true, onClick: () => close(() => clock.clockOut(loc.id)) }
+  const clockOut: Tile = { icon: "/phone/tile-clock-out.svg", label: "Clock out", confirm: "Confirm clock out", muted: true, onClick: () => close(() => clock.clockOut(loc.id)) }
   const tiles: Tile[] =
     st.status === "break"
       ? [clockOut, { icon: "/phone/tile-break.svg", label: "End break", onClick: () => clock.endBreak(loc.id) }]
@@ -217,11 +267,11 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
     <>
       {/* Map: real Apple Maps render (MapKit snapshot, 780×400), cropped to fill. */}
       <motion.div
-        className="absolute inset-x-0 top-0 overflow-hidden bg-[#e9e6df]"
+        className={cn("absolute inset-x-0 top-0 overflow-hidden", wire ? "bg-[#e9e8ec]" : "bg-[#e9e6df]")}
         animate={{ height: L.map }}
         transition={{ type: "spring", stiffness: 420, damping: 40 }}
       >
-        <img src="/phone/map.png" alt="" draggable={false} className="size-full object-cover" />
+        {!wire && <img src="/phone/map.png" alt="" draggable={false} className="size-full object-cover" />}
         {/* Business name, pointing at the location dot. Scale only — no opacity on the glass's ancestors. */}
         <motion.div
           initial={{ scale: 0.6 }}
@@ -232,7 +282,7 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
         >
           <Popover arrow="down">
             <span className="block whitespace-nowrap text-[15px] font-[590] leading-5 tracking-[-0.43px] text-[#1a1a1a]">
-              {loc.profile.business}
+              {locName(loc)}
             </span>
           </Popover>
         </motion.div>
@@ -264,8 +314,8 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
       ) : (
         <Fade key="out">
           <FillCard className="absolute inset-x-4" style={{ top: LAYOUT.out.card }}>
-            <ListRow compact first divider="border-black/[0.09]" chevron={multi ? "updown" : undefined} onClick={multi ? open("location") : undefined} title="Location" trailing={<span className="text-[#2c2935]">{loc.name}</span>} />
-            <ListRow compact divider="border-black/[0.09]" title={today ? "Shift" : "Next shift"} trailing={<TimePill>{today ? shift : `${nextShiftDay(loc)} ${shift}`}</TimePill>} />
+            <ListRow compact first divider="border-black/[0.09]" chevron={multi ? "updown" : undefined} onClick={multi ? open("location") : undefined} title="Location" trailing={<span className="text-[#2c2935]">{locName(loc)}</span>} />
+            <ListRow compact divider="border-black/[0.09]" title={today ? "Shift" : "Next shift"} trailing={wire ? <Bar w={90} h={12} /> : <TimePill>{today ? shift : `${nextShiftDay(loc)} ${shift}`}</TimePill>} />
             <ListRow compact divider="border-black/[0.09]" title="Role" trailing={<RoleTag role={role} onClick={open("role")} />} />
           </FillCard>
 
@@ -282,7 +332,7 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
 
       <ContextMenu
         anchor={menu?.kind === "location" ? menu.anchor : null}
-        items={LOCATIONS.map((l) => ({ id: l.id, label: l.name }))}
+        items={LOCATIONS.map((l) => ({ id: l.id, label: locName(l) }))}
         selectedId={loc.id}
         onSelect={setLocation}
         onClose={closeMenu}

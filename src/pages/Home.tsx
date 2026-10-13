@@ -17,12 +17,16 @@ import {
 } from "@tabler/icons-react"
 import { IPhoneFrame } from "@/components/ios/IPhoneFrame"
 import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
+import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
+import { AddShiftContent } from "@/components/ios/AddShiftSheet"
 import { AssistantSheet } from "@/components/ios/AssistantSheet"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { LocationMenu } from "@/components/ios/LocationMenu"
 import { TimeClockContent, sheetHeightFor } from "@/components/ios/TimeClockContent"
+import { FullPage } from "@/components/ios/FullPage"
+import { HOME_PAGE_TITLES, HomePage, type HomePageId } from "@/pages/HomePages"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
 import { AccessoryContent, BottomAccessory, TabBar, type TabId } from "@/components/ios/TabBar"
@@ -34,6 +38,11 @@ import { cn } from "@/lib/utils"
 import { ChatPage, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
 import { HOUR_LABELS, LOCATIONS, USER_EARNINGS, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
+import { Initials } from "@/components/ios/list"
+import { ANON, useLocName, useStructure, useViewStore } from "@/store/useViewStore"
+import { Annotations } from "@/components/Annotations"
+import { AndroidApp } from "@/pages/android/AndroidApp"
+import { Bar, BarLines, WireCard, WireList } from "@/components/wire/Wire"
 import { accessoryFor, useClock } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
 
@@ -90,15 +99,54 @@ function ListCard({
   )
 }
 
-const EventsSection = ({ loc }: { loc: Location }) => (
+/** Manager log, moved here from Settings: a full-width widget of the latest notes, newest first. */
+function ManagerLogWidget({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
+  const wire = useStructure()
+  return (
+    <section>
+      <div className="flex items-center justify-between">
+        <SectionHeader>Manager Log</SectionHeader>
+        <button onClick={onOpen} className="pr-4 text-[15px] leading-5 tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
+          See all
+        </button>
+      </div>
+      {wire ? (
+        <button onClick={onOpen} aria-label="Open the manager log" className="block w-full text-left active:opacity-80">
+          <WireList rows={2} avatar={false} />
+        </button>
+      ) : loc.managerLog.length === 0 ? (
+        <Card className="flex h-[62px] items-center justify-center text-[17px] text-[#999]">No notes yet</Card>
+      ) : (
+        <button onClick={onOpen} aria-label="Open the manager log" className="block w-full text-left active:opacity-80">
+          <Card className="overflow-hidden">
+            {loc.managerLog.map((e, i) => (
+              <div key={e.when + e.author} className={cn("px-4 py-3 tracking-[-0.43px]", i > 0 && "border-t border-black/[0.07]")}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-[15px] font-[590] leading-5 text-black">{e.author}</span>
+                  <span className="shrink-0 text-[13px] leading-[18px] text-[#8e8e93]">{e.when}</span>
+                </div>
+                <p className="line-clamp-2 pt-[2px] text-[15px] leading-5 text-[#2c2935]">{e.note}</p>
+              </div>
+            ))}
+          </Card>
+        </button>
+      )}
+    </section>
+  )
+}
+
+const EventsSection = ({ loc }: { loc: Location }) => {
+  const wire = useStructure()
+  return (
   <section>
     <SectionHeader>Events</SectionHeader>
-    <ListCard
+    {wire ? <WireList rows={3} avatar={false} trailing /> : <ListCard
       rows={loc.events.map((e) => ({ key: e.title, title: e.title, detail: e.when }))}
       empty={<span className="text-[17px] leading-6">No events this week</span>}
-    />
+    />}
   </section>
-)
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Toolbar
@@ -155,6 +203,8 @@ function TitleText({ text }: { text: string }) {
 
 function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { view: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
   const manager = view === "manager"
+  const wire = useStructure()
+  const locName = useLocName()
   return (
     <div
       className="absolute inset-x-4 z-20 flex items-start justify-between gap-3 pb-[10px]"
@@ -164,16 +214,17 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
         <button
           onClick={canSwitch ? onTitle : undefined}
           aria-haspopup={canSwitch ? "menu" : undefined}
+          data-anno="location-title"
           disabled={!canSwitch}
           className="flex h-11 w-full min-w-0 items-center justify-start tracking-[-0.43px] text-[#1a1a1a]"
         >
-          <TitleText text={loc.name} />
+          <TitleText text={locName(loc)} />
           {canSwitch && <IconSelector size={17} stroke={2.5} className="ml-[3px] shrink-0 text-[#4e4e4e]" />}
         </button>
       </div>
       <div className="flex shrink-0 items-center gap-[10px]">
-        {/* Like iOS: every action beside the bell shares ONE glass container. */}
-        <LiquidGlass mode="small" radius={999} className={cn("flex h-11 items-center justify-center", actions || showClock ? "gap-[18px] px-[6px]" : "px-1")}>
+        {/* Like iOS: every action beside the bell shares ONE glass container. Buttons are 36pt on an 8pt gap, so icons sit 44pt apart (the Figma 18pt gap read wide for a group). */}
+        <LiquidGlass mode="small" radius={999} className="flex h-11 items-center justify-center gap-2 px-1">
           {actions}
           {!hideBell && <BellButton unread={unread} onClick={onBell} />}
           {/* Owners and managers get the time clock up here (no bottom accessory): the same clock icon, with the green dot while clocked in. */}
@@ -187,8 +238,8 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
           )}
         </LiquidGlass>
         <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" className="size-[42px] rounded-full">
-            <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />
+          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
+            {wire ? <Initials name={ANON.name} size={42} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
           </button>
         </LiquidGlass>
       </div>
@@ -249,10 +300,13 @@ const SEGMENTS = [
 ] as const satisfies readonly { id: SegmentId; Icon: unknown; label: string; fmt: (n: number) => string }[]
 
 function StatusWidget({ loc }: { loc: Location }) {
+  const wire = useStructure()
   const [seg, setSeg] = useState<SegmentId>("people")
+  if (wire) return <div data-anno="status"><WireCard title="Status" h={150} /></div>
   const current = SEGMENTS.find((s) => s.id === seg)!
   const data = loc.status[seg]
   return (
+    <div data-anno="status">
     <Card className="overflow-hidden p-4">
       <div className="flex items-end justify-between">
         <div className="tracking-[-0.43px] text-black">
@@ -302,6 +356,7 @@ function StatusWidget({ loc }: { loc: Location }) {
         ))}
       </div>
     </Card>
+    </div>
   )
 }
 
@@ -314,12 +369,31 @@ const GREEN = "#12a53b"
  * numbers, then a row per location (headcount, clocked in, sales, labor %). Takes the top of the page.
  */
 function AllLocationsWidget({ onPick }: { onPick: (id: string) => void }) {
+  const locName = useLocName()
+  const wire = useStructure()
+  if (wire) {
+    return (
+      <div data-anno="all-locations">
+      <WireCard title="All locations" h={200}>
+        <span aria-hidden className="mt-3 block h-24 rounded-[14px] bg-[#dedde4]" />
+        {LOCATIONS.map((l) => (
+          <button key={l.id} onClick={() => onPick(l.id)} aria-label={locName(l)} className="mt-3 flex items-center gap-3 text-left active:opacity-60">
+            <Bar w="45%" h={12} />
+            <span className="flex-1" />
+            <Bar w={40} h={12} />
+          </button>
+        ))}
+      </WireCard>
+      </div>
+    )
+  }
   const days = ["M", "T", "W", "T", "F", "S", "S"]
   const sales = days.map((_, i) => LOCATIONS.reduce((n, l) => n + l.weekSales[i], 0))
   const labor = days.map((_, i) => LOCATIONS.reduce((n, l) => n + l.weekLabor[i], 0))
   const max = Math.max(...sales)
   const H = 84
   return (
+    <div data-anno="all-locations">
     <Card className="bg-[#e9e8ec] p-4 tracking-[-0.43px]">
       <div className="flex items-end justify-between px-1 pb-3 pt-6">
         {days.map((d, i) => (
@@ -349,7 +423,7 @@ function AllLocationsWidget({ onPick }: { onPick: (id: string) => void }) {
               className={cn("flex w-full items-start justify-between gap-3 py-3 text-left active:opacity-60", i > 0 && "border-t border-black/10")}
             >
               <span className="min-w-0">
-                <span className="block text-[17px] font-[590] leading-[22px] text-black">{l.name}</span>
+                <span className="block text-[17px] font-[590] leading-[22px] text-black">{locName(l)}</span>
                 <span className="mt-1 flex items-center gap-3 text-[15px] leading-5 text-[#7f7f7f]">
                   <span className="flex items-center gap-1">
                     <IconUserFilled size={16} />
@@ -372,31 +446,37 @@ function AllLocationsWidget({ onPick }: { onPick: (id: string) => void }) {
         })}
       </div>
     </Card>
+    </div>
   )
 }
 
-function ManagerDashboard({ loc, multi, onScroll }: { loc: Location; multi?: boolean; onScroll: ScrollHandler }) {
+function ManagerDashboard({ loc, multi, onScroll, onOpenPage }: { loc: Location; multi?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void }) {
   const setLocation = useLocationStore((s) => s.setLocation)
+  const wire = useStructure()
   return (
     <ScreenScroll locationId={loc.id} onScroll={onScroll} top={112} className="gap-4">
       {multi ? (
         <AllLocationsWidget onPick={setLocation} />
       ) : (
         <div className="flex flex-col items-center gap-1 py-3 tracking-[-0.43px]">
-          <p className="w-full text-[41px] font-[590] leading-[normal] text-black">{money(loc.sales)}</p>
+          {wire ? <Bar w={150} h={34} className="mb-1 self-start" /> : <p className="w-full text-[41px] font-[590] leading-[normal] text-black">{money(loc.sales)}</p>}
           <p className="w-full text-[18px] font-[510] leading-[normal] text-[#939393]">Total sales</p>
         </div>
       )}
 
-      <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
-        {loc.managerMessage}
-      </p>
+      {wire ? (
+        <BarLines />
+      ) : (
+        <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
+          {loc.managerMessage}
+        </p>
+      )}
 
       <StatusWidget loc={loc} />
 
       <section>
         <SectionHeader>Needs Review</SectionHeader>
-        <ListCard
+        {wire ? <WireList rows={3} avatar={false} trailing /> : <ListCard
           rows={loc.review.map((r, i) => ({ key: `${r.title}${i}`, title: r.title, detail: r.detail }))}
           empty={
             <>
@@ -404,15 +484,17 @@ function ManagerDashboard({ loc, multi, onScroll }: { loc: Location; multi?: boo
               <span className="text-[17px] leading-6">All caught up</span>
             </>
           }
-        />
+        />}
       </section>
+
+      <ManagerLogWidget loc={loc} onOpen={() => onOpenPage("log")} />
 
       <section>
         <SectionHeader>My Week (Shifts)</SectionHeader>
-        <ListCard
+        {wire ? <WireList rows={3} avatar={false} trailing /> : <ListCard
           rows={loc.myWeek.map((s) => ({ key: s.day, title: `${s.day} · ${s.role}`, detail: s.time }))}
           empty={<span className="text-[17px] leading-6">No shifts this week</span>}
-        />
+        />}
       </section>
 
       <EventsSection loc={loc} />
@@ -445,7 +527,9 @@ function yOf(hour: number) {
 }
 
 function WeekChart({ loc }: { loc: Location }) {
+  const wire = useStructure()
   const [selected, setSelected] = useState(loc.employee.todayIndex)
+  if (wire) return <WireCard title="My week" h={216} />
   return (
     <div className="relative flex h-[216px] w-full items-start justify-between">
       <img src="/phone/chart-grid.svg" alt="" className="absolute left-0 top-[7px] h-[156px] w-[338px]" />
@@ -532,36 +616,60 @@ function Shiftmates({ photos, extra }: { photos: number[]; extra: number }) {
 
 const cardLabel = "absolute left-[13px] top-[11px] text-[15px] font-[510] leading-[22px] tracking-[-0.43px] text-black"
 
-function EmployeeDashboard({ loc, onScroll }: { loc: Location; onScroll: ScrollHandler }) {
+function EmployeeDashboard({ loc, onScroll, onOpenPage }: { loc: Location; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void }) {
   const e = loc.employee
+  const wire = useStructure()
   return (
     <ScreenScroll locationId={loc.id} onScroll={onScroll} top={54}>
       <WeekChart loc={loc} />
 
-      <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
-        {e.greeting}
-      </p>
+      {wire ? (
+        <BarLines />
+      ) : (
+        <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
+          {e.greeting}
+        </p>
+      )}
 
       <div className="flex gap-3 pt-4">
-        <Card className="relative h-28 flex-1">
-          <p className={cardLabel}>Earnings</p>
-          <div className="absolute inset-x-[13px] bottom-3 tracking-[-0.43px]">
-            <p className="text-[28px] font-[590] leading-[34px] text-black">{USER_EARNINGS.today.amount}</p>
-            <p className="text-[13px] leading-[16px] text-[#7f7f7f]">{USER_EARNINGS.today.detail}</p>
-          </div>
-        </Card>
-        <Card className="relative h-28 flex-1">
-          <p className={cardLabel}>Shiftmates</p>
-          <Shiftmates photos={e.shiftmates.photos} extra={e.shiftmates.extra} />
-        </Card>
+        <button onClick={() => onOpenPage("earnings")} aria-label="Open earnings" data-anno="earnings" className="flex flex-1 text-left active:opacity-80">
+          <Card className="relative h-28 w-full">
+            <p className={cardLabel}>Earnings</p>
+            {!wire && (
+              <div className="absolute inset-x-[13px] bottom-3 tracking-[-0.43px]">
+                <p className="text-[28px] font-[590] leading-[34px] text-black">{USER_EARNINGS.today.amount}</p>
+                <p className="text-[13px] leading-[16px] text-[#7f7f7f]">{USER_EARNINGS.today.detail}</p>
+              </div>
+            )}
+          </Card>
+        </button>
+        <button onClick={() => onOpenPage("shiftmates")} aria-label="Open shiftmates" data-anno="shiftmates" className="flex flex-1 text-left active:opacity-80">
+          <Card className="relative h-28 w-full">
+            <p className={cardLabel}>Shiftmates</p>
+            {!wire && <Shiftmates photos={e.shiftmates.photos} extra={e.shiftmates.extra} />}
+          </Card>
+        </button>
       </div>
 
       <EventsSection loc={loc} />
+
+      {/* Some employees have access to the manager log. */}
+      <ManagerLogWidget loc={loc} onOpen={() => onOpenPage("log")} />
     </ScreenScroll>
   )
 }
 
 export function Home() {
+  const platform = useViewStore((s) => s.platform)
+  return (
+    <>
+      {platform === "android" ? <AndroidApp /> : <IosHome />}
+      <Annotations />
+    </>
+  )
+}
+
+function IosHome() {
   // Who is looking decides the home page, the bottom nav and whether locations can be switched
   // (toggled from the bar above the phone; see useUserTypeStore).
   const userType = useUserTypeStore((s) => s.type)
@@ -584,6 +692,10 @@ export function Home() {
   const [plusAnchor, setPlusAnchor] = useState<HTMLElement | null>(null)
   const [screen, setScreen] = useState<HTMLDivElement | null>(null)
   const closePlus = useCallback(() => setPlusAnchor(null), [])
+  // "Add shift" from the plus menu is a normal bottom sheet.
+  const [shiftOpen, setShiftOpen] = useState(false)
+  const shiftP = useMotionValue(0)
+  const closeShift = useCallback(() => setShiftOpen(false), [])
   const [profileOpen, setProfileOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
@@ -600,11 +712,17 @@ export function Home() {
   // visibility, not opacity: an opacity < 1 ancestor would isolate the glass backdrop and it would snap in at 1.
   const accessoryVisibility = useTransform(halfP, (v) => (v >= HANDOFF ? "hidden" : "visible"))
   const closeProfile = useCallback(() => setProfileOpen(false), [])
+  // The dashboard widgets (manager log, earnings, shiftmates) open full pages above the tab bar.
+  const [homePage, setHomePage] = useState<HomePageId | null>(null)
+  const closeHomePage = useCallback(() => setHomePage(null), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
-  // tabBarMinimizeBehavior(.onScrollDown): collapse on scroll down, restore on scroll up.
+  // tabBarMinimizeBehavior(.onScrollDown): the tab bar collapses to one icon with the accessory nested beside it as
+  // you scroll down, and comes back as you scroll up. Switched OFF: the bar stays fully expanded. Flip to re-enable.
+  const MINIMIZE_ON_SCROLL = false
   const [minimized, setMinimized] = useState(false)
   const lastTop = useRef(0)
   const onScroll: ScrollHandler = (e) => {
+    if (!MINIMIZE_ON_SCROLL) return
     const top = e.currentTarget.scrollTop
     const dy = top - lastTop.current
     if (Math.abs(dy) < 6) return
@@ -624,18 +742,21 @@ export function Home() {
 
   // The accessory is a view of the clock state, so it always agrees with the sheet.
   const clockState = useClock(loc)
-  const { title, subtitle } = accessoryFor(loc, clockState)
+  const wireCut = useStructure()
+  const { title, subtitle: rawSubtitle } = accessoryFor(loc, clockState)
+  // The structure cut keeps the status and drops the times.
+  const subtitle = wireCut ? "" : rawSubtitle
   // The Chat tab never shows the accessory, whatever the shift state.
   // Employees get the anchored accessory (not on Chat); owners and managers get the time clock button in the toolbar instead.
   const showAccessory = tab !== "chat" && userType === "employee"
 
   return (
-    <IPhoneFrame header={<UserTypeToggle />}>
+    <IPhoneFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
       {tab === "home" ? (
         view === "manager" ? (
-          <ManagerDashboard loc={loc} multi={userType === "multi"} onScroll={onScroll} />
+          <ManagerDashboard loc={loc} multi={userType === "multi"} onScroll={onScroll} onOpenPage={setHomePage} />
         ) : (
-          <EmployeeDashboard loc={loc} onScroll={onScroll} />
+          <EmployeeDashboard loc={loc} onScroll={onScroll} onOpenPage={setHomePage} />
         )
       ) : (
         // Menus opened from a page (e.g. the Shifts filter) render into the screen overlay.
@@ -696,6 +817,7 @@ export function Home() {
             animate={{ y: 0 }}
             exit={{ y: 32 }}
             transition={SPRING_FAST.snappy}
+            data-anno="clock-accessory"
             className="pointer-events-auto absolute inset-x-7"
             style={{ bottom: "calc(var(--safe-bottom) + 64px)" }}
           >
@@ -706,13 +828,14 @@ export function Home() {
       </motion.div>
       <TabBar
         tabs={tabs}
+        dots={{ chat: loc.messages.some((m) => m.unread) }}
         tab={tab}
         onTab={(t) => {
           setTab(t)
           setMinimized(false)
           lastTop.current = 0
         }}
-        onAssistant={() => setAssistantOpen(true)}
+        onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
         minimized={minimized}
         onExpand={() => setMinimized(false)}
         inlineAccessory={!showAccessory ? null : <BottomAccessory placement="inline" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setMinimized(false)} />}
@@ -739,11 +862,28 @@ export function Home() {
           { id: "shift", label: "Add Shift", icon: <IconCalendarPlus size={22} stroke={1.5} /> },
           { id: "event", label: "Add Event", icon: <IconCalendarEvent size={22} stroke={1.5} /> },
         ]}
-        onSelect={() => undefined}
+        onSelect={(id) => {
+          if (id === "shift") {
+            shiftP.set(0)
+            setShiftOpen(true)
+          }
+        }}
         onClose={closePlus}
       />
       <LocationMenu open={menuOpen} onClose={closeMenu} />
-      {assistantOpen && <AssistantSheet loc={loc} onClose={closeAssistant} />}
+      {shiftOpen && (
+        <HalfSheet progress={shiftP} variant="slide" height={444} title="Add shift" collapsed={null} onClosed={closeShift}>
+          {(close) => <AddShiftContent loc={loc} close={close} />}
+        </HalfSheet>
+      )}
+      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} />}
+      <AnimatePresence>
+        {homePage && (
+          <FullPage key={homePage} title={HOME_PAGE_TITLES[homePage]} onBack={closeHomePage}>
+            <HomePage id={homePage} loc={loc} />
+          </FullPage>
+        )}
+      </AnimatePresence>
       {profileOpen && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
     </IPhoneFrame>

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 import { motion } from "motion/react"
-import { IconHomeFilled } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
@@ -9,11 +8,11 @@ const BRAND = "#8f55e5"
 const LABEL_VIBRANT = "#141414"
 
 const TABS = [
-  { id: "home", label: "Home", icon: "/phone/tab-home-mask.svg", withLabel: true },
+  { id: "home", label: "Home", icon: "/phone/tab-home-fill.svg", fill: "/phone/tab-home-fill.svg" },
   { id: "money", label: "Money", icon: "/phone/tab-money.svg", fill: "/phone/tab-money-fill.svg" },
   { id: "shifts", label: "Shifts", icon: "/phone/tab-shifts.svg", fill: "/phone/tab-shifts-fill.svg" },
   { id: "time", label: "Time", icon: "/phone/tab-time.svg", fill: "/phone/tab-time-fill.svg" },
-  { id: "chat", label: "Chat", icon: "/phone/tab-chat.svg", fill: "/phone/tab-chat-fill.svg" },
+  { id: "chat", label: "Messages", icon: "/phone/tab-chat.svg", fill: "/phone/tab-chat-fill.svg" },
 ] as const
 export type TabId = (typeof TABS)[number]["id"]
 
@@ -132,6 +131,7 @@ export function BottomAccessory({
 
 export function TabBar({
   tabs,
+  dots,
   tab,
   onTab,
   minimized,
@@ -141,6 +141,8 @@ export function TabBar({
 }: {
   /** Which tabs this kind of user gets, in order. */
   tabs: readonly TabId[]
+  /** A simple unread dot on a tab's icon. */
+  dots?: Partial<Record<TabId, boolean>>
   tab: TabId
   onTab: (t: TabId) => void
   minimized: boolean
@@ -164,28 +166,24 @@ export function TabBar({
               aria-label={`${current.label} tab, expand tab bar`}
               className="relative flex size-full items-center justify-center"
             >
-              {"withLabel" in current ? (
-                <IconHomeFilled size={28} color={BRAND} />
-              ) : (
-                <Mask src={current.fill} color={BRAND} w={28} h={28} />
-              )}
+              <Mask src={current.fill} color={BRAND} w={28} h={28} />
             </button>
           </div>
           {inlineAccessory}
         </>
       ) : (
-        <div className="relative flex items-center px-[2px]">
+        <div data-anno="tab-bar" className="relative flex min-w-0 flex-1 items-center px-[2px]">
           <GlassBacking />
-          {shown.map((t, i) => {
+          {shown.map((t) => {
             const active = tab === t.id
             const color = active ? BRAND : LABEL_VIBRANT
             return (
               <button
                 key={t.id}
                 onClick={() => onTab(t.id)}
-                aria-label={t.label}
+                aria-label={dots?.[t.id] ? `${t.label}, unread` : t.label}
                 aria-current={active}
-                className={cn("relative flex h-[54px] w-[72px] flex-col items-center justify-center pb-[7px] pt-[6px]", i < shown.length - 1 && "-mr-2")}
+                className="relative flex h-[54px] min-w-0 flex-1 flex-col items-center justify-center pb-[7px] pt-[6px]"
               >
                 {active && (
                   <motion.span
@@ -194,32 +192,35 @@ export function TabBar({
                     className="absolute -inset-x-[2px] inset-y-0 rounded-full bg-[#787880]/20"
                   />
                 )}
-                <span className="relative flex flex-col items-center">
-                  {"withLabel" in t ? (
-                    <Mask src={t.icon} color={color} w={72} h={41} />
-                  ) : (
-                    <>
-                      <Mask src={active ? t.fill : t.icon} color={color} w={28} h={28} />
-                      <span
-                        className="text-[10px] font-semibold leading-[normal] tracking-[0.1px] transition-colors duration-200"
-                        style={{ color }}
-                      >
-                        {t.label}
-                      </span>
-                    </>
-                  )}
+                {/* A little air between the icon and its label. */}
+                <span className="relative flex flex-col items-center gap-[3px]">
+                  <span className="relative">
+                    <Mask src={active ? t.fill : t.icon} color={color} w={28} h={28} />
+                    {dots?.[t.id] && (
+                      <span aria-hidden data-unread-dot className="absolute -right-[1px] top-[1px] size-[9px] rounded-full bg-[#ff3b30] ring-[1.5px] ring-white/80" />
+                    )}
+                  </span>
+                  <span
+                    className="text-[10px] font-semibold leading-[normal] tracking-[0.1px] transition-colors duration-200"
+                    style={{ color }}
+                  >
+                    {t.label}
+                  </span>
                 </span>
               </button>
             )
           })}
         </div>
       )}
-      <div className="relative flex size-[54px] shrink-0 items-center justify-center">
-        <GlassBacking />
-        <button onClick={onAssistant} aria-haspopup="dialog" className="relative flex size-full items-center justify-center" aria-label="Assistant">
-          <img src="/phone/tab-assistant.svg" alt="" className="size-7" />
-        </button>
-      </div>
+      {/* Employees don't get the assistant: no handler, no button. */}
+      {onAssistant && (
+        <div className="relative flex size-[54px] shrink-0 items-center justify-center">
+          <GlassBacking />
+          <button onClick={onAssistant} aria-haspopup="dialog" className="relative flex size-full items-center justify-center" aria-label="Assistant">
+            <img src="/phone/tab-assistant.svg" alt="" className="size-7" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useLocName } from "@/store/useViewStore"
 import { useEffect } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { IconBuildingStore, IconCheck } from "@tabler/icons-react"
@@ -14,6 +15,7 @@ import { useLocationStore } from "@/store/useLocationStore"
  * dismiss layer and anchors itself under the toolbar title.
  */
 export function LocationMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const locName = useLocName()
   const locationId = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
 
@@ -64,7 +66,7 @@ export function LocationMenu({ open, onClose }: { open: boolean; onClose: () => 
                       {selected && <IconCheck size={20} stroke={2.5} />}
                     </span>
                     <IconBuildingStore size={22} stroke={1.5} className="shrink-0" />
-                    <span className="truncate text-[17px] leading-[22px]">{l.name}</span>
+                    <span className="truncate text-[17px] leading-[22px]">{locName(l)}</span>
                   </button>
                 )
               })}

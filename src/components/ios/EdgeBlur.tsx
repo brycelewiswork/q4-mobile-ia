@@ -16,7 +16,8 @@ export type EdgeBlurSide =
 
 export type EdgeBlurConfig = { top?: EdgeBlurSide; bottom?: EdgeBlurSide }
 
-const PAGE = "rgba(243,242,246,0.7)"
+// The page color at 70%. A variable so dark mode can swap it (see ios-dark.css).
+const PAGE = "var(--ios-page-tint, rgba(243,242,246,0.7))"
 const DEFAULTS = { strength: 20, steps: 6, height: 70, tint: PAGE }
 
 function resolve(side: EdgeBlurSide | undefined) {

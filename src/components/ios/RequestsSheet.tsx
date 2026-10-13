@@ -1,12 +1,16 @@
+import { useLocName } from "@/store/useViewStore"
 import { useState } from "react"
 import { motion } from "motion/react"
 import { IconCheck, IconChevronRight, IconPlus, IconX } from "@tabler/icons-react"
+import { Card } from "@/components/ios/list"
 import { Sheet } from "@/components/ios/Sheet"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import type { Location, RequestItem } from "@/data/locations"
 import { requestsFor, useRequestsStore } from "@/store/useRequestsStore"
+import { useStructure } from "@/store/useViewStore"
+import { WireList } from "@/components/wire/Wire"
 
 type FilterId = "team" | "mine" | "business" | "archive"
 
@@ -75,24 +79,27 @@ function RequestCard({
   business,
   status,
   onDecide,
+  beforeDivider,
 }: {
+  /** A divider follows this row, so it gets a little less space below. */
+  beforeDivider?: boolean
   r: RequestItem
   business: string
   status?: "approved" | "declined"
   onDecide?: (d: "approved" | "declined") => void
 }) {
   return (
-    <div className="rounded-[26px] bg-white p-4 tracking-[-0.43px]">
-      <div className="relative flex items-center gap-3">
+    <div className={cn("px-4 pt-4 tracking-[-0.43px]", beforeDivider ? "pb-3" : "pb-4")}>
+      <div className="relative flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#d6c9f8] to-[#c1a6fa] text-[17px] font-[590] text-white">
           {r.initials}
         </span>
         <div className="min-w-0 flex-1 pr-14">
           <p className="truncate text-[17px] font-[590] leading-[22px] text-black">{r.title}</p>
-          <p className="truncate text-[15px] leading-5 text-[#5a5666]">{r.who}</p>
-          <p className="truncate text-[15px] leading-5 text-[#5a5666]">{r.detail}</p>
-          <p className="flex items-center gap-[3px] text-[15px] leading-5 text-[#5a5666]">
-            <Icon src="/phone/req-store.svg" size={16} color="#5a5666" />
+          <p className="truncate text-[13px] leading-[18px] text-[#8e8e93]">{r.who}</p>
+          <p className="truncate text-[13px] leading-[18px] text-black">{r.detail}</p>
+          <p className="flex items-center gap-[3px] text-[13px] leading-[18px] text-[#8e8e93]">
+            <Icon src="/phone/req-store.svg" size={14} color="#8e8e93" />
             <span className="truncate">{business}</span>
           </p>
         </div>
@@ -103,20 +110,19 @@ function RequestCard({
       </div>
 
       {onDecide && !status && (
-        <div className="mt-4 flex gap-2 text-[17px]">
-          <button
-            onClick={() => onDecide("declined")}
-            className="flex flex-1 items-center justify-center gap-[5px] rounded-full bg-[rgba(118,118,128,0.12)] px-4 py-2 text-[#2c2935] active:opacity-60"
-          >
-            <IconX size={17} stroke={2} />
-            Decline
-          </button>
+        // Indented past the 40pt avatar + 12pt gap, so the buttons line up under the text, not under the avatar.
+        <div className="ml-[52px] mt-3 flex gap-2 text-[15px] leading-5">
           <button
             onClick={() => onDecide("approved")}
-            className="flex flex-1 items-center justify-center gap-[5px] rounded-full bg-[#8f55e5] px-4 py-2 text-white active:opacity-80"
+            className="flex flex-1 items-center justify-center gap-1 rounded-full bg-[#34c759] px-3 py-[5px] font-normal text-white active:opacity-80"
           >
-            <IconCheck size={17} stroke={2.25} />
             Approve
+          </button>
+          <button
+            onClick={() => onDecide("declined")}
+            className="flex flex-1 items-center justify-center gap-1 rounded-full bg-[rgba(118,118,128,0.12)] px-3 py-[5px] font-normal text-[#2c2935] active:opacity-60"
+          >
+            Decline
           </button>
         </div>
       )}
@@ -151,6 +157,7 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).slice(0, 2
  * writes to `useRequestsStore`, so the card moves to Archive and the bell badge updates.
  */
 export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+  const locName = useLocName()
   const [filter, setFilter] = useState<FilterId>("team")
   const decided = useRequestsStore((s) => s.decided)
   const decide = useRequestsStore((s) => s.decide)
@@ -179,7 +186,8 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
   }
   const counts = { team: lists.team.length, mine: lists.mine.length, business: lists.business.length, archive: lists.archive.length }
   const items = lists[filter]
-  const business = loc.profile.business
+  const business = locName(loc)
+  const wire = useStructure()
 
   return (
     <Sheet
@@ -190,7 +198,7 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
       action={
         <LiquidGlass mode="small" accent="#8f55e5" radius={999} className="absolute right-4 top-4 flex size-11 items-center justify-center">
           <button aria-label="New request" className="flex size-9 items-center justify-center rounded-full text-white">
-            <IconPlus size={22} stroke={2.25} />
+            <IconPlus size={24} stroke={2} />
           </button>
         </LiquidGlass>
       }
@@ -199,27 +207,33 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
       <div className="px-4 pt-[10px]">
         <Filters value={filter} onChange={setFilter} counts={counts} />
 
-        <div className="flex flex-col gap-2 pt-4">
+        {/* One white container, a row per request. */}
+        {wire && <WireList rows={4} className="mt-4" />}
+        {!wire && <Card className="mt-4 overflow-hidden">
           {items.length === 0 ? (
-            <div className="flex h-[62px] items-center justify-center gap-2 rounded-[26px] bg-white text-[#999]">
+            <div className="flex h-[62px] items-center justify-center gap-2 text-[#999]">
               <IconCheck size={20} stroke={3} className="rounded-full bg-[#999] p-[3px] text-white" />
               <span className="text-[17px] leading-6 tracking-[-0.43px]">{filter === "archive" ? "Nothing archived yet" : "All caught up"}</span>
             </div>
           ) : (
-            items.map((r) => (
-              <RequestCard
-                key={r.id}
-                r={r}
-                business={business}
-                status={decided[r.id]}
-                onDecide={filter === "mine" || filter === "archive" ? undefined : (d) => decide(r.id, d)}
-              />
+            items.map((r, i) => (
+              <div key={r.id}>
+                {/* The divider spans just the button row's width: in 16 + 40 avatar + 12 gap on the left, 16 on the right. */}
+                {i > 0 && <div aria-hidden className="ml-[68px] mr-4 border-t border-[#ebebeb]" />}
+                <RequestCard
+                  r={r}
+                  beforeDivider={i < items.length - 1}
+                  business={business}
+                  status={decided[r.id]}
+                  onDecide={filter === "mine" || filter === "archive" ? undefined : (d) => decide(r.id, d)}
+                />
+              </div>
             ))
           )}
-        </div>
+        </Card>}
 
         {/* For when too many have been cleared and you want to play with the interaction again. */}
-        <div className="flex justify-center pb-2 pt-5">
+        <div className={cn("flex justify-center pb-2 pt-5", wire && "hidden")}>
           <button
             onClick={add}
             className="flex items-center gap-[6px] rounded-full bg-[rgba(118,118,128,0.12)] py-2 pl-3 pr-4 text-[15px] font-[510] leading-5 tracking-[-0.24px] text-[#2c2935] active:opacity-60"
