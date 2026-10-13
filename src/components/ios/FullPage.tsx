@@ -11,7 +11,7 @@ import { SPRING_FAST } from "@/lib/motion"
  * Its layer is above the nav (20) and below the status bar (40), so the clock and battery stay visible.
  * Mount it inside AnimatePresence so the slide-out plays.
  */
-export function FullPage({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
+export function FullPage({ title, onBack, children, action }: { title: string; onBack: () => void; children: ReactNode; /** A glass button at the right of the header (e.g. a checkmark to confirm). */ action?: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onBack()
     window.addEventListener("keydown", onKey)
@@ -44,6 +44,11 @@ export function FullPage({ title, onBack, children }: { title: string; onBack: (
           </button>
         </LiquidGlass>
         <h2 className="text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">{title}</h2>
+        {action && (
+          <LiquidGlass mode="small" radius={999} className="absolute right-0 flex size-11 items-center justify-center">
+            {action}
+          </LiquidGlass>
+        )}
       </div>
     </motion.div>
   )

@@ -24,6 +24,7 @@ export function Sheet({
   onBack,
   resetKey,
   action,
+  titleSlot,
   closeSide = "right",
   edgeBlur = { top: true },
   footer,
@@ -36,7 +37,9 @@ export function Sheet({
   /** Put the close (X) on the left (Figma "Requests" style); `action` then sits on the right alongside it. */
   closeSide?: "left" | "right"
   /** Replaces the close (X) button, e.g. an Edit button. The sheet still closes by drag, scrim tap or Escape. */
-  action?: ReactNode
+  action?: ReactNode | ((dismiss: () => void) => ReactNode)
+  /** Replaces the drawn title with your own content in the toolbar (e.g. a text field). `title` still names the sheet for screen readers. */
+  titleSlot?: ReactNode
   /** Pinned to the bottom of the sheet over the scrolling content (e.g. a search bar). */
   footer?: ReactNode
   /** Scroll returns to the top whenever this changes (a new page was pushed/popped). */
@@ -205,9 +208,13 @@ export function Sheet({
             <div className="flex justify-center pt-[6px]">
               <div className="h-1 w-[60px] rounded-full bg-[#c3c3c6]" />
             </div>
-            <h2 className="pointer-events-none absolute inset-x-0 top-[29px] text-center text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
-              {title}
-            </h2>
+            {titleSlot ? (
+              <div className="absolute inset-x-[72px] top-4 flex h-11 items-center justify-center">{titleSlot}</div>
+            ) : (
+              <h2 className="pointer-events-none absolute inset-x-0 top-[29px] text-center text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
+                {title}
+              </h2>
+            )}
             {onBack && (
               <LiquidGlass mode="small" radius={999} className="absolute left-4 top-4 flex size-11 items-center justify-center">
                 <button onClick={onBack} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
@@ -218,10 +225,10 @@ export function Sheet({
             {closeSide === "left" ? (
               <>
                 {closeButton}
-                {action}
+                {typeof action === "function" ? action(dismiss) : action}
               </>
             ) : (
-              (action ?? closeButton)
+              (typeof action === "function" ? action(dismiss) : (action ?? closeButton))
             )}
         </div>
       </motion.div>

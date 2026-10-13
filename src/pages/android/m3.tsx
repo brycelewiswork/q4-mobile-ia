@@ -34,7 +34,7 @@ export function ACard({ title, h = 112, className, children, onClick, dataAnno }
 }
 
 /** A section title, with an optional text button at the end. */
-export function ASection({ children, action, onAction, dataAnno }: { children: ReactNode; action?: string; onAction?: () => void; dataAnno?: string }) {
+export function ASection({ children, action, onAction, dataAnno, trailing }: { children: ReactNode; action?: string; onAction?: () => void; dataAnno?: string; /** Anything at the end of the row, e.g. an icon button. */ trailing?: ReactNode }) {
   return (
     <div data-anno={dataAnno} className="flex items-center justify-between px-1 pb-1 pt-3">
       <h2 className="text-m-variant text-[14px] font-medium leading-5 tracking-[0.1px]">{children}</h2>
@@ -43,6 +43,7 @@ export function ASection({ children, action, onAction, dataAnno }: { children: R
           {action}
         </button>
       )}
+      {trailing}
     </div>
   )
 }
@@ -222,7 +223,7 @@ export function ADrawer({ onClose, children }: { onClose: () => void; children: 
 }
 
 /** A full-screen destination: top app bar with a back arrow, content below. Slides in from the right. */
-export function APage({ title, onBack, children, bar, footer, z = 40 }: { title: string; onBack: () => void; children: ReactNode; /** Replaces the title (e.g. a search field). */ bar?: ReactNode; /** Pinned under the scrolling content (e.g. a composer). */ footer?: ReactNode; z?: number }) {
+export function APage({ title, onBack, children, bar, footer, action, z = 40 }: { title: string; onBack: () => void; children: ReactNode; /** A text button at the end of the top bar (e.g. Save). */ action?: ReactNode; /** Replaces the title (e.g. a search field). */ bar?: ReactNode; /** Pinned under the scrolling content (e.g. a composer). */ footer?: ReactNode; z?: number }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onBack()
     window.addEventListener("keydown", onKey)
@@ -234,7 +235,8 @@ export function APage({ title, onBack, children, bar, footer, z = 40 }: { title:
         <AIconButton label="Back" onClick={onBack} className="text-m-on-surface">
           <IconArrowLeft size={24} stroke={1.75} />
         </AIconButton>
-        {bar ?? <h1 className="text-m-on-surface text-[22px] leading-7">{title}</h1>}
+        {bar ?? <h1 className="text-m-on-surface min-w-0 flex-1 text-[22px] leading-7">{title}</h1>}
+        {action && <div className="pr-3">{action}</div>}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
       {footer && <div className="shrink-0 px-4 pb-8 pt-2">{footer}</div>}

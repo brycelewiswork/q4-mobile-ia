@@ -20,12 +20,14 @@ import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
-import { AddShiftContent } from "@/components/ios/AddShiftSheet"
+import { AddEventSheet } from "@/components/ios/AddEventSheet"
+import { AddShiftSheet } from "@/components/ios/AddShiftSheet"
 import { AssistantSheet } from "@/components/ios/AssistantSheet"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { LocationMenu } from "@/components/ios/LocationMenu"
 import { TimeClockContent, sheetHeightFor } from "@/components/ios/TimeClockContent"
 import { FullPage } from "@/components/ios/FullPage"
+import { TimeCardSheet } from "@/components/ios/TimeCardSheet"
 import { HOME_PAGE_TITLES, HomePage, type HomePageId } from "@/pages/HomePages"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
@@ -64,7 +66,7 @@ function Card({ className, children }: { className?: string; children?: ReactNod
 
 function SectionHeader({ children }: { children: ReactNode }) {
   return (
-    <h2 className="px-4 py-[10px] text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#747182]">
+    <h2 className="px-4 pb-1 pt-[14px] text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#747182]">
       {children}
     </h2>
   )
@@ -104,9 +106,9 @@ function ManagerLogWidget({ loc, onOpen }: { loc: Location; onOpen: () => void }
   const wire = useStructure()
   return (
     <section>
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between">
         <SectionHeader>Manager Log</SectionHeader>
-        <button onClick={onOpen} className="pr-4 text-[15px] leading-5 tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
+        <button onClick={onOpen} className="pb-[5px] pr-4 text-[15px] leading-5 tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
           See all
         </button>
       </div>
@@ -361,7 +363,7 @@ function StatusWidget({ loc }: { loc: Location }) {
 }
 
 const fmtK = (n: number) => `$${(n / 1000).toFixed(1)}K`
-const BLUE = "#0f5bd6"
+const BLUE = "#8f55e5"
 const GREEN = "#12a53b"
 
 /**
@@ -692,10 +694,14 @@ function IosHome() {
   const [plusAnchor, setPlusAnchor] = useState<HTMLElement | null>(null)
   const [screen, setScreen] = useState<HTMLDivElement | null>(null)
   const closePlus = useCallback(() => setPlusAnchor(null), [])
-  // "Add shift" from the plus menu is a normal bottom sheet.
+  // "Add shift" and "Add event" from the plus menu are bottom sheets.
   const [shiftOpen, setShiftOpen] = useState(false)
-  const shiftP = useMotionValue(0)
+  const [eventOpen, setEventOpen] = useState(false)
+  // The Time tab's plus opens the Add time card page.
+  const [timeCardOpen, setTimeCardOpen] = useState(false)
+  const closeTimeCard = useCallback(() => setTimeCardOpen(false), [])
   const closeShift = useCallback(() => setShiftOpen(false), [])
+  const closeEvent = useCallback(() => setEventOpen(false), [])
   const [profileOpen, setProfileOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
@@ -793,7 +799,7 @@ function IosHome() {
               <IconPlus size={24} stroke={1.75} />
             </button>
           ) : tab === "time" ? (
-            <button aria-label="Add time entry" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+            <button aria-label="Add time entry" onClick={() => setTimeCardOpen(true)} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
               <IconPlus size={24} stroke={1.75} />
             </button>
           ) : tab === "chat" ? (
@@ -863,19 +869,14 @@ function IosHome() {
           { id: "event", label: "Add Event", icon: <IconCalendarEvent size={22} stroke={1.5} /> },
         ]}
         onSelect={(id) => {
-          if (id === "shift") {
-            shiftP.set(0)
-            setShiftOpen(true)
-          }
+          if (id === "shift") setShiftOpen(true)
+          if (id === "event") setEventOpen(true)
         }}
         onClose={closePlus}
       />
       <LocationMenu open={menuOpen} onClose={closeMenu} />
-      {shiftOpen && (
-        <HalfSheet progress={shiftP} variant="slide" height={444} title="Add shift" collapsed={null} onClosed={closeShift}>
-          {(close) => <AddShiftContent loc={loc} close={close} />}
-        </HalfSheet>
-      )}
+      {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
+      {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
       {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} />}
       <AnimatePresence>
         {homePage && (
@@ -884,6 +885,7 @@ function IosHome() {
           </FullPage>
         )}
       </AnimatePresence>
+      {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {profileOpen && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
     </IPhoneFrame>

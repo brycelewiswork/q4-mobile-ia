@@ -223,7 +223,7 @@ function Resume({ editing }: PageProps) {
       <Field editing={editing} first label="Experience" k="experience" />
       <Field editing={editing} label="Certifications" k="certifications" />
       <Field editing={editing} label="Education" k="education" />
-      <button className="flex h-[52px] w-full items-center border-t border-[#ebebeb] px-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-[#0088ff] active:bg-black/[0.04]">
+      <button className="flex h-[52px] w-full items-center border-t border-[#ebebeb] px-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-[#8f55e5] active:bg-black/[0.04]">
         Export to PDF...
       </button>
     </Card>
@@ -242,7 +242,7 @@ function Team({ loc, query = "" }: PageProps) {
   const people = pool
     .filter((m) => !q || m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name))
-  const circle = "flex size-9 shrink-0 items-center justify-center rounded-full bg-[rgba(120,120,128,0.16)] text-[#0088ff] active:opacity-60"
+  const circle = "flex size-9 shrink-0 items-center justify-center rounded-full bg-[rgba(120,120,128,0.16)] text-[#8f55e5] active:opacity-60"
 
   return (
     // Bottom padding clears the pinned search bar.

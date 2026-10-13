@@ -62,7 +62,7 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
   chat: { label: "Messages", icon: "/android/chat-solid.svg" },
 }
 
-type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
+type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Earnings" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
@@ -432,6 +432,42 @@ function ClockBar({ title, status, onOpen }: { title: string; status: "out" | "i
   )
 }
 
+/** Add time card: the labels and sections, with empty fields. */
+function TimeCardForm() {
+  const locName = useLocName()
+  const loc = useLocation()
+  return (
+    <div className="flex flex-col gap-3 pt-2">
+      <Field label="Employee" />
+      <Field label="Role" />
+      <Field label="Date" />
+      <p className="text-m-variant px-1 text-[14px] leading-5">{`at ${locName(loc)}`}</p>
+      <Section title="Worked">
+        {/* Clocked in and out on one two-sided slider (empty here, like the other fields). */}
+        <div className="flex justify-between pb-3">
+          <span><span className="text-m-variant block text-[12px] leading-4">Clocked in</span><ABar w={56} h={10} className="mt-2" /></span>
+          <span className="flex flex-col items-end"><span className="text-m-variant block text-[12px] leading-4">Clocked out</span><ABar w={56} h={10} className="mt-2" /></span>
+        </div>
+        <div aria-label="Clocked in and out" role="group" className="relative mx-3 h-6">
+          <span className="bg-m-skeleton absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" />
+          <span className="bg-m-primary absolute top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ left: "25%", right: "30%" }} />
+          <span className="bg-m-primary absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ left: "25%" }} />
+          <span className="bg-m-primary absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ left: "70%" }} />
+        </div>
+      </Section>
+      <section>
+        <ASection trailing={<button aria-label="Add a break" className="text-m-primary -my-1 flex size-10 items-center justify-center rounded-full active:bg-black/10"><IconPlus size={24} stroke={2} /></button>}>Breaks</ASection>
+      </section>
+      <Section title="Tips">
+        <div className="flex gap-3">
+          <div className="flex-1"><Field label="Cash tips" /></div>
+          <div className="flex-1"><Field label="Credit tips" /></div>
+        </div>
+      </Section>
+    </div>
+  )
+}
+
 function Field({ label }: { label: string }) {
   return (
     <div className="border-m-outline flex h-14 flex-col justify-center gap-[7px] rounded-[4px] border px-4">
@@ -621,6 +657,7 @@ function LocationsPage({ multi }: { multi: boolean }) {
 function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void }) {
   switch (spec.kind) {
     case "locations": return <LocationsPage multi={multi} />
+    case "timecard": return <TimeCardForm />
     case "log": return <div className="pt-2"><AList rows={5} avatar={false} /></div>
     case "earnings": return (
       <div className="flex flex-col gap-3 pt-2">
@@ -722,7 +759,7 @@ export function AndroidApp() {
   const fab =
     tab === "home" ? null
     : tab === "shifts" ? <AFab label="Add" icon={<IconPlus size={24} stroke={1.75} />} onClick={() => setFabMenu((o) => !o)} />
-    : tab === "time" ? <AFab label="Add time entry" icon={<IconPlus size={24} stroke={1.75} />} />
+    : tab === "time" ? <AFab label="Add time entry" icon={<IconPlus size={24} stroke={1.75} />} onClick={() => open({ id: "timecard", kind: "timecard", title: "Add time card" })} />
     : tab === "chat" ? <AFab extended label="New message" icon={<IconPencil size={24} stroke={1.75} />} />
     : null
 
@@ -809,6 +846,7 @@ export function AndroidApp() {
             onBack={pop}
             bar={p.kind === "team" ? <SearchField /> : undefined}
             footer={p.kind === "assistant" ? <Composer /> : undefined}
+            action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
           >
             <PageBody spec={p} manager={!employee} multi={multi} onOpen={open} />
           </APage>

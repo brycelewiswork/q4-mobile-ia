@@ -319,7 +319,7 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
               className="flex min-w-0 flex-1 flex-col items-center gap-[3px] rounded-full bg-white px-[17px] py-2 active:bg-black/[0.04]"
             >
               <img src={a.icon} alt="" className="size-5" />
-              <span className="whitespace-nowrap text-[11px] font-[510] tracking-[-0.43px] text-[#0088ff]">{wire && a.label.startsWith("Refer") ? "Refer a friend" : a.label}</span>
+              <span className="whitespace-nowrap text-[11px] font-[510] tracking-[-0.43px] text-[#8f55e5]">{wire && a.label.startsWith("Refer") ? "Refer a friend" : a.label}</span>
             </button>
           ))}
         </div>

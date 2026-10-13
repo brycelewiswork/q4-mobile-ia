@@ -206,7 +206,7 @@ export function TimePage({ loc }: { loc: Location }) {
           <button
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className="flex items-center justify-between pb-2 text-left tracking-[-0.43px]"
+            className="flex items-center justify-between pb-1 text-left tracking-[-0.43px]"
           >
             <h2 className="text-[15px] font-[590] leading-5 text-[#747182]">
               Needs review{!wire && <> <span className="text-[#b9b8c1]">{pending.length}</span></>}
@@ -322,7 +322,7 @@ const TONES = [
   { bg: "#bfe9c6", fg: "#1f6b2e" },
   { bg: "#fde3d6", fg: "#c2491d" },
   { bg: "#e3dcf8", fg: "#5a35b5" },
-  { bg: "#d4e6fb", fg: "#1d5fa8" },
+  { bg: "#ede4fc", fg: "#7440d1" },
 ]
 const MATE_PHOTOS = ["/phone/mate-1.jpg", "/phone/mate-2.jpg", "/phone/mate-3.jpg", "/phone/mate-4.jpg"]
 

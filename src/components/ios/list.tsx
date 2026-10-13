@@ -22,7 +22,7 @@ export const Chevron = () => <IconChevronRight size={16} stroke={2.5} className=
 /** Small gray label above a group. */
 export function GroupLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="px-4 pb-2 pt-1 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#747182]">{children}</p>
+    <p className="px-4 pb-1 pt-3 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#747182]">{children}</p>
   )
 }
 
@@ -37,10 +37,10 @@ export function SectionHeader({
   onAction?: () => void
 }) {
   return (
-    <div className="flex items-center px-4 py-[10px] tracking-[-0.43px]">
+    <div className="flex items-center px-4 pb-1 pt-[14px] tracking-[-0.43px]">
       <h3 className="flex-1 text-[17px] font-[590] leading-[22px] text-[#747182]">{children}</h3>
       {action && (
-        <button onClick={onAction} className="text-[15px] leading-5 text-[#0088ff] active:opacity-60">
+        <button onClick={onAction} className="text-[15px] leading-5 text-[#8f55e5] active:opacity-60">
           {action}
         </button>
       )}
@@ -147,7 +147,7 @@ const TINTS: [string, string][] = [
   ["#bfe8e9", "#64c3c4"],
   ["#ffd7a8", "#f0a04b"],
   ["#ffc2d1", "#e6708f"],
-  ["#c3dcff", "#6a9ff0"],
+  ["#d7c2ff", "#a47ae8"],
 ]
 export function Initials({ name, size = 40 }: { name: string; size?: number }) {
   const initials = name

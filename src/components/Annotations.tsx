@@ -254,7 +254,7 @@ function Picker() {
       <div className="pointer-events-none absolute left-1/2 top-[76px] -translate-x-1/2 rounded-full bg-black/80 px-4 py-2 text-[13px] text-white">
         {hover ? `Pin to “${describe(hover.el)}”` : "Point at something in the phone"} · ↑ ↓ container · Esc to cancel
       </div>
-      {hover && <div className="pointer-events-none absolute rounded-[4px] border-2 border-dashed border-[#0a84ff] bg-[#0a84ff]/10" style={{ left: hover.rect.left, top: hover.rect.top, width: hover.rect.width, height: hover.rect.height }} />}
+      {hover && <div className="pointer-events-none absolute rounded-[4px] border-2 border-dashed border-[#8f55e5] bg-[#8f55e5]/10" style={{ left: hover.rect.left, top: hover.rect.top, width: hover.rect.width, height: hover.rect.height }} />}
     </div>
   )
 }

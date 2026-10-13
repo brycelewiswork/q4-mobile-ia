@@ -59,7 +59,7 @@ export function NotesEditBar() {
       </button>
       {editing && (
         <>
-          <button onClick={() => setPicking(!picking)} aria-pressed={picking} className={cn(btn, picking ? "bg-[#0a84ff] text-white" : "bg-[#767680]/[0.12] dark:bg-white/10")}>
+          <button onClick={() => setPicking(!picking)} aria-pressed={picking} className={cn(btn, picking ? "bg-[#8f55e5] text-white" : "bg-[#767680]/[0.12] dark:bg-white/10")}>
             <IconPlus size={16} stroke={2} />
             {picking ? "Click the phone…" : "Add note"}
           </button>

@@ -1,7 +1,7 @@
 import { useLocName } from "@/store/useViewStore"
 import { useEffect } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { IconBuildingStore, IconCheck } from "@tabler/icons-react"
+import { IconCheck } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { LOCATIONS } from "@/data/locations"
@@ -65,7 +65,6 @@ export function LocationMenu({ open, onClose }: { open: boolean; onClose: () => 
                     <span className="flex w-[18px] shrink-0 justify-center">
                       {selected && <IconCheck size={20} stroke={2.5} />}
                     </span>
-                    <IconBuildingStore size={22} stroke={1.5} className="shrink-0" />
                     <span className="truncate text-[17px] leading-[22px]">{locName(l)}</span>
                   </button>
                 )
