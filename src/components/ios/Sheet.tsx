@@ -42,7 +42,7 @@ export function Sheet({
   /** Replaces the drawn title with your own content in the toolbar (e.g. a text field). `title` still names the sheet for screen readers. */
   titleSlot?: ReactNode
   /** Pinned to the bottom of the sheet over the scrolling content (e.g. a search bar). */
-  footer?: ReactNode
+  footer?: ReactNode | ((dismiss: () => void) => ReactNode)
   /** Fill the container it is mounted in (the content pane) instead of rising over the screen: no scrim, grabber or rounded top; it slides in from the right. */
   inline?: boolean
   /** Scroll returns to the top whenever this changes (a new page was pushed/popped). */
@@ -198,7 +198,7 @@ export function Sheet({
               {children}
             </div>
             <EdgeBlur {...edgeBlur} />
-            {footer && <div className="absolute inset-x-0 bottom-0 z-10">{footer}</div>}
+            {footer && <div className="absolute inset-x-0 bottom-0 z-10">{typeof footer === "function" ? footer(dismiss) : footer}</div>}
             <div className="absolute inset-x-0 z-20 h-[70px]" style={{ top: "var(--safe-top)" }}>
               {titleSlot ? (
                 <div className="absolute inset-x-[72px] top-4 flex h-11 items-center justify-center">{titleSlot}</div>
@@ -253,7 +253,7 @@ export function Sheet({
 
         {/* Header floats over the content; edge blur softens what scrolls under it. */}
         <EdgeBlur {...edgeBlur} radius={38} />
-        {footer && <div className="absolute inset-x-0 bottom-0 z-10">{footer}</div>}
+        {footer && <div className="absolute inset-x-0 bottom-0 z-10">{typeof footer === "function" ? footer(dismiss) : footer}</div>}
         <div data-sheet-handle className="absolute inset-x-0 top-0 z-20 h-[70px] touch-none">
             <div className="flex justify-center pt-[6px]">
               <div className="h-1 w-[60px] rounded-full bg-[#c3c3c6]" />

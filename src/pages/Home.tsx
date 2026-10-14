@@ -30,7 +30,8 @@ import { TimeClockContent, sheetHeightFor } from "@/components/ios/TimeClockCont
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { FullPage } from "@/components/ios/FullPage"
 import { TimeCardSheet } from "@/components/ios/TimeCardSheet"
-import { HOME_PAGE_TITLES, HomePage, type HomePageId } from "@/pages/HomePages"
+import { HOME_PAGE_TITLES, HomePage, TaskTick, type HomePageId } from "@/pages/HomePages"
+import { taskKey, useTasksStore } from "@/store/useTasksStore"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
 import { AccessoryContent, BottomAccessory, TabBar, type TabId } from "@/components/ios/TabBar"
@@ -40,10 +41,11 @@ import { EdgeBlur } from "@/components/ios/EdgeBlur"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
+import { NO_FILTERS, TimeFilterSheet, type FilterKind, type TimeFilters } from "@/components/ios/TimeFilterSheet"
 import { ChatPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
 import { HOUR_LABELS, LOCATIONS, USER_EARNINGS, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
-import { Initials } from "@/components/ios/list"
+import { Initials, ListRow } from "@/components/ios/list"
 import { ANON, useLocName, useStructure, useViewStore } from "@/store/useViewStore"
 import { Annotations } from "@/components/Annotations"
 import { AndroidApp } from "@/pages/android/AndroidApp"
@@ -105,6 +107,38 @@ function ListCard({
 }
 
 /** Manager log, moved here from Settings: a full-width widget of the latest notes, newest first. */
+/** The dashboard's Task Manager: the first few tasks, tickable, and a See all that opens the whole list. */
+function TaskManagerWidget({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
+  const wire = useStructure()
+  const doneMap = useTasksStore((s) => s.done)
+  const toggle = useTasksStore((s) => s.toggle)
+  const shown = loc.tasks.slice(0, 3)
+  return (
+    <section>
+      <div className="flex items-end justify-between">
+        <SectionHeader>Task Manager</SectionHeader>
+        <button onClick={onOpen} className="pb-[5px] pr-4 text-[15px] leading-5 tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
+          See all
+        </button>
+      </div>
+      {wire ? (
+        <button onClick={onOpen} aria-label="Open the task manager" className="block w-full text-left active:opacity-80">
+          <WireList rows={3} avatar={false} trailing />
+        </button>
+      ) : (
+        <Card className="overflow-hidden">
+          {shown.map((t, i) => {
+            const done = doneMap[taskKey(loc, t.id)] ?? t.done
+            return (
+              <ListRow key={t.id} first={i === 0} onClick={() => toggle(taskKey(loc, t.id), done)} leading={<TaskTick done={done} />} title={t.title} titleClassName={done ? "text-[#928fa0] line-through" : undefined} trailing={<span className="text-[15px]">{t.due}</span>} />
+            )
+          })}
+        </Card>
+      )}
+    </section>
+  )
+}
+
 function ManagerLogWidget({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
   const wire = useStructure()
   return (
@@ -691,6 +725,8 @@ function ManagerDashboard({ loc, multi, split, onScroll, onOpenPage, onOpenBusin
         />}
       </section>
 
+      <TaskManagerWidget loc={loc} onOpen={() => onOpenPage("tasks")} />
+
       <ManagerLogWidget loc={loc} onOpen={() => onOpenPage("log")} />
 
       <section>
@@ -868,6 +904,8 @@ function EmployeeDashboard({ loc, split, onScroll, onOpenPage }: { loc: Location
       <EventsSection loc={loc} />
 
       {/* Some employees have access to the manager log. */}
+      <TaskManagerWidget loc={loc} onOpen={() => onOpenPage("tasks")} />
+
       <ManagerLogWidget loc={loc} onOpen={() => onOpenPage("log")} />
     </>
   )
@@ -928,6 +966,9 @@ function IosHome() {
   const closeTimeCard = useCallback(() => setTimeCardOpen(false), [])
   const closeShift = useCallback(() => setShiftOpen(false), [])
   const closeEvent = useCallback(() => setEventOpen(false), [])
+  // The Time page's filters: which sheet is open, and what each has chosen.
+  const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null)
+  const [timeFilters, setTimeFilters] = useState<TimeFilters>(NO_FILTERS)
   const [profileOpen, setProfileOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
@@ -1021,7 +1062,7 @@ function IosHome() {
         </OverlayRoot.Provider>
       ) : tab === "time" && split ? (
         <OverlayRoot.Provider value={screen}>
-          <TimePage key={loc.id} loc={loc} split />
+          <TimePage key={loc.id} loc={loc} split filters={timeFilters} onFilter={setFilterSheet} />
         </OverlayRoot.Provider>
       ) : (
         // Menus opened from a page (e.g. the Shifts filter) render into the screen overlay.
@@ -1029,7 +1070,7 @@ function IosHome() {
         <ScreenScroll key={tab} locationId={`${tab}:${loc.id}`} onScroll={onScroll} top={54} fade={false}>
           {tab === "money" && <MoneyPage loc={loc} />}
           {tab === "shifts" && <ShiftsPage loc={loc} />}
-          {tab === "time" && <TimePage loc={loc} />}
+          {tab === "time" && <TimePage loc={loc} filters={timeFilters} onFilter={setFilterSheet} />}
           {tab === "chat" && <ChatPage loc={loc} />}
         </ScreenScroll>
         </OverlayRoot.Provider>
@@ -1153,6 +1194,7 @@ function IosHome() {
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
       {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} />}
+      {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}

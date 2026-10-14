@@ -2,7 +2,7 @@ import { Bar, BarLines } from "@/components/wire/Wire"
 import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
-import { IconCheck, IconChecklist, IconPencil, IconUsers } from "@tabler/icons-react"
+import { IconCheck, IconPencil, IconUsers } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
@@ -278,7 +278,6 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
 
 const WORK_ROWS: Row[] = [
   { label: "Team", page: "team", icon: <IconUsers size={20} stroke={1.75} className="text-[#8f55e5]" /> },
-  { label: "Task Manager", page: "tasks", icon: <IconChecklist size={20} stroke={1.75} className="text-[#8f55e5]" /> },
   { label: "Payroll", page: "payroll", icon: "/phone/row-money.svg" },
 ]
 
@@ -286,6 +285,7 @@ const ACCOUNT_ROWS: Row[] = [
   { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
   { icon: "/phone/row-calendar.svg", label: "Calendar Sync", trailing: "Not Connected", page: "calendar" },
   { icon: "/phone/row-bell.svg", label: "Notifications & Alerts", page: "notifications" },
+  { icon: "/phone/row-lock.svg", label: "Password & Security", page: "security" },
   { icon: "/phone/row-help.svg", label: "Support", page: "support" },
 ]
 
@@ -415,7 +415,7 @@ export function ProfileSheet({ loc, inline, onClose }: { loc: Location; /** Fill
       inline={inline}
       title={page ? PAGES[page].title : "Settings"}
       onClose={onClose}
-      onBack={page ? () => go({ page: page === "personal" || page === "experience" || page === "education" || page === "certifications" || page === "security" || page === "tax" || page === "bank" ? "account" : null, dir: "pop" }) : undefined}
+      onBack={page ? () => go({ page: page === "personal" || page === "experience" || page === "education" || page === "certifications" || page === "tax" || page === "bank" ? "account" : null, dir: "pop" }) : undefined}
       action={
         page && PAGES[page].action === "edit" ? (
           <LiquidGlass mode="small" accent="#8f55e5" radius={999} className="absolute right-4 top-4 flex size-11 items-center justify-center">

@@ -1,20 +1,22 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import {
+  IconAlertHexagon,
   IconBell,
   IconBriefcase,
+  IconFilter,
   IconCalendar,
   IconCalendarEvent,
   IconCalendarPlus,
   IconCash,
   IconCheck,
-  IconChecklist,
   IconChevronDown,
   IconChevronRight,
   IconClock,
   IconGift,
   IconHeartbeat,
   IconHelp,
+  IconLock,
   IconMapPin,
   IconMenu2,
   IconMenuDeep,
@@ -30,15 +32,16 @@ import { LinearBlur } from "@/components/ui/progressive-blur"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
-import { ABar, ACard, ADialog, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
+import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ACheckRow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
 import { LOCATIONS, USER_SCHEDULE, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
 import { ANON, useLocName, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
-import { accessoryFor, useClock } from "@/store/useTimeClockStore"
+import { NOW_MIN, accessoryFor, scheduledToday, shiftRange, useClock, useTimeClockStore } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
 import { cn } from "@/lib/utils"
+import { dayLabel, payPeriodOf, rangeLabel } from "@/lib/dates"
 
 /**
  * The Android structure cut. Same data, stores and information architecture as the iOS version, but it speaks
@@ -65,9 +68,11 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
   chat: { label: "Messages", icon: "/android/chat-solid.svg" },
 }
 
-type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "achievements" | "settings" | "team" | "assistant" | "generic"; title: string; /** The item the page opens focused on (a location's id on Locations). */ arg?: string }
+type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "achievements" | "clock" | "settings" | "team" | "assistant" | "generic"; title: string; /** The item the page opens focused on (a location's id on Locations). */ arg?: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
+const CLOCK: PageSpec = { id: "clock", kind: "clock", title: "Time clock" }
+const TASKS: PageSpec = { id: "tasks", kind: "generic", title: "Task Manager" }
 const SETTINGS: PageSpec = { id: "settings", kind: "settings", title: "Settings" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
 
@@ -347,6 +352,7 @@ function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec
         <ACard title="Shiftmates" h={112} onClick={() => onOpen(SHIFTMATES)} className="flex-1" />
       </div>
       <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
+      <Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
     </>
   )
@@ -415,7 +421,7 @@ function HomeManager({ multi, split, onOpen, onOpenBiz }: { multi: boolean; spli
   const hero = (
     <>
       {multi ? (
-        <ACard title="All locations" h={200} dataAnno="all-locations">
+        <ACard title="All Locations" h={200} dataAnno="all-locations">
           <span aria-hidden className="bg-m-skeleton mt-3 block h-24 rounded-[12px]" />
           <div className="mt-3">
             {LOCATIONS.map((l, i) => (
@@ -438,6 +444,7 @@ function HomeManager({ multi, split, onOpen, onOpenBiz }: { multi: boolean; spli
   const rest = (
     <>
       <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
+      <Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
       <Section title="My Week (Shifts)"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
@@ -467,7 +474,7 @@ function ShiftsTab({ split }: { split?: boolean }) {
   const [menu, setMenu] = useState(false)
   const main = (
     <div>
-      <WeekStrip date={date} onPick={setDate} dots={(i) => !!USER_SCHEDULE[i]} />
+      <WeekStrip date={date} onPick={setDate} dots={(i) => !!USER_SCHEDULE[i]} label={dayLabel(date)} />
       <div className="relative flex items-start justify-between gap-3 pb-3 pt-1">
         <div className="flex flex-col gap-2 pt-1">
           <ABar w={90} h={26} />
@@ -519,21 +526,25 @@ function PayPeriodPane() {
   )
 }
 
-function TimeTab({ split }: { split?: boolean }) {
+type FilterKind = "team" | "issues" | "roles"
+type TimeFilters = Record<FilterKind, string[]>
+
+function TimeTab({ split, filters, onFilter }: { split?: boolean; filters: TimeFilters; onFilter: (k: FilterKind) => void }) {
   const date = useDateStore((s) => s.date)
   const setDate = useDateStore((s) => s.setDate)
   const storedView = useDateStore((s) => s.timeView)
   // Split view shows both, so the Day / Pay period choice doesn't apply.
   const view = split ? "day" : storedView
   const setView = useDateStore((s) => s.setTimeView)
-  const [issues, setIssues] = useState(false)
+  const chip = (kind: FilterKind) => ({ selected: filters[kind].length > 0, onClick: () => onFilter(kind) })
+  const count = (kind: FilterKind) => (filters[kind].length ? ` ${filters[kind].length}` : "")
   const main = (
     <div>
-      <WeekStrip date={date} onPick={setDate} />
+      <WeekStrip date={date} onPick={setDate} label={view === "day" ? dayLabel(date) : rangeLabel(...payPeriodOf(date))} />
       <AChips>
-        <AChip leading={<IconSearch size={18} stroke={2} />} />
-        <AChip selected={issues} onClick={() => setIssues((v) => !v)}>Issues</AChip>
-        <AChip trailing={<IconChevronDown size={18} stroke={2} />}>Roles</AChip>
+        <AChip leading={<IconSearch size={18} stroke={2} />} {...chip("team")}>{`Team Members${count("team")}`}</AChip>
+        <AChip leading={<IconAlertHexagon size={18} stroke={2} />} trailing={<IconFilter size={16} stroke={2} />} {...chip("issues")}>{`Issues${count("issues")}`}</AChip>
+        <AChip leading={<IconBriefcase size={18} stroke={2} />} trailing={<IconFilter size={16} stroke={2} />} {...chip("roles")}>{`Roles${count("roles")}`}</AChip>
         {!split && <AChip selected={view === "period"} onClick={() => setView(view === "period" ? "day" : "period")}>Pay period</AChip>}
       </AChips>
       {view === "day" ? (
@@ -624,10 +635,50 @@ function MessagesSplit() {
 // Sheets and pages
 // ---------------------------------------------------------------------------
 
-function RequestsSheet({ multi, side, onClose }: { multi: boolean; /** A side sheet instead of a bottom sheet (wide screens). */ side?: boolean; onClose: () => void }) {
+const ISSUE_OPTIONS = ["Missing paid break", "Missing unpaid break", "Late clock-in", "Early clock-out", "Overtime"]
+
+/** The Time page's filters, each a full-height bottom sheet (a side sheet on a tablet): pick options, then apply. */
+function TimeFilterSheet({ kind, loc, side, value, onApply, onClose }: { kind: FilterKind; loc: Location; side?: boolean; value: string[]; onApply: (v: string[]) => void; onClose: () => void }) {
   const Shell = side ? ASideSheet : ASheet
-  const filters = ["Team", "Mine", "Store", ...(multi ? ["All locations"] : [])]
-  const [f, setF] = useState("Team")
+  const [draft, setDraft] = useState(value)
+  const toggle = (id: string) => setDraft((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
+  const roles = Array.from(new Set(loc.team.map((m) => m.role)))
+  const title = kind === "team" ? "Team Members" : kind === "issues" ? "Issues" : "Roles"
+  return (
+    <Shell
+      title={title}
+      onClose={onClose}
+      {...(side ? {} : { full: true })}
+      footer={
+        <div className="flex gap-3 pb-2">
+          <button onClick={() => setDraft([])} className="border-m-outline text-m-primary h-12 flex-1 rounded-full border text-[15px] font-medium active:bg-black/5">Clear</button>
+          <button onClick={() => onApply(draft)} className="bg-m-primary text-m-on-primary h-12 flex-1 rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85">Apply</button>
+        </div>
+      }
+    >
+      {kind === "team" && (
+        <div className="bg-m-high mb-2 flex h-12 items-center gap-3 rounded-full px-4">
+          <IconSearch size={22} stroke={1.75} className="text-m-variant shrink-0" />
+          <span className="text-m-variant text-[16px]">Search team members</span>
+        </div>
+      )}
+      {kind === "team" && loc.team.map((m, i) => (
+        <ACheckRow key={m.name} checked={draft.includes(String(i))} onChange={() => toggle(String(i))}>
+          <span className="bg-m-skeleton size-10 shrink-0 rounded-full" />
+          <ABar w={110} h={12} />
+        </ACheckRow>
+      ))}
+      {kind === "issues" && ISSUE_OPTIONS.map((o) => <ACheckRow key={o} checked={draft.includes(o)} onChange={() => toggle(o)}>{o}</ACheckRow>)}
+      {kind === "roles" && roles.map((r) => <ACheckRow key={r} checked={draft.includes(r)} onChange={() => toggle(r)}>{r}</ACheckRow>)}
+    </Shell>
+  )
+}
+
+function RequestsSheet({ loc, multi, side, onClose }: { loc: Location; multi: boolean; /** A side sheet instead of a bottom sheet (wide screens). */ side?: boolean; onClose: () => void }) {
+  const Shell = side ? ASideSheet : ASheet
+  const locName = useLocName()
+  const filters = [locName(loc), "Mine", ...(multi ? ["All locations"] : []), "Archive"]
+  const [f, setF] = useState(filters[0])
   return (
     <Shell title="Requests" onClose={onClose} {...(side ? {} : { full: true })}>
       <AChips>
@@ -640,28 +691,113 @@ function RequestsSheet({ multi, side, onClose }: { multi: boolean; /** A side sh
   )
 }
 
-function ClockSheet({ loc, dialog, onClose }: { loc: Location; /** A centred dialog instead of a bottom sheet (wide screens). */ dialog?: boolean; onClose: () => void }) {
+const toMinutes = (t: string) => {
+  const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (!m) return 0
+  return (Number(m[1]) % 12) * 60 + Number(m[2]) + (m[3].toUpperCase() === "PM" ? 720 : 0)
+}
+
+type ClockTile = { icon: string; label: string; onClick: () => void; muted?: boolean; /** Two taps: the first arms it (it spans the row in the primary colour), the second does it. */ confirm?: string }
+
+/**
+ * The action tiles, as on iOS: tinted, icon over label. Clock out is the risky one, so it is grey and sits on the left,
+ * and it takes two taps: the first makes it span the whole row in the primary colour, the second confirms.
+ */
+function ClockTiles({ tiles }: { tiles: ClockTile[] }) {
+  const [armed, setArmed] = useState<string | null>(null)
+  useEffect(() => {
+    if (!armed) return
+    const off = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-armed]")) setArmed(null)
+    }
+    document.addEventListener("pointerdown", off)
+    return () => document.removeEventListener("pointerdown", off)
+  }, [armed])
+  return (
+    <div className="flex gap-3">
+      {tiles.map((t) => {
+        const on = armed === t.label
+        if (armed && !on) return null
+        return (
+          <button
+            key={t.label}
+            data-armed={on ? "" : undefined}
+            aria-label={on && t.confirm ? t.confirm : t.label}
+            onClick={() => (t.confirm && !on ? setArmed(t.label) : t.onClick())}
+            className={cn("flex h-[68px] min-w-0 flex-1 flex-col items-center justify-center gap-[2px] rounded-[16px] active:opacity-70", on ? "bg-m-primary text-m-on-primary" : t.muted ? "bg-[rgba(120,120,128,0.16)] text-[#6b6b73]" : "bg-[rgba(143,85,229,0.14)] text-[#7440d1]")}
+          >
+            <span aria-hidden className="block bg-current" style={maskStyle(t.icon, 24)} />
+            <span className="whitespace-nowrap text-[13px] font-medium leading-[18px]">{on && t.confirm ? t.confirm : t.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * The time clock, as a full page like iOS's sheet: a map, what state you're in, then either the details with a
+ * primary Confirm Clock in (pinned under the page), or your shift's progress with the action tiles.
+ */
+function ClockPage({ loc, onClose }: { loc: Location; onClose: () => void }) {
   const locName = useLocName()
   const st = useClock(loc)
-  const role = st.role ?? loc.employee.timeClock.role
-  const main = st.status === "out" ? "Clock in" : st.status === "break" ? "End break" : "Clock out"
-  const Shell = dialog ? ADialog : ASheet
+  const clock = useTimeClockStore()
+  const { shift, role: defaultRole } = loc.employee.timeClock
+  const role = st.role ?? defaultRole
+  const live = st.status !== "out"
+  const today = scheduledToday(loc)
+  const [start, end] = shiftRange(shift)
+  const pct = Math.min(1, Math.max(0, (NOW_MIN - toMinutes(start)) / Math.max(1, toMinutes(end) - toMinutes(start))))
+  const heading = st.status === "out" ? (today ? "Ready to clock in" : "Not scheduled today") : st.status === "break" ? `On a ${st.breakKind}` : "Clocked in"
+  const clockOut: ClockTile = { icon: "/phone/tile-clock-out.svg", label: "Clock out", confirm: "Confirm clock out", muted: true, onClick: () => { onClose(); clock.clockOut(loc.id) } }
+  const tiles: ClockTile[] =
+    st.status === "break"
+      ? [clockOut, { icon: "/phone/tile-break.svg", label: "End break", onClick: () => clock.endBreak(loc.id) }]
+      : [clockOut, { icon: "/phone/tile-break.svg", label: "10 min break", onClick: () => clock.startBreak(loc.id, "10 min break", 10) }, { icon: "/phone/meal.svg", label: "30 min meal", onClick: () => clock.startBreak(loc.id, "30 min meal", 30) }]
   return (
-    <Shell title="Time clock" onClose={onClose}>
-      <div aria-hidden className="bg-m-skeleton h-36 rounded-[16px]" />
-      <div className="py-2">
-        <ARow icon={<IconMapPin size={24} stroke={1.75} />} label={locName(loc)} />
-        <ARow icon={<IconBriefcase size={24} stroke={1.75} />} label={role} />
+    <div className="flex flex-col gap-4 pt-1">
+      <div aria-hidden className="bg-m-skeleton relative h-[200px] overflow-hidden rounded-[20px]">
+        <span className="bg-m-primary border-m-surface absolute left-1/2 top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] shadow-md" />
       </div>
-      {st.status !== "out" && (
-        <div className="flex gap-2 pb-3">
-          {["10 min break", "30 min meal"].map((l) => (
-            <button key={l} className="border-m-outline text-m-primary h-10 flex-1 rounded-full border text-[14px] font-medium">{l}</button>
+      <div>
+        <h2 className="text-m-on-surface text-[24px] leading-8">{heading}</h2>
+        {live && (
+          <div className="text-m-variant pt-1 text-[14px] leading-5">
+            {st.status === "break" && <ABar w={90} h={10} className="mb-2" />}
+            <p>{locName(loc)}</p>
+            <p>{role}</p>
+          </div>
+        )}
+      </div>
+      {live ? (
+        <>
+          <div>
+            <div role="progressbar" aria-label="Shift progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)} className="bg-m-skeleton h-[6px] overflow-hidden rounded-[3px]">
+              <div className="bg-m-primary h-full rounded-[3px]" style={{ width: `${pct * 100}%` }} />
+            </div>
+            <div className="flex justify-between pt-2">
+              <ABar w={52} h={10} />
+              <ABar w={52} h={10} />
+            </div>
+          </div>
+          <ClockTiles tiles={tiles} />
+        </>
+      ) : (
+        <div className="bg-m-container overflow-hidden rounded-[20px]">
+          {[
+            ["Location", <span key="l">{locName(loc)}</span>],
+            [today ? "Shift" : "Next shift", <ABar key="s" w={90} h={12} />],
+            ["Role", <span key="r">{role}</span>],
+          ].map(([label, value], i) => (
+            <div key={label as string} className={cn("flex min-h-[52px] items-center justify-between gap-4 px-4 text-[16px] leading-6", i > 0 && "border-m-divider border-t")}>
+              <span>{label}</span>
+              <span className="text-m-variant">{value}</span>
+            </div>
           ))}
         </div>
       )}
-      <button onClick={onClose} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85">{main}</button>
-    </Shell>
+    </div>
   )
 }
 
@@ -925,8 +1061,8 @@ function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
 }
 
 function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageSpec) => void }) {
-  const row = (label: string, icon: ReactNode, kind: PageSpec["kind"] = "generic") => (
-    <ARow key={label} icon={icon} label={label} onClick={() => onOpen({ id: `${kind}:${label}`, kind, title: label })} />
+  const row = (label: string, icon: ReactNode, kind: PageSpec["kind"] = "generic", trailing?: string) => (
+    <ARow key={label} icon={icon} label={label} trailing={trailing} onClick={() => onOpen({ id: `${kind}:${label}`, kind, title: label })} />
   )
   return (
     <div className="flex flex-col gap-1">
@@ -942,19 +1078,19 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
       <ProfileCarousel onOpen={onOpen} />
       <div className="flex gap-3 pb-1">
         <ACard title="Earnings" h={96} className="flex-1" dataAnno="drawer-earnings" onClick={() => onOpen({ id: "earnings", kind: "earnings", title: "Money" })} />
-        <ACard title="Time off" h={96} className="flex-1" dataAnno="drawer-timeoff" onClick={() => onOpen({ id: "timeoff", kind: "timeoff", title: "Time off" })} />
+        <ACard title="Time off balance" h={96} className="flex-1" dataAnno="drawer-timeoff" onClick={() => onOpen({ id: "timeoff", kind: "timeoff", title: "Time off" })} />
       </div>
       {manager && (
         <Section title="Work">
           {row("Team", <IconUsers size={24} stroke={1.75} />, "team")}
-          {row("Task Manager", <IconChecklist size={24} stroke={1.75} />)}
           {row("Payroll", <IconCash size={24} stroke={1.75} />)}
         </Section>
       )}
       <Section title="Account" headerAnno="drawer-account">
         {row("Locations", <IconMapPin size={24} stroke={1.75} />, "locations")}
-        {row("Calendar Sync", <IconCalendar size={24} stroke={1.75} />)}
+        {row("Calendar Sync", <IconCalendar size={24} stroke={1.75} />, "generic", "Not Connected")}
         {row("Notifications & Alerts", <IconBell size={24} stroke={1.75} />)}
+        {row("Password & Security", <IconLock size={24} stroke={1.75} />)}
         {row("Support", <IconHelp size={24} stroke={1.75} />)}
       </Section>
       {/* The iOS action pills, as simple cards. */}
@@ -973,7 +1109,6 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
           )
         })}
       </div>
-      <button className="h-12 w-full px-1 text-left text-[16px] text-[var(--m-error)] active:bg-black/5">Sign out</button>
       {/* Footer: the logo, small, then the version and legal link as quiet subtext (as on iOS). */}
       <div className="flex flex-col items-center gap-3 pb-4 pt-6">
         <img src="/phone/logo-h.png" alt="Homebase" className="h-7 w-auto" />
@@ -1046,9 +1181,12 @@ function LocationsPage({ multi, focus }: { multi: boolean; /** Opened from one l
   )
 }
 
-function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void }) {
+function PageBody({ spec, manager, multi, onOpen, onClose }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void; onClose: () => void }) {
   const locName = useLocName()
+  const loc = useLocation()
+  const tablet = useViewStore((v) => v.device === "tablet")
   switch (spec.kind) {
+    case "clock": return <ClockPage loc={loc} onClose={onClose} />
     case "locations": return <LocationsPage multi={multi} focus={spec.arg} />
     case "shoutouts": return <div className="flex flex-col gap-3 pt-2">{[0, 1, 2].map((i) => <ACard key={i} h={112}><ALines lines={3} className="pt-1" /></ACard>)}</div>
     case "achievements": return (
@@ -1083,15 +1221,27 @@ function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: b
     case "account": return (
       <div className="flex flex-col gap-1 pt-1">
         <Section title="Availability">
-          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => (
-            <div key={d} className={cn("flex h-14 items-center justify-between px-1", i > 0 && "border-m-divider border-t")}>
-              <span className="text-[16px]">{d}</span>
-              <ABar w={72} h={12} />
+          {tablet ? (
+            // A tablet has the width to lay the week out across: each day's heading with its availability underneath.
+            <div className="grid grid-cols-7">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => (
+                <div key={d} className={cn("flex min-w-0 flex-col items-center gap-2 px-1 py-4", i > 0 && "border-m-divider border-l")}>
+                  <span className="text-[14px] font-medium leading-5">{d}</span>
+                  <ABar w={40} h={12} />
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => (
+              <div key={d} className={cn("flex h-14 items-center justify-between px-1", i > 0 && "border-m-divider border-t")}>
+                <span className="text-[16px]">{d}</span>
+                <ABar w={72} h={12} />
+              </div>
+            ))
+          )}
         </Section>
         <Section title="Your information">
-          {["Personal Information", "Shared Name", "Password & Security", "Tax Information", "Bank Information"].map((l, i) => (
+          {["Personal Information", "Shared Name", "Tax Information", "Bank Information"].map((l, i) => (
             <button key={l} onClick={() => onOpen({ id: l.toLowerCase().replace(/\W+/g, "-"), kind: "generic", title: l })} className={cn("flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5", i > 0 && "border-m-divider border-t")}>
               {l}
               <IconChevronRight size={20} stroke={2} className="text-m-variant" />
@@ -1120,7 +1270,9 @@ function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: b
               <IconChevronRight size={20} stroke={2} className="text-m-variant" />
             </button>
           ))}
+          <button className="border-m-divider text-m-primary flex h-14 w-full items-center border-t px-1 text-left text-[16px] active:bg-black/5">Export to PDF...</button>
         </Section>
+        <button className="mt-2 h-14 w-full px-1 text-left text-[16px] text-[var(--m-error)] active:bg-black/5">Sign out</button>
       </div>
     )
     case "settings": return <SettingsPage manager={manager} onOpen={onOpen} />
@@ -1170,7 +1322,10 @@ export function AndroidApp() {
   const [biz, setBiz] = useState<{ loc: Location; from: Box } | null>(null)
   // Shifts' plus offers two things, like the iOS menu: add a shift or an event.
   const [fabMenu, setFabMenu] = useState(false)
-  const [sheet, setSheet] = useState<null | "requests" | "clock" | "shift" | "event">(null)
+  const [sheet, setSheet] = useState<null | "requests" | "shift" | "event">(null)
+  // The Time page's filters: which sheet is open, and what each has chosen.
+  const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null)
+  const [timeFilters, setTimeFilters] = useState<TimeFilters>({ team: [], issues: [], roles: [] })
   const [stack, setStack] = useState<PageSpec[]>([])
   const goTab = (t: TabId) => { setStack([]); setTab(t) }
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
@@ -1190,6 +1345,7 @@ export function AndroidApp() {
   const added = useRequestsStore((s) => s.added)
   const pending = pendingFor(loc, decided, added).length
   const clock = useClock(loc)
+  const timeClock = useTimeClockStore()
   const { title: clockTitle } = accessoryFor(loc, clock)
   // Employees get the clock as a bar above the navigation on every tab but Messages, like iOS: status plus actions.
   const showClockBar = employee && tab !== "chat" && !rail
@@ -1232,7 +1388,7 @@ export function AndroidApp() {
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => setSheet("clock") }} />}
+      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
       {tab === "chat" && rail && <MessagesSplit key={loc.id} />}
@@ -1240,7 +1396,7 @@ export function AndroidApp() {
         <motion.div key={`${tab}:${loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
           {tab === "home" && (employee ? <HomeEmployee split onOpen={open} /> : <HomeManager multi={userType === "multi"} split onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
           {tab === "shifts" && <ShiftsTab split />}
-          {tab === "time" && <TimeTab split />}
+          {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
       )}
       {!(tab === "chat" && rail) && !(split && tab !== "money") && <motion.div
@@ -1254,7 +1410,7 @@ export function AndroidApp() {
       >
         {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
         {tab === "shifts" && <ShiftsTab />}
-        {tab === "time" && <TimeTab />}
+        {tab === "time" && <TimeTab filters={timeFilters} onFilter={setFilterSheet} />}
         {tab === "money" && <MoneyTab />}
         {tab === "chat" && <MessagesTab />}
       </motion.div>}
@@ -1271,11 +1427,11 @@ export function AndroidApp() {
         plus={rail && tab !== "chat" ? undefined : (plus ?? undefined)}
         onTitle={() => setMenu((m) => !m)}
         onBell={() => setSheet("requests")}
-        onClock={() => setSheet("clock")}
+        onClock={() => open(CLOCK)}
         onProfile={() => open(SETTINGS)}
       />
       {!rail && <NavBar tabs={tabs} tab={tab} onTab={goTab} unread={unread} onAssistant={assistant} />}
-      {showClockBar && <ClockBar title={clockTitle} status={clock.status} bottom={100} onOpen={() => setSheet("clock")} />}
+      {showClockBar && <ClockBar title={clockTitle} status={clock.status} bottom={100} onOpen={() => open(CLOCK)} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}
@@ -1295,13 +1451,21 @@ export function AndroidApp() {
             title={p.title}
             z={40 + i}
             onBack={pop}
-            close={p.kind === "settings"}
+            close={p.kind === "settings" || p.kind === "clock"}
             rise={p.kind === "settings" && !rail}
             bar={p.kind === "team" ? <SearchField /> : undefined}
-            footer={p.kind === "assistant" ? <Composer /> : undefined}
+            footer={
+              p.kind === "assistant" ? <Composer />
+              : p.kind === "clock" && clock.status === "out" ? (
+                <button onClick={() => timeClock.clockIn(loc.id, clock.role ?? loc.employee.timeClock.role)} disabled={!scheduledToday(loc)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
+                  {scheduledToday(loc) ? "Confirm Clock in" : "No shift to clock in to"}
+                </button>
+              )
+              : undefined
+            }
             action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
           >
-            <PageBody spec={p} manager={!employee} multi={multi} onOpen={open} />
+            <PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} />
           </APage>
         ))}
       </AnimatePresence>
@@ -1309,8 +1473,8 @@ export function AndroidApp() {
 
 
       <AnimatePresence>
-        {sheet === "requests" && <RequestsSheet key="requests" multi={multi} side={rail} onClose={() => setSheet(null)} />}
-        {sheet === "clock" && <ClockSheet key="clock" loc={loc} dialog={rail} onClose={() => setSheet(null)} />}
+        {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} side={rail} value={timeFilters[filterSheet]} onApply={(v) => { setTimeFilters((f) => ({ ...f, [filterSheet]: v })); setFilterSheet(null) }} onClose={() => setFilterSheet(null)} />}
+        {sheet === "requests" && <RequestsSheet key="requests" loc={loc} multi={multi} side={rail} onClose={() => setSheet(null)} />}
         {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
         {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
       </AnimatePresence>

@@ -9,18 +9,22 @@ import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import type { Location, RequestItem } from "@/data/locations"
 import { requestsFor, useRequestsStore } from "@/store/useRequestsStore"
+import { LOCATIONS } from "@/data/locations"
+import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { useStructure } from "@/store/useViewStore"
 import { WireList } from "@/components/wire/Wire"
 
-type FilterId = "team" | "mine" | "business" | "archive"
+/** This location's requests (named for it), yours, every location's for people who can switch location, and the archive last. */
+type FilterId = "location" | "mine" | "archive" | "all"
 
 /** The exact icons from the Figma file, exported as SVG (UserGroup, User, Storefront, SF Symbol `tray`). */
-const FILTERS: { id: FilterId; label: string; icon: string }[] = [
-  { id: "team", label: "Team", icon: "/phone/req-team.svg" },
-  { id: "mine", label: "Mine", icon: "/phone/req-user.svg" },
-  { id: "business", label: "Business", icon: "/phone/req-store.svg" },
-  { id: "archive", label: "Archive", icon: "/phone/req-tray.svg" },
-]
+const ICONS: Record<FilterId, string> = {
+  location: "/phone/req-store.svg",
+  mine: "/phone/req-user.svg",
+  archive: "/phone/req-tray.svg",
+  all: "/phone/req-team.svg",
+}
+type FilterDef = { id: FilterId; label: string }
 
 /** A single-color SVG recolored through its alpha, so one file serves the selected and idle states. */
 function Icon({ src, size, color }: { src: string; size: number; color: string }) {
@@ -46,10 +50,11 @@ function Icon({ src, size, color }: { src: string; size: number; color: string }
 }
 
 /** Filter chips. The selected one grows to show its label (Figma: brand pill + 3 icon-only 60pt chips). */
-function Filters({ value, onChange, counts }: { value: FilterId; onChange: (v: FilterId) => void; counts: Record<FilterId, number> }) {
+function Filters({ filters, value, onChange, counts }: { filters: FilterDef[]; value: FilterId; onChange: (v: FilterId) => void; counts: Record<FilterId, number> }) {
   return (
     <div role="tablist" className="flex gap-2 pt-[10px]">
-      {FILTERS.map(({ id, label, icon }) => {
+      {filters.map(({ id, label }) => {
+        const icon = ICONS[id]
         const active = id === value
         return (
           <motion.button
@@ -158,35 +163,42 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).slice(0, 2
  */
 export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
   const locName = useLocName()
-  const [filter, setFilter] = useState<FilterId>("team")
+  const [filter, setFilter] = useState<FilterId>("location")
+  const canAll = useUserTypeStore((s) => canSwitchLocation(s.type))
   const decided = useRequestsStore((s) => s.decided)
   const decide = useRequestsStore((s) => s.decide)
   const added = useRequestsStore((s) => s.added)
   const addRequest = useRequestsStore((s) => s.addRequest)
-  const all = requestsFor(loc, added)
 
   // "Add request": a fresh pending request in the current tab, from a teammate at THIS location.
   const add = () => {
     const n = (added[loc.id] ?? []).length
-    const scope: RequestItem["scope"] = filter === "mine" || filter === "business" ? filter : "team"
+    const scope: RequestItem["scope"] = filter === "mine" ? "mine" : "team"
     const me = scope === "mine"
     const who = me ? "Bryce Lewis" : loc.team[n % loc.team.length].name
-    const t = TEMPLATES[(n + (scope === "business" ? 2 : 0)) % TEMPLATES.length]
+    const t = TEMPLATES[n % TEMPLATES.length]
     addRequest(loc.id, { id: `${loc.id}-add-${n}`, scope, initials: initialsOf(who), who, title: t.title, detail: t.detail, time: me ? "Pending" : "Just now" })
-    if (filter === "archive") setFilter("team")
+    if (filter === "archive") setFilter("location")
   }
 
-  const undecided = (scope: RequestItem["scope"]) => all.filter((r) => r.scope === scope && !decided[r.id])
-  const archive = all.filter((r) => decided[r.id])
-  const lists: Record<FilterId, RequestItem[]> = {
-    team: undecided("team"),
-    mine: all.filter((r) => r.scope === "mine"),
-    business: undecided("business"),
-    archive,
+  type Entry = { r: RequestItem; loc: Location }
+  const entriesOf = (l: Location): Entry[] => requestsFor(l, added).map((r) => ({ r, loc: l }))
+  const here = entriesOf(loc)
+  const waiting = (es: Entry[]) => es.filter((e) => e.r.scope !== "mine" && !decided[e.r.id])
+  const lists: Record<FilterId, Entry[]> = {
+    location: waiting(here),
+    mine: here.filter((e) => e.r.scope === "mine"),
+    archive: here.filter((e) => decided[e.r.id]),
+    all: waiting(LOCATIONS.flatMap(entriesOf)),
   }
-  const counts = { team: lists.team.length, mine: lists.mine.length, business: lists.business.length, archive: lists.archive.length }
+  const counts = { location: lists.location.length, mine: lists.mine.length, archive: lists.archive.length, all: lists.all.length }
   const items = lists[filter]
-  const business = locName(loc)
+  const filters: FilterDef[] = [
+    { id: "location", label: locName(loc) },
+    { id: "mine", label: "Mine" },
+    ...(canAll ? [{ id: "all" as const, label: "All locations" }] : []),
+    { id: "archive", label: "Archive" },
+  ]
   const wire = useStructure()
 
   return (
@@ -205,7 +217,7 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
       edgeBlur={{ top: { strength: 16, steps: 5, height: 84 }, bottom: false }}
     >
       <div className="px-4 pt-[10px]">
-        <Filters value={filter} onChange={setFilter} counts={counts} />
+        <Filters filters={filters} value={filter} onChange={setFilter} counts={counts} />
 
         {/* One white container, a row per request. */}
         {wire && <WireList rows={4} className="mt-4" />}
@@ -216,14 +228,14 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
               <span className="text-[17px] leading-6 tracking-[-0.43px]">{filter === "archive" ? "Nothing archived yet" : "All caught up"}</span>
             </div>
           ) : (
-            items.map((r, i) => (
+            items.map(({ r, loc: rl }, i) => (
               <div key={r.id}>
                 {/* The divider spans just the button row's width: in 16 + 40 avatar + 12 gap on the left, 16 on the right. */}
                 {i > 0 && <div aria-hidden className="ml-[68px] mr-4 border-t border-[#ebebeb]" />}
                 <RequestCard
                   r={r}
                   beforeDivider={i < items.length - 1}
-                  business={business}
+                  business={locName(rl)}
                   status={decided[r.id]}
                   onDecide={filter === "mine" || filter === "archive" ? undefined : (d) => decide(r.id, d)}
                 />

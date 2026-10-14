@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, IconCoffee, IconSearch, IconSpeakerphone, IconUsers, IconUsersGroup } from "@tabler/icons-react"
+import { IconBriefcase, IconFilter, IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, IconCoffee, IconSearch, IconSpeakerphone, IconUsers, IconUsersGroup } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
+import type { FilterKind, TimeFilters } from "@/components/ios/TimeFilterSheet"
 import { GlassChip } from "@/components/ios/GlassChip"
 import { Card, Initials, ListRow, SectionHeader } from "@/components/ios/list"
 import { roleColor } from "@/lib/roleColor"
@@ -232,7 +233,7 @@ function ShiftDetail({ row: r, loc, date }: { row: Row; loc: Location; date: Dat
 }
 
 /** Time (formerly Timesheets): a Day / Pay period segmented control, filter chips, and the timesheets needing review. */
-export function TimePage({ loc, split }: { loc: Location; /** Two columns (iPad landscape): the day's timesheets on the left, the pay period on the right. */ split?: boolean }) {
+export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilters; onFilter: (k: FilterKind) => void; loc: Location; /** Two columns (iPad landscape): the day's timesheets on the left, the pay period on the right. */ split?: boolean }) {
   const date = useDateStore((s) => s.date)
   const storedView = useDateStore((s) => s.timeView)
   // Split view shows both, so the Day / Pay period choice doesn't apply.
@@ -240,10 +241,16 @@ export function TimePage({ loc, split }: { loc: Location; /** Two columns (iPad 
   const setView = useDateStore((s) => s.setTimeView)
   const [resolved, setResolved] = useState<Record<string, boolean>>({})
   const [open, setOpen] = useState(true)
-  const [role, setRole] = useState("all")
-  const [roleMenu, setRoleMenu] = useState<HTMLElement | null>(null)
-  const roles = Array.from(new Set(loc.timesheets.map((t) => t.role)))
-  const pending = loc.timesheets.filter((t) => !resolved[t.id] && (role === "all" || t.role === role))
+  // Each filter narrows the list when it has anything chosen; an empty one lets everything through.
+  const pending = loc.timesheets.filter(
+    (t) =>
+      !resolved[t.id] &&
+      (!filters.roles.length || filters.roles.includes(t.role)) &&
+      (!filters.team.length || filters.team.includes(t.name)) &&
+      (!filters.issues.length || t.issues.some((i) => filters.issues.includes(i))),
+  )
+  const active = (k: FilterKind) => filters[k].length > 0
+  const count = (k: FilterKind) => (filters[k].length ? ` ${filters[k].length}` : "")
   const p = loc.payroll
   const wire = useStructure()
   const main = (
@@ -254,20 +261,25 @@ export function TimePage({ loc, split }: { loc: Location; /** Two columns (iPad 
           them (the glass shadow reaches ~23px below) and cancel the padding with negative margins. */}
       <div className="-mx-4 -mb-3 -mt-3 flex gap-2 overflow-x-auto px-4 pb-7 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Search is just an icon: a square glass chip. */}
-        <GlassChip ariaLabel="Search team members" className="w-8 px-0">
-          <IconSearch size={18} stroke={1.75} />
-        </GlassChip>
-        <GlassChip>
+        {/* Each filter is an icon, a label and a filter mark, and opens a full-height sheet of options. */}
+        <GlassChip active={active("team")} onClick={() => onFilter("team")}>
           <span className="flex items-center gap-[6px]">
-            <IconAlertHexagonFilled size={18} />
-            Issues
+            <IconSearch size={18} stroke={1.75} />
+            {`Team Members${count("team")}`}
           </span>
         </GlassChip>
-        {/* Filters the timesheets by role: a pull-down; the chip takes the role's name once one is chosen. */}
-        <GlassChip active={role !== "all"} onClick={(e) => setRoleMenu(e.currentTarget)}>
-          <span className="flex items-center gap-1">
-            {role === "all" ? "Roles" : role}
-            <IconSelector size={14} stroke={2.5} />
+        <GlassChip active={active("issues")} onClick={() => onFilter("issues")}>
+          <span className="flex items-center gap-[6px]">
+            <IconAlertHexagonFilled size={18} />
+            {`Issues${count("issues")}`}
+            <IconFilter size={16} stroke={2} />
+          </span>
+        </GlassChip>
+        <GlassChip active={active("roles")} onClick={() => onFilter("roles")}>
+          <span className="flex items-center gap-[6px]">
+            <IconBriefcase size={18} stroke={1.75} />
+            {`Roles${count("roles")}`}
+            <IconFilter size={16} stroke={2} />
           </span>
         </GlassChip>
         {!split && (
@@ -276,14 +288,6 @@ export function TimePage({ loc, split }: { loc: Location; /** Two columns (iPad 
           </GlassChip>
         )}
       </div>
-
-      <ContextMenu
-        anchor={roleMenu}
-        items={[{ id: "all", label: "All roles" }, ...roles.map((r) => ({ id: r, label: r }))]}
-        selectedId={role}
-        onSelect={setRole}
-        onClose={() => setRoleMenu(null)}
-      />
 
       {view === "day" ? (
         <>

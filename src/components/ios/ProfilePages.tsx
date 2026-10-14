@@ -1,9 +1,9 @@
 import { HomePage } from "@/pages/HomePages"
-import { useLocName } from "@/store/useViewStore"
+import { useLocName, useViewStore } from "@/store/useViewStore"
 import { useStructure } from "@/store/useViewStore"
 import { WireCard, WireList, WireValue } from "@/components/wire/Wire"
 import { useState, type ComponentType, useEffect } from "react"
-import { IconBan, IconCheck, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled, IconStarFilled } from "@tabler/icons-react"
+import { IconBan, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled, IconStarFilled } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { GlassChip } from "@/components/ios/GlassChip"
 import { Card, GroupFooter, GroupLabel, Initials, ListRow, SectionHeader, Switch } from "@/components/ios/list"
@@ -164,7 +164,6 @@ export type PageId =
   | "education"
   | "certifications"
   | "team"
-  | "tasks"
   | "payroll"
   | "locations"
   | "calendar"
@@ -208,12 +207,33 @@ function Account({ loc, onOpen }: PageProps) {
   const [editing, setEditing] = useState(false)
   const name = usePersonStore((p) => p.name)
   const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const tablet = useViewStore((s) => s.device === "tablet")
   return (
     <div className="flex flex-col gap-4">
       <div>
         <SectionHeader action={editing ? "Done" : "Edit"} onAction={() => setEditing((e) => !e)}>
           Availability
         </SectionHeader>
+        {tablet ? (
+          // A tablet has the width to lay the week out across: each day's heading with its availability underneath.
+          <Card className="grid grid-cols-7 overflow-hidden tracking-[-0.43px]">
+            {DAYS.map((d, i) => {
+              const Cell = editing ? "button" : "div"
+              return (
+                <Cell
+                  key={d}
+                  onClick={editing ? () => setDays((all) => all.map((v, j) => (j === i ? NEXT[v.kind] : v))) : undefined}
+                  className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-4 text-center", i > 0 && "border-l border-[#ebebeb]", editing && "active:bg-black/[0.04]")}
+                >
+                  <span className="text-[15px] font-[590] leading-5 text-[#2c2935]">{d.slice(0, 3)}</span>
+                  <span className="flex flex-col items-center text-[13px] leading-[18px] text-[#5a5666]">
+                    <AvailabilityValue a={days[i]} />
+                  </span>
+                </Cell>
+              )
+            })}
+          </Card>
+        ) : (
         <Card className="overflow-hidden">
           {DAYS.map((d, i) => (
             <ListRow
@@ -226,6 +246,7 @@ function Account({ loc, onOpen }: PageProps) {
             />
           ))}
         </Card>
+        )}
         {editing && <GroupFooter>Tap a day to change it.</GroupFooter>}
       </div>
 
@@ -234,7 +255,6 @@ function Account({ loc, onOpen }: PageProps) {
       <Card className="overflow-hidden">
         <ListRow first chevron onClick={() => onOpen?.("personal")} title="Personal Information" trailing={<WireValue>{name}</WireValue>} />
         <ListRow chevron onClick={() => undefined} title="Shared Name" trailing={<WireValue>{name}</WireValue>} />
-        <ListRow chevron onClick={() => onOpen?.("security")} title="Password & Security" />
         <ListRow chevron onClick={() => onOpen?.("tax")} title="Tax Information" />
         <ListRow chevron onClick={() => onOpen?.("bank")} title="Bank Information" />
       </Card>
@@ -437,42 +457,6 @@ function Team({ loc, query = "" }: PageProps) {
           </div>
         ))}
       </Card>}
-    </div>
-  )
-}
-
-function Tasks({ loc }: PageProps) {
-  // Local, per-location toggles seeded from the data.
-  const [done, setDone] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(loc.tasks.map((t) => [t.id, t.done])),
-  )
-  const count = Object.values(done).filter(Boolean).length
-  if (useStructure()) return <WireList rows={4} avatar={false} trailing />
-  return (
-    <div>
-      <GroupLabel>{`${count} of ${loc.tasks.length} done`}</GroupLabel>
-      <Card className="overflow-hidden">
-        {loc.tasks.map((t, i) => (
-          <ListRow
-            key={t.id}
-            first={i === 0}
-            onClick={() => setDone((d) => ({ ...d, [t.id]: !d[t.id] }))}
-            leading={
-              <span
-                className={cn(
-                  "flex size-6 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150",
-                  done[t.id] ? "border-[#8f55e5] bg-[#8f55e5]" : "border-[#c7c7cc]",
-                )}
-              >
-                {done[t.id] && <IconCheck size={14} stroke={3} className="text-white" />}
-              </span>
-            }
-            title={t.title}
-            titleClassName={done[t.id] ? "text-[#928fa0] line-through" : undefined}
-            trailing={<span className="text-[15px]">{t.due}</span>}
-          />
-        ))}
-      </Card>
     </div>
   )
 }
@@ -729,7 +713,6 @@ export const PAGES: Record<PageId, { title: string; Component: ComponentType<Pag
   education: { title: "Education", Component: Education, action: "edit" },
   certifications: { title: "Certifications", Component: Certifications, action: "edit" },
   team: { title: "Team", Component: Team },
-  tasks: { title: "Task Manager", Component: Tasks },
   payroll: { title: "Payroll", Component: Payroll },
   locations: { title: "Locations", Component: Locations },
   calendar: { title: "Calendar Sync", Component: Calendar },

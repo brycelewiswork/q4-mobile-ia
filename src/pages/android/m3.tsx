@@ -71,11 +71,12 @@ export function AList({ rows = 3, avatar = true, trailing = false, onRow, select
 }
 
 /** A navigation row for Settings: icon, label, and nothing else. */
-export function ARow({ icon, label, onClick }: { icon: ReactNode; label: string; onClick?: () => void }) {
+export function ARow({ icon, label, onClick, trailing }: { icon: ReactNode; label: string; onClick?: () => void; /** A status at the end of the row (e.g. "Not Connected"). */ trailing?: ReactNode }) {
   return (
     <button onClick={onClick} className="text-m-on-surface flex h-14 w-full items-center gap-4 px-1 text-left active:bg-black/5">
       <span className="text-m-variant flex size-6 items-center justify-center">{icon}</span>
       <span className="flex-1 text-[16px] leading-6">{label}</span>
+      {trailing && <span className="text-m-variant text-[14px] leading-5">{trailing}</span>}
     </button>
   )
 }
@@ -117,10 +118,13 @@ export function AChips({ children }: { children: ReactNode }) {
 }
 
 /** Seven days, Monday first. The selected day is a filled circle; tapping sets the shared date. */
-function WeekRow({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+const DateLabel = ({ label }: { label?: string }) => (label ? <p className="text-m-on-surface pt-2 text-center text-[17px] font-medium leading-6">{label}</p> : null)
+
+function WeekRow({ date, onPick, dots, label }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean; label?: string }) {
   const mon = mondayOf(date)
   return (
-    <div className="flex justify-between pb-2 pt-1">
+    <div className="pb-2 pt-1">
+    <div className="flex justify-between">
       {Array.from({ length: 7 }, (_, i) => {
         const d = addDays(mon, i)
         const on = sameDay(d, date)
@@ -132,6 +136,8 @@ function WeekRow({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void
           </button>
         )
       })}
+    </div>
+    <DateLabel label={label} />
     </div>
   )
 }
@@ -162,7 +168,7 @@ export function AFab({ label, icon, extended, onClick }: { label: string; icon: 
 }
 
 /** Modal bottom sheet: scrim, drag handle, rounded top corners. */
-export function ASheet({ title, onClose, full, children }: { title: string; onClose: () => void; /** Rise to full height, just under the status bar, instead of sizing to the content. */ full?: boolean; children: ReactNode }) {
+export function ASheet({ title, onClose, full, footer, children }: { title: string; onClose: () => void; /** Pinned under the scrolling content (e.g. filter actions). */ footer?: ReactNode; /** Rise to full height, just under the status bar, instead of sizing to the content. */ full?: boolean; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", onKey)
@@ -188,6 +194,7 @@ export function ASheet({ title, onClose, full, children }: { title: string; onCl
         <span aria-hidden className="bg-m-variant mx-auto mt-3 h-1 w-8 shrink-0 rounded-full opacity-40" />
         <h2 className="shrink-0 px-6 pb-2 pt-4 text-[22px] font-normal leading-7">{title}</h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+        {footer && <div className="shrink-0 px-4 pt-3">{footer}</div>}
       </motion.div>
     </div>
   )
@@ -317,7 +324,7 @@ export function ADialog({ title, onClose, children }: { title: string; onClose: 
  * M3 modal side sheet: slides in from the end edge over a scrim, a headline with a close button, secondary content
  * below. For wide screens, where a bottom sheet would sprawl across the whole width.
  */
-export function ASideSheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function ASideSheet({ title, onClose, footer, children }: { title: string; onClose: () => void; footer?: ReactNode; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", onKey)
@@ -343,13 +350,14 @@ export function ASideSheet({ title, onClose, children }: { title: string; onClos
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+        {footer && <div className="shrink-0 px-4 pb-4 pt-1">{footer}</div>}
       </motion.aside>
     </div>
   )
 }
 
 /** The whole month, always showing: what a tablet has the room for instead of a week. */
-function MonthGrid({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+function MonthGrid({ date, onPick, dots, label }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean; label?: string }) {
   const [month, setMonth] = useState(() => new Date(date.getFullYear(), date.getMonth(), 1))
   useEffect(() => {
     setMonth((m) => (m.getFullYear() === date.getFullYear() && m.getMonth() === date.getMonth() ? m : new Date(date.getFullYear(), date.getMonth(), 1)))
@@ -382,12 +390,25 @@ function MonthGrid({ date, onPick, dots }: { date: Date; onPick: (d: Date) => vo
           })}
         </div>
       ))}
+      <DateLabel label={label} />
     </div>
   )
 }
 
 /** Seven days on a phone, the whole month on a tablet. */
-export function WeekStrip(props: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+export function WeekStrip(props: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean; /** The date (or range) the strip is showing, written out underneath: a day on Shifts, a day or a pay period on Time. */ label?: string }) {
   const tablet = useViewStore((s) => s.device === "tablet")
   return tablet ? <MonthGrid {...props} /> : <WeekRow {...props} />
+}
+
+/** A filter option: a label (and anything leading it) with a checkbox at the end. */
+export function ACheckRow({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+  return (
+    <button role="checkbox" aria-checked={checked} onClick={() => onChange(!checked)} className="border-m-divider flex min-h-14 w-full items-center gap-4 border-t px-1 text-left text-[16px] first:border-t-0 active:bg-black/5">
+      <span className="flex min-w-0 flex-1 items-center gap-4">{children}</span>
+      <span className={cn("flex size-[18px] shrink-0 items-center justify-center rounded-[2px] border-2", checked ? "bg-m-primary border-transparent" : "border-m-outline")}>
+        {checked && <IconCheck size={14} stroke={3} className="text-m-on-primary" />}
+      </span>
+    </button>
+  )
 }
