@@ -13,8 +13,8 @@ export type UserType = "employee" | "oam" | "multi"
 
 export const USER_TYPES: { id: UserType; label: string }[] = [
   { id: "employee", label: "Employee" },
-  { id: "oam", label: "Owner / Manager" },
-  { id: "multi", label: "Multiple locations" },
+  { id: "oam", label: "OAM" },
+  { id: "multi", label: "Multi-location" },
 ]
 
 /** Whether this kind of user can switch location. Only a single-location owner/manager can't. */

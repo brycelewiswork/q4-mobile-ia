@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react"
 import { DeviceShell } from "@/components/DeviceShell"
+import { DeviceControls } from "@/components/DeviceControls"
 import { SCREENS, oriented, useMediaQuery } from "@/lib/device"
 import { useViewStore } from "@/store/useViewStore"
 
@@ -79,6 +80,7 @@ export function AndroidFrame({ children, header, footer }: { children: ReactNode
         screenClass="android-screen bg-m-surface"
         screenStyle={screenStyle}
         header={header}
+      controls={<DeviceControls />}
         footer={footer}
         art={
           <div
@@ -111,6 +113,7 @@ export function AndroidFrame({ children, header, footer }: { children: ReactNode
       screenClass={land ? "bg-m-surface" : "android-screen bg-m-surface"}
       screenStyle={land ? {} : screenStyle}
       header={header}
+      controls={<DeviceControls />}
       footer={footer}
       art={
         // A soft shadow shaped like the phone's outer silhouette, hidden under the phone.

@@ -6,6 +6,7 @@ import { IconCheck, IconChecklist, IconPencil, IconUsers } from "@tabler/icons-r
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
+import { ACHIEVEMENTS, ACHIEVEMENTS_MORE, AchievementBadge } from "@/components/AchievementBadge"
 import { PAGES, type PageId } from "@/components/ios/ProfilePages"
 import { SearchBar } from "@/components/ios/SearchBar"
 import { Sheet } from "@/components/ios/Sheet"
@@ -82,6 +83,27 @@ function ShoutoutCard({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
         )}
       </div>
     </Card>
+    </button>
+  )
+}
+
+function AchievementsCard({ onOpen }: { onOpen: () => void }) {
+  const wire = useStructure()
+  return (
+    <button onClick={onOpen} aria-label="Open achievements" className="block w-full text-left active:opacity-80">
+      <Card className="flex h-[228px] flex-col overflow-hidden p-4 tracking-[-0.43px]">
+        <p className="text-[14px] leading-5 text-[#2c2935]">Achievements</p>
+        <div className="flex flex-1 items-center justify-between">
+          {ACHIEVEMENTS.map((a) => (
+            <AchievementBadge key={a.name} value={a.count} tone={a.tone} empty={wire} size={56} />
+          ))}
+          <AchievementBadge value={`${ACHIEVEMENTS_MORE}+`} tone="grey" empty={wire} size={56} />
+        </div>
+        <div className="flex h-11 items-center justify-between border-t border-black/10 pt-1 text-[#8f55e5]">
+          {wire ? <Bar w={120} h={12} /> : <span className="text-[17px] font-[590] leading-[22px]">See all achievements</span>}
+          <Chevron />
+        </div>
+      </Card>
     </button>
   )
 }
@@ -264,7 +286,6 @@ const ACCOUNT_ROWS: Row[] = [
   { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
   { icon: "/phone/row-calendar.svg", label: "Calendar Sync", trailing: "Not Connected", page: "calendar" },
   { icon: "/phone/row-bell.svg", label: "Notifications & Alerts", page: "notifications" },
-  { icon: "/phone/row-lock.svg", label: "Password & Security", page: "security" },
   { icon: "/phone/row-help.svg", label: "Support", page: "support" },
 ]
 
@@ -286,6 +307,7 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
     { key: "pin", label: "PIN card", node: <PinCard loc={loc} /> },
     { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} onOpen={() => onOpen("shoutouts")} /> },
     { key: "stats", label: "Stats", node: <StatsCard loc={loc} onOpen={() => onOpen("stats")} /> },
+    { key: "achievements", label: "Achievements", node: <AchievementsCard onOpen={() => onOpen("achievements")} /> },
   ]
 
   return (
@@ -393,7 +415,7 @@ export function ProfileSheet({ loc, inline, onClose }: { loc: Location; /** Fill
       inline={inline}
       title={page ? PAGES[page].title : "Settings"}
       onClose={onClose}
-      onBack={page ? () => go({ page: page === "personal" || page === "resume" ? "account" : null, dir: "pop" }) : undefined}
+      onBack={page ? () => go({ page: page === "personal" || page === "experience" || page === "education" || page === "certifications" || page === "security" || page === "tax" || page === "bank" ? "account" : null, dir: "pop" }) : undefined}
       action={
         page && PAGES[page].action === "edit" ? (
           <LiquidGlass mode="small" accent="#8f55e5" radius={999} className="absolute right-4 top-4 flex size-11 items-center justify-center">

@@ -118,6 +118,8 @@ export type Location = {
     accessory: { title: string; subtitle: string }
     /** Half sheet opened from the accessory. */
     timeClock: { shift: string; role: string; roles: string[] }
+    /** What this person is paid at this location. */
+    rate: string
   }
 }
 
@@ -293,6 +295,7 @@ export const LOCATIONS: Location[] = [
       shiftmates: { photos: [0, 1, 2, 3], extra: 4 },
       accessory: { title: "On the clock", subtitle: "Off at 2pm" },
       timeClock: { shift: "8:30 AM – 2:00 PM", role: "Front desk", roles: ["Front desk", "Floor lead", "Trainer"] },
+      rate: "$18.50 / hr",
     },
   },
   {
@@ -419,6 +422,7 @@ export const LOCATIONS: Location[] = [
       shiftmates: { photos: [1, 3], extra: 0 },
       accessory: { title: "Not clocked in", subtitle: "Shift starts at 12pm" },
       timeClock: { shift: "12:00 PM – 8:00 PM", role: "Counter", roles: ["Counter", "Baker", "Barista"] },
+      rate: "$17.25 / hr",
     },
   },
   {
@@ -560,6 +564,7 @@ export const LOCATIONS: Location[] = [
       shiftmates: { photos: [2, 3, 0], extra: 7 },
       accessory: { title: "On the clock", subtitle: "Lunch at 12:30pm" },
       timeClock: { shift: "8:00 AM – 4:00 PM", role: "Floor lead", roles: ["Floor lead", "Front desk", "Trainer"] },
+      rate: "$19.00 / hr",
     },
   },
 ]

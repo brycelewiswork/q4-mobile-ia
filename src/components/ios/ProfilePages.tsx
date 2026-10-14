@@ -2,7 +2,7 @@ import { HomePage } from "@/pages/HomePages"
 import { useLocName } from "@/store/useViewStore"
 import { useStructure } from "@/store/useViewStore"
 import { WireCard, WireList, WireValue } from "@/components/wire/Wire"
-import { useState, type ComponentType } from "react"
+import { useState, type ComponentType, useEffect } from "react"
 import { IconBan, IconCheck, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled, IconStarFilled } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { GlassChip } from "@/components/ios/GlassChip"
@@ -10,6 +10,7 @@ import { Card, GroupFooter, GroupLabel, Initials, ListRow, SectionHeader, Switch
 import { LOCATIONS, type Availability, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { usePersonStore, type Person } from "@/store/usePersonStore"
+import { ACHIEVEMENTS, ACHIEVEMENTS_MORE, AchievementBadge } from "@/components/AchievementBadge"
 import { cn } from "@/lib/utils"
 
 const ROUNDED = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif'
@@ -41,6 +42,37 @@ function Shoutouts({ loc }: PageProps) {
 }
 
 /** Stats: the headline numbers up top, then every figure in a labelled group. */
+/** Every achievement: the badge, what it's for, and how many times you've earned it. */
+function Achievements() {
+  const wire = useStructure()
+  if (wire) {
+    return (
+      <div className="flex flex-col gap-4 pb-6">
+        <div className="grid grid-cols-4 gap-3">
+          {Array.from({ length: 8 }, (_, i) => <AchievementBadge key={i} value="" empty size={72} className="mx-auto" />)}
+        </div>
+        <WireList rows={4} />
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-4 pb-6 tracking-[-0.43px]">
+      <Card className="flex items-center justify-between p-4">
+        {ACHIEVEMENTS.map((a) => <AchievementBadge key={a.name} value={a.count} tone={a.tone} size={56} />)}
+        <AchievementBadge value={`${ACHIEVEMENTS_MORE}+`} tone="grey" size={56} />
+      </Card>
+      <section>
+        <GroupLabel>Earned</GroupLabel>
+        <Card className="overflow-hidden">
+          {ACHIEVEMENTS.map((a, i) => (
+            <ListRow key={a.name} first={i === 0} leading={<AchievementBadge value={a.count} tone={a.tone} size={44} />} title={a.name} subtitle={a.blurb} />
+          ))}
+        </Card>
+      </section>
+    </div>
+  )
+}
+
 function Stats({ loc }: PageProps) {
   const wire = useStructure()
   const s = loc.profile.stats
@@ -128,7 +160,9 @@ function TimeOff({ loc }: PageProps) {
 export type PageId =
   | "account"
   | "personal"
-  | "resume"
+  | "experience"
+  | "education"
+  | "certifications"
   | "team"
   | "tasks"
   | "payroll"
@@ -136,10 +170,13 @@ export type PageId =
   | "calendar"
   | "notifications"
   | "security"
+  | "tax"
+  | "bank"
   | "support"
   | "earnings"
   | "shoutouts"
   | "stats"
+  | "achievements"
   | "timeoff"
 
 type PageProps = { loc: Location; editing?: boolean; arg?: string; /** The Team page's search text (the field is pinned to the sheet's bottom). */ query?: string; onOpen?: (p: PageId, arg?: string) => void }
@@ -192,22 +229,47 @@ function Account({ loc, onOpen }: PageProps) {
         {editing && <GroupFooter>Tap a day to change it.</GroupFooter>}
       </div>
 
+      <div>
+      <SectionHeader>Your information</SectionHeader>
       <Card className="overflow-hidden">
         <ListRow first chevron onClick={() => onOpen?.("personal")} title="Personal Information" trailing={<WireValue>{name}</WireValue>} />
         <ListRow chevron onClick={() => undefined} title="Shared Name" trailing={<WireValue>{name}</WireValue>} />
+        <ListRow chevron onClick={() => onOpen?.("security")} title="Password & Security" />
+        <ListRow chevron onClick={() => onOpen?.("tax")} title="Tax Information" />
+        <ListRow chevron onClick={() => onOpen?.("bank")} title="Bank Information" />
       </Card>
-
-      <Card className="overflow-hidden">
-        <ListRow first chevron onClick={() => undefined} title="Tax & Bank Information" />
-        <ListRow chevron onClick={() => onOpen?.("resume")} title="Resume" />
-      </Card>
+      </div>
 
       <div>
-        <SectionHeader>Locations</SectionHeader>
+        <SectionHeader>Where you work</SectionHeader>
+        {/* View only: each place you work, your role there, what you're paid and your PIN. */}
         <Card className="overflow-hidden">
           {LOCATIONS.filter((l) => multi || l.id === loc.id).map((l, i) => (
-            <ListRow key={l.id} first={i === 0} chevron onClick={() => onOpen?.("locations")} title={locName(l)} />
+            <ListRow
+              key={l.id}
+              first={i === 0}
+              title={locName(l)}
+              subtitle={l.employee.timeClock.role}
+              trailing={
+                <span className="flex flex-col items-end gap-[2px]">
+                  <span className="text-[17px] leading-[22px] text-black"><WireValue w={64}>{l.employee.rate}</WireValue></span>
+                  <span className="text-[15px] leading-5 text-[#8e8e93]"><WireValue w={44}>{`PIN ${l.profile.pin}`}</WireValue></span>
+                </span>
+              }
+            />
           ))}
+        </Card>
+      </div>
+
+      <div>
+        <SectionHeader>Resume</SectionHeader>
+        <Card className="overflow-hidden">
+          <ListRow first chevron onClick={() => onOpen?.("experience")} title="Experience" />
+          <ListRow chevron onClick={() => onOpen?.("education")} title="Education" />
+          <ListRow chevron onClick={() => onOpen?.("certifications")} title="Certifications" />
+          <button className="flex h-[52px] w-full items-center border-t border-[#ebebeb] px-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-[#8f55e5] active:bg-black/[0.04]">
+            Export to PDF...
+          </button>
         </Card>
       </div>
 
@@ -289,19 +351,23 @@ function PersonalInformation({ editing }: PageProps) {
   )
 }
 
-/** Opens from the "Resume" row on Account Settings. */
-function Resume({ editing }: PageProps) {
+/** Opens from the "Resume" row on Account. */
+/** One part of the resume, on its own page: what's there, editable, and a way to add more. */
+function ResumeSection({ editing, label, k, add }: { editing?: boolean; label: string; k: "experience" | "education" | "certifications"; add: string }) {
   return (
-    <Card className="overflow-hidden">
-      <Field editing={editing} first label="Experience" k="experience" />
-      <Field editing={editing} label="Certifications" k="certifications" />
-      <Field editing={editing} label="Education" k="education" />
-      <button className="flex h-[52px] w-full items-center border-t border-[#ebebeb] px-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-[#8f55e5] active:bg-black/[0.04]">
-        Export to PDF...
-      </button>
-    </Card>
+    <div className="flex flex-col gap-4">
+      <Card className="overflow-hidden">
+        <Field editing={editing} first label={label} k={k} />
+      </Card>
+      <Card className="overflow-hidden">
+        <ListRow first chevron onClick={() => undefined} title={add} titleClassName="text-[#8f55e5]" />
+      </Card>
+    </div>
   )
 }
+const Experience = ({ editing }: PageProps) => <ResumeSection editing={editing} label="Experience" k="experience" add="Add experience" />
+const Education = ({ editing }: PageProps) => <ResumeSection editing={editing} label="Education" k="education" add="Add education" />
+const Certifications = ({ editing }: PageProps) => <ResumeSection editing={editing} label="Certifications" k="certifications" add="Add certification" />
 
 /** The Team list: who works here, with a call and a message button. Search is pinned to the sheet's bottom. */
 function Team({ loc, query = "" }: PageProps) {
@@ -462,7 +528,7 @@ function Payroll({ loc }: PageProps) {
  * Every location the user works at, on one page — not tied to the business selected on Home. Each is its own
  * card: the name and PIN, then that location's own clock-in settings.
  */
-function Locations() {
+function Locations({ arg }: PageProps) {
   const locName = useLocName()
   const wire = useStructure()
   const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
@@ -471,16 +537,27 @@ function Locations() {
   const [editing, setEditing] = useState<string | null>(null)
   const get = (id: string) => on[id] ?? { mobile: true, geofence: false }
   const set = (id: string, patch: Partial<{ mobile: boolean; geofence: boolean }>) => setOn((o) => ({ ...o, [id]: { ...get(id), ...patch } }))
+  // Opened from one location's row on Account: scroll to that location's card and flash it.
+  const [flash, setFlash] = useState<string | null>(arg ?? null)
+  useEffect(() => {
+    if (!arg) return
+    const t1 = window.setTimeout(() => document.querySelector(`[data-location="${arg}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 420)
+    const t2 = window.setTimeout(() => setFlash(null), 1800)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [arg])
   return (
     <div className="flex flex-col gap-2">
       {LOCATIONS.filter((_, i) => multi || i === 0).map((l) => {
         const isEditing = editing === l.id
         return (
-          <section key={l.id}>
+          <section key={l.id} data-location={l.id} className="scroll-mt-[76px]">
             <SectionHeader action={isEditing ? "Done" : "Edit"} onAction={() => setEditing(isEditing ? null : l.id)}>
               {locName(l)}
             </SectionHeader>
-            <Card className="overflow-hidden">
+            <Card className={cn("overflow-hidden transition-shadow duration-500", flash === l.id && "ring-2 ring-[#8f55e5]")}>
               <ListRow first title="PIN" trailing={<WireValue w={56}>{l.profile.pin}</WireValue>} />
               <ListRow title="Mobile app clock-in" trailing={<Switch disabled={!isEditing} checked={get(l.id).mobile} onChange={(v) => set(l.id, { mobile: v })} label={`Mobile app clock-in, ${locName(l)}`} />} />
               <ListRow title="Geofence" trailing={<Switch disabled={!isEditing} checked={get(l.id).geofence} onChange={(v) => set(l.id, { geofence: v })} label={`Geofence, ${locName(l)}`} />} />
@@ -552,6 +629,53 @@ function Notifications() {
   )
 }
 
+/** Opens from "Tax Information" on Account: withholding and the year's forms. */
+function TaxInformation() {
+  const wire = useStructure()
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <GroupLabel>Withholding</GroupLabel>
+        <Card className="overflow-hidden">
+          <ListRow first chevron onClick={() => undefined} title="Federal W-4" trailing={<WireValue>{wire ? "" : "Single"}</WireValue>} />
+          <ListRow chevron onClick={() => undefined} title="State withholding" trailing={<WireValue>{wire ? "" : "CA"}</WireValue>} />
+        </Card>
+      </div>
+      <div>
+        <GroupLabel>Forms</GroupLabel>
+        <Card className="overflow-hidden">
+          {wire ? (
+            <WireList rows={2} avatar={false} trailing />
+          ) : (
+            <>
+              <ListRow first chevron onClick={() => undefined} title="2025 W-2" subtitle="Available to download" />
+              <ListRow chevron onClick={() => undefined} title="2024 W-2" subtitle="Available to download" />
+            </>
+          )}
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/** Opens from "Bank Information" on Account: where pay is deposited. */
+function BankInformation() {
+  const wire = useStructure()
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <GroupLabel>Direct deposit</GroupLabel>
+        <Card className="overflow-hidden">
+          <ListRow first chevron onClick={() => undefined} title={wire ? "Checking" : "Checking"} subtitle={wire ? undefined : "Account ending 4821"} trailing={<WireValue>{wire ? "" : "100%"}</WireValue>} />
+        </Card>
+      </div>
+      <Card className="overflow-hidden">
+        <ListRow first chevron onClick={() => undefined} title="Add bank account" />
+      </Card>
+    </div>
+  )
+}
+
 function Security() {
   const wire = useStructure()
   const [faceId, setFaceId] = useState(true)
@@ -599,9 +723,11 @@ function Support() {
 // ---------------------------------------------------------------------------
 
 export const PAGES: Record<PageId, { title: string; Component: ComponentType<PageProps>; action?: "edit" }> = {
-  account: { title: "Account Settings", Component: Account },
+  account: { title: "Account", Component: Account },
   personal: { title: "Personal Information", Component: PersonalInformation, action: "edit" },
-  resume: { title: "Resume", Component: Resume, action: "edit" },
+  experience: { title: "Experience", Component: Experience, action: "edit" },
+  education: { title: "Education", Component: Education, action: "edit" },
+  certifications: { title: "Certifications", Component: Certifications, action: "edit" },
   team: { title: "Team", Component: Team },
   tasks: { title: "Task Manager", Component: Tasks },
   payroll: { title: "Payroll", Component: Payroll },
@@ -609,9 +735,12 @@ export const PAGES: Record<PageId, { title: string; Component: ComponentType<Pag
   calendar: { title: "Calendar Sync", Component: Calendar },
   notifications: { title: "Notifications & Alerts", Component: Notifications },
   security: { title: "Password & Security", Component: Security },
+  tax: { title: "Tax Information", Component: TaxInformation },
+  bank: { title: "Bank Information", Component: BankInformation },
   support: { title: "Support", Component: Support },
   earnings: { title: "Money", Component: Earnings },
   timeoff: { title: "Time off", Component: TimeOff },
   shoutouts: { title: "Shoutouts", Component: Shoutouts },
   stats: { title: "Stats", Component: Stats },
+  achievements: { title: "Achievements", Component: Achievements },
 }

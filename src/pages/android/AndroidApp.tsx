@@ -15,7 +15,6 @@ import {
   IconGift,
   IconHeartbeat,
   IconHelp,
-  IconLock,
   IconMapPin,
   IconMenu2,
   IconMenuDeep,
@@ -25,6 +24,7 @@ import {
   IconUsers,
   IconX,
 } from "@tabler/icons-react"
+import { AchievementBadge } from "@/components/AchievementBadge"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { LinearBlur } from "@/components/ui/progressive-blur"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
@@ -65,7 +65,7 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
   chat: { label: "Messages", icon: "/android/chat-solid.svg" },
 }
 
-type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
+type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "achievements" | "settings" | "team" | "assistant" | "generic"; title: string; /** The item the page opens focused on (a location's id on Locations). */ arg?: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
 const SETTINGS: PageSpec = { id: "settings", kind: "settings", title: "Settings" }
@@ -862,12 +862,13 @@ function SearchField() {
 function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   const loc = useLocation()
   const locName = useLocName()
-  const [page, setPage] = useState<"pin" | "shoutouts" | "stats">("pin")
+  const [page, setPage] = useState<"pin" | "shoutouts" | "stats" | "achievements">("pin")
   const stats = ["On-time rate", "Shifts worked", "Hours/week", "Avg shift rating", "Missed clock-outs", "No-shows"]
   const tabs = [
     ["pin", "PIN"],
     ["shoutouts", "Shoutouts"],
     ["stats", "Stats"],
+    ["achievements", "Badges"],
   ] as const
   return (
     <div data-anno="drawer-carousel" className="flex flex-col gap-3 pb-1 pt-1">
@@ -896,6 +897,17 @@ function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
           <ABar w={80} h={10} className="mt-2 self-end" />
         </ACard>
       )}
+      {page === "achievements" && (
+        <ACard title="Achievements" h={168} onClick={() => onOpen({ id: "achievements", kind: "achievements", title: "Achievements" })}>
+          <div className="flex flex-1 items-center justify-between pt-2">
+            {[0, 1, 2, 3, 4].map((i) => <AchievementBadge key={i} value="" empty size={48} />)}
+          </div>
+          <div className="text-m-primary flex items-center justify-between pt-2 text-[14px] font-medium">
+            <ABar w={110} h={10} />
+            <IconChevronRight size={20} stroke={2} />
+          </div>
+        </ACard>
+      )}
       {page === "stats" && (
         <ACard title="Stats" h={168} onClick={() => onOpen({ id: "stats", kind: "stats", title: "Stats" })}>
           <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 pt-3">
@@ -918,8 +930,8 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
   )
   return (
     <div className="flex flex-col gap-1">
-      {/* The account row: opens Account Settings. */}
-      <button onClick={() => onOpen({ id: "account", kind: "account", title: "Account Settings" })} data-anno="drawer-profile" className="-mx-1 flex items-center gap-4 rounded-[12px] px-1 py-3 text-left active:bg-black/5">
+      {/* The account row: opens Account. */}
+      <button onClick={() => onOpen({ id: "account", kind: "account", title: "Account" })} data-anno="drawer-profile" className="-mx-1 flex items-center gap-4 rounded-[12px] px-1 py-3 text-left active:bg-black/5">
         <Avatar size={56} />
         <span className="min-w-0 flex-1">
           <span className="block text-[16px] leading-6">{ANON.name}</span>
@@ -943,7 +955,6 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
         {row("Locations", <IconMapPin size={24} stroke={1.75} />, "locations")}
         {row("Calendar Sync", <IconCalendar size={24} stroke={1.75} />)}
         {row("Notifications & Alerts", <IconBell size={24} stroke={1.75} />)}
-        {row("Password & Security", <IconLock size={24} stroke={1.75} />)}
         {row("Support", <IconHelp size={24} stroke={1.75} />)}
       </Section>
       {/* The iOS action pills, as simple cards. */}
@@ -987,8 +998,18 @@ function SwitchRow({ title, checked, onChange, disabled }: { title: string; chec
 }
 
 /** Every location the user works at, one card each with its own settings: not tied to the one selected on Home. */
-function LocationsPage({ multi }: { multi: boolean }) {
+function LocationsPage({ multi, focus }: { multi: boolean; /** Opened from one location's row on Account: scroll to it and flash it. */ focus?: string }) {
   const locName = useLocName()
+  const [flash, setFlash] = useState<string | null>(focus ?? null)
+  useEffect(() => {
+    if (!focus) return
+    const t1 = window.setTimeout(() => document.querySelector(`[data-location="${focus}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 420)
+    const t2 = window.setTimeout(() => setFlash(null), 1800)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [focus])
   const [on, setOn] = useState<Record<string, { mobile: boolean; geofence: boolean }>>({})
   // The switches only respond while their location is being edited.
   const [editing, setEditing] = useState<string | null>(null)
@@ -999,9 +1020,9 @@ function LocationsPage({ multi }: { multi: boolean }) {
       {LOCATIONS.filter((_, i) => multi || i === 0).map((l) => {
         const isEditing = editing === l.id
         return (
-          <section key={l.id}>
+          <section key={l.id} data-location={l.id}>
             <ASection action={isEditing ? "Done" : "Edit"} onAction={() => setEditing(isEditing ? null : l.id)}>{locName(l)}</ASection>
-            <ACard h={0}>
+            <ACard h={0} className={cn("transition-shadow duration-500", flash === l.id && "ring-2 ring-[var(--m-primary)]")}>
               <div className="flex min-h-12 items-center justify-between gap-4 pb-2 text-[16px] leading-6">
                 PIN
                 <ABar w={48} h={10} />
@@ -1026,9 +1047,16 @@ function LocationsPage({ multi }: { multi: boolean }) {
 }
 
 function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void }) {
+  const locName = useLocName()
   switch (spec.kind) {
-    case "locations": return <LocationsPage multi={multi} />
+    case "locations": return <LocationsPage multi={multi} focus={spec.arg} />
     case "shoutouts": return <div className="flex flex-col gap-3 pt-2">{[0, 1, 2].map((i) => <ACard key={i} h={112}><ALines lines={3} className="pt-1" /></ACard>)}</div>
+    case "achievements": return (
+      <div className="flex flex-col gap-4 pt-2">
+        <div className="grid grid-cols-4 gap-3">{Array.from({ length: 8 }, (_, i) => <AchievementBadge key={i} value="" empty size={72} className="mx-auto" />)}</div>
+        <AList rows={4} />
+      </div>
+    )
     case "stats": return (
       <div className="flex flex-col gap-1 pt-2">
         <div className="flex gap-3">
@@ -1062,15 +1090,37 @@ function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: b
             </div>
           ))}
         </Section>
-        <div className="pt-2">
-          {["Personal Information", "Shared Name", "Tax & Bank Information", "Resume"].map((l) => (
-            <button key={l} onClick={() => onOpen({ id: l.toLowerCase().replace(/\W+/g, "-"), kind: "generic", title: l })} className="flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5">
+        <Section title="Your information">
+          {["Personal Information", "Shared Name", "Password & Security", "Tax Information", "Bank Information"].map((l, i) => (
+            <button key={l} onClick={() => onOpen({ id: l.toLowerCase().replace(/\W+/g, "-"), kind: "generic", title: l })} className={cn("flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5", i > 0 && "border-m-divider border-t")}>
               {l}
               <IconChevronRight size={20} stroke={2} className="text-m-variant" />
             </button>
           ))}
-        </div>
-        <Section title="Locations"><AList rows={2} avatar={false} /></Section>
+        </Section>
+        {/* View only: each place you work, your role there, what you're paid and your PIN. */}
+        <Section title="Where you work">
+          {LOCATIONS.filter((_, i) => multi || i === 0).map((l, i) => (
+            <div key={l.id} className={cn("flex min-h-[76px] items-center justify-between gap-3 px-1 py-4", i > 0 && "border-m-divider border-t")}>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-[16px] leading-6">{locName(l)}</span>
+                <span className="text-m-variant truncate text-[14px] leading-5">{l.employee.timeClock.role}</span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end gap-[6px]">
+                <ABar w={64} h={12} />
+                <ABar w={44} h={10} />
+              </span>
+            </div>
+          ))}
+        </Section>
+        <Section title="Resume">
+          {["Experience", "Education", "Certifications"].map((l, i) => (
+            <button key={l} onClick={() => onOpen({ id: l.toLowerCase(), kind: "generic", title: l })} className={cn("flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5", i > 0 && "border-m-divider border-t")}>
+              {l}
+              <IconChevronRight size={20} stroke={2} className="text-m-variant" />
+            </button>
+          ))}
+        </Section>
       </div>
     )
     case "settings": return <SettingsPage manager={manager} onOpen={onOpen} />

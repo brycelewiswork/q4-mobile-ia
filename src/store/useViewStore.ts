@@ -11,6 +11,9 @@ import { LOCATIONS } from "@/data/locations"
  *              implies structure.
  */
 export type Detail = "full" | "structure"
+
+/** The Full design is only switched on locally: the deployed site shows the Structure cut alone. */
+export const FULL_ENABLED = import.meta.env.DEV
 export type Platform = "ios" | "android"
 /** The screen it's shown on: a phone or a tablet, held upright or on its side. */
 export type Device = "phone" | "tablet"
@@ -53,7 +56,7 @@ export const useViewStore = create<State>()(
       orientation: "portrait",
       notes: true,
       setNotes: (notes) => set({ notes }),
-      setDetail: (detail) => set({ detail }),
+      setDetail: (detail) => set({ detail: FULL_ENABLED ? detail : "structure" }),
       setDevice: (device) => set({ device }),
       setOrientation: (orientation) => set({ orientation }),
       setPlatform: (platform) => set({ platform, ...(platform === "android" ? { detail: "structure" as const } : {}) }),
@@ -61,7 +64,11 @@ export const useViewStore = create<State>()(
     {
       name: "q4-view",
       // A link (?detail=structure&platform=android&device=tablet&orientation=landscape) beats whatever was saved.
-      merge: (saved, current) => ({ ...current, ...(saved as object), ...fromUrl() }),
+      merge: (saved, current) => {
+        const merged = { ...current, ...(saved as object), ...fromUrl() }
+        // A saved choice or a ?detail=full link can't turn Full on where it's disabled.
+        return FULL_ENABLED ? merged : { ...merged, detail: "structure" as const }
+      },
     },
   ),
 )

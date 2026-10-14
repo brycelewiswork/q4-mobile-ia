@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react"
 import { DeviceShell } from "@/components/DeviceShell"
+import { DeviceControls } from "@/components/DeviceControls"
 import { SCREENS, oriented, useMediaQuery } from "@/lib/device"
 import { useViewStore } from "@/store/useViewStore"
 
@@ -104,6 +105,7 @@ export function IosFrame({ children, header, footer }: { children: ReactNode; /*
         screenClass="ios-screen bg-[#f3f2f6]"
         screenStyle={screenStyle}
         header={header}
+      controls={<DeviceControls />}
         footer={footer}
         art={
           <div
@@ -134,6 +136,7 @@ export function IosFrame({ children, header, footer }: { children: ReactNode; /*
       screenClass={land ? "bg-[#f3f2f6]" : "ios-screen bg-[#f3f2f6]"}
       screenStyle={land ? {} : screenStyle}
       header={header}
+      controls={<DeviceControls />}
       footer={footer}
       art={
         // The shadow: a transparent box the size of the phone body (measured from the bezel art: 432 × 902 at 9, 9,

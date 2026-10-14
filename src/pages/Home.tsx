@@ -1045,7 +1045,8 @@ function IosHome() {
         unread={pending}
         canSwitch={multi}
         onClock={() => setHalfOpen(true)}
-        showClock={tab === "home"}
+        // The iPad has the time clock in its sidebar, so no clock button up here.
+        showClock={tab === "home" && !tablet}
         clockActive={clockState.status === "in"}
         hideBell={tab === "chat"}
         hideProfile={tablet}

@@ -120,21 +120,21 @@ export function IpadSidebar({
         className="absolute bottom-2 left-2 top-2 flex flex-col rounded-[30px] bg-white/70 px-3 pb-3 shadow-[0_0_0_0.5px_rgba(0,0,0,0.07),0_10px_30px_rgba(20,20,40,0.08)] backdrop-blur-2xl"
         style={{ width: SIDEBAR_W - 16, paddingTop: "calc(var(--safe-top) - 8px)" }}
       >
-        <div className="flex h-11 items-center justify-end">
-          <SidebarToggle open={open} onClick={onToggle} />
-        </div>
-        <div className="mt-3 flex flex-col gap-1">
-          <button onClick={onProfile} aria-haspopup="dialog" aria-label="Profile and settings" data-anno="profile" className={cn(row, "h-14")}>
+        <div className="flex h-11 items-center justify-between gap-2">
+          <button onClick={onProfile} aria-haspopup="dialog" aria-label="Profile and settings" data-anno="profile" className={cn(row, "h-11 min-w-0 flex-1 gap-2 px-1")}>
             {wire ? <Initials name={ANON.name} size={36} /> : <img src="/phone/avatar.jpg" alt="" className="size-9 rounded-full object-cover" />}
             <span className="truncate font-[590]">{ANON.name}</span>
           </button>
-          {onAssistant && (
+          <SidebarToggle open={open} onClick={onToggle} />
+        </div>
+        {onAssistant && (
+          <div className="mt-3 flex flex-col gap-1">
             <button onClick={onAssistant} aria-haspopup="dialog" className={row}>
               <img src="/phone/tab-assistant.svg" alt="" className="size-6" />
               Assistant
             </button>
-          )}
-        </div>
+          </div>
+        )}
         <nav className="mt-3 flex flex-col gap-1 border-t border-black/[0.08] pt-3">
           {shown.map((t) => {
             const active = tab === t.id

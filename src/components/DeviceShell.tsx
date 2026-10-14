@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react"
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { FOOTER_H, HEADER_H, useFit, type Size } from "@/lib/device"
 
 export type ScreenRect = { x: number; y: number; w: number; h: number; radius: number }
@@ -18,6 +18,7 @@ export function DeviceShell({
   art,
   chrome,
   overlay,
+  controls,
   header,
   footer,
   children,
@@ -30,15 +31,36 @@ export function DeviceShell({
   /** Drawn inside the screen, over the app: status bar, camera cutout. */
   chrome?: ReactNode
   overlay?: ReactNode
+  /** Page controls just above the device (which device, how it's held). */
+  controls?: ReactNode
   header?: ReactNode
   footer?: ReactNode
   children: ReactNode
 }) {
-  const scale = useFit(box, screen.w, (header ? HEADER_H : 0) + (footer ? FOOTER_H : 0))
+  // The page controls wrap on a narrow window, so the room they take is measured, not fixed.
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [headerH, setHeaderH] = useState(HEADER_H)
+  useLayoutEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setHeaderH(Math.max(HEADER_H, el.offsetHeight)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [header])
+  const controlsRef = useRef<HTMLDivElement>(null)
+  const [controlsH, setControlsH] = useState(0)
+  useLayoutEffect(() => {
+    const el = controlsRef.current
+    if (!el) return setControlsH(0)
+    const ro = new ResizeObserver(() => setControlsH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [controls])
+  const scale = useFit(box, screen.w, (header ? headerH : 0) + (footer ? FOOTER_H : 0) + controlsH)
   return (
     <div
       className="relative flex h-svh w-full items-center justify-center overflow-hidden bg-[#e4e3e8] dark:bg-neutral-900"
-      style={{ paddingTop: header ? HEADER_H : 0, paddingBottom: footer ? FOOTER_H : 0 }}
+      style={{ paddingTop: header ? headerH : 0, paddingBottom: footer ? FOOTER_H : 0 }}
     >
       {footer && (
         <div className="absolute inset-x-0 bottom-0 z-[60] flex items-center justify-center" style={{ height: FOOTER_H }}>
@@ -46,10 +68,12 @@ export function DeviceShell({
         </div>
       )}
       {header && (
-        <div className="absolute inset-x-0 top-0 z-[60] flex items-center justify-center" style={{ height: HEADER_H }}>
+        <div ref={headerRef} className="absolute inset-x-0 top-0 z-[60] flex items-center justify-center py-2" style={{ minHeight: HEADER_H }}>
           {header}
         </div>
       )}
+      <div className="flex shrink-0 flex-col items-center">
+      {controls && <div ref={controlsRef} className="relative z-[60] flex shrink-0 justify-center pb-3">{controls}</div>}
       <div className="relative shrink-0" style={{ width: box.w * scale, height: box.h * scale }}>
         <div className="relative origin-top-left" style={{ width: box.w, height: box.h, transform: `scale(${scale})` }}>
           {art}
@@ -62,6 +86,7 @@ export function DeviceShell({
           </div>
           {overlay}
         </div>
+      </div>
       </div>
     </div>
   )

@@ -91,7 +91,8 @@ export function ListRow({
       {leading && <span className="mr-3 flex shrink-0 items-center">{leading}</span>}
       <span
         className={cn(
-          compact ? "flex min-h-[44px] min-w-0 flex-1 items-center gap-3 py-1 tracking-[-0.43px]" : "flex min-h-[52px] min-w-0 flex-1 items-center gap-3 py-2 tracking-[-0.43px]",
+          // A row with a second line gets more height than a one-liner, so the two lines have room.
+          compact ? "flex min-h-[44px] min-w-0 flex-1 items-center gap-3 py-1 tracking-[-0.43px]" : subtitle ? "flex min-h-[68px] min-w-0 flex-1 items-center gap-3 py-3 tracking-[-0.43px]" : "flex min-h-[52px] min-w-0 flex-1 items-center gap-3 py-2 tracking-[-0.43px]",
           !first && `border-t ${divider}`,
         )}
         style={!first ? { marginLeft: 0 } : undefined}
