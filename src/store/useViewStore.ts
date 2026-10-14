@@ -12,24 +12,35 @@ import { LOCATIONS } from "@/data/locations"
  */
 export type Detail = "full" | "structure"
 export type Platform = "ios" | "android"
+/** The screen it's shown on: a phone or a tablet, held upright or on its side. */
+export type Device = "phone" | "tablet"
+export type Orientation = "portrait" | "landscape"
 
 type State = {
   detail: Detail
   platform: Platform
+  device: Device
+  orientation: Orientation
   /** Show the notes beside the phone. */
   notes: boolean
   setNotes: (n: boolean) => void
   setDetail: (d: Detail) => void
   setPlatform: (p: Platform) => void
+  setDevice: (d: Device) => void
+  setOrientation: (o: Orientation) => void
 }
 
-const fromUrl = (): Partial<Pick<State, "detail" | "platform">> => {
+const fromUrl = (): Partial<Pick<State, "detail" | "platform" | "device" | "orientation">> => {
   const q = new URLSearchParams(window.location.search)
-  const out: Partial<Pick<State, "detail" | "platform">> = {}
+  const out: Partial<Pick<State, "detail" | "platform" | "device" | "orientation">> = {}
   const d = q.get("detail")
   const p = q.get("platform")
+  const v = q.get("device")
+  const o = q.get("orientation")
   if (d === "full" || d === "structure") out.detail = d
   if (p === "ios" || p === "android") out.platform = p
+  if (v === "phone" || v === "tablet") out.device = v
+  if (o === "portrait" || o === "landscape") out.orientation = o
   return out
 }
 
@@ -38,14 +49,18 @@ export const useViewStore = create<State>()(
     (set) => ({
       detail: "structure",
       platform: "ios",
+      device: "phone",
+      orientation: "portrait",
       notes: true,
       setNotes: (notes) => set({ notes }),
       setDetail: (detail) => set({ detail }),
+      setDevice: (device) => set({ device }),
+      setOrientation: (orientation) => set({ orientation }),
       setPlatform: (platform) => set({ platform, ...(platform === "android" ? { detail: "structure" as const } : {}) }),
     }),
     {
       name: "q4-view",
-      // A link (?detail=structure&platform=android) beats whatever was saved.
+      // A link (?detail=structure&platform=android&device=tablet&orientation=landscape) beats whatever was saved.
       merge: (saved, current) => ({ ...current, ...(saved as object), ...fromUrl() }),
     },
   ),

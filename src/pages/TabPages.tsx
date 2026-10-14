@@ -2,7 +2,7 @@ import { useState } from "react"
 import { IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, IconCoffee, IconSearch, IconSpeakerphone, IconUsers, IconUsersGroup } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { GlassChip } from "@/components/ios/GlassChip"
-import { Card, ListRow, SectionHeader } from "@/components/ios/list"
+import { Card, Initials, ListRow, SectionHeader } from "@/components/ios/list"
 import { roleColor } from "@/lib/roleColor"
 import { cn } from "@/lib/utils"
 import { USER_EARNINGS, type Location, type Message } from "@/data/locations"
@@ -34,6 +34,8 @@ const shortName = (n: string) => {
 const initialsOf = (n: string) => n.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
 
 /** A day's schedule at a location: the team's shifts (derived from `loc.team`), the user's own, and an open shift on some days. */
+const EXTRA_STAFF = ["Maya T.", "Dario K.", "Priya S.", "Owen B.", "Lena W.", "Sam O.", "Hana P.", "Theo R.", "Nia C.", "Eli M."]
+
 function dayRows(loc: Location, i: number): Row[] {
   const starts = [8, 8, 9, 10, 10, 12]
   const lens = [5, 8, 7, 6, 4, 8]
@@ -42,6 +44,13 @@ function dayRows(loc: Location, i: number): Row[] {
     if ((i + j) % 3 === 2) return
     const k = (i + j) % starts.length
     rows.push({ who: shortName(m.name), role: m.role, start: starts[k], end: starts[k] + lens[k] })
+  })
+  // The rest of the floor: more people on the schedule than the team list names, so a day is a real list.
+  const roles = Array.from(new Set(loc.team.map((m) => m.role)))
+  EXTRA_STAFF.forEach((who, j) => {
+    if ((i + j) % 4 === 3 || !roles.length) return
+    const k = (i * 2 + j) % starts.length
+    rows.push({ who, role: roles[j % roles.length], start: starts[k] + (j % 2 ? 1 : 0), end: starts[k] + (j % 2 ? 1 : 0) + lens[(k + j) % lens.length] })
   })
   const mine = loc.employee.week[i]
   if (mine) rows.push({ who: "Bryce L.", role: loc.employee.timeClock?.role ?? "Team", start: mine.start, end: mine.end, mine: true })
@@ -60,7 +69,8 @@ const FILTERS: { id: Filter; label: string }[] = [
 ]
 
 /** Shifts: a week strip, filters, and the selected day's schedule at this location. */
-export function ShiftsPage({ loc }: { loc: Location }) {
+export function ShiftsPage({ loc, split }: { loc: Location; /** Two columns (iPad landscape): the schedule on the left, the chosen shift on the right. */ split?: boolean }) {
+  const [selKey, setSelKey] = useState<string | null>(null)
   const date = useDateStore((s) => s.date)
   const [filter, setFilter] = useState<Filter>("all")
   const [menu, setMenu] = useState<HTMLElement | null>(null)
@@ -75,7 +85,10 @@ export function ShiftsPage({ loc }: { loc: Location }) {
   const openCount = all.length - staffed.length
   const wire = useStructure()
 
-  return (
+  const keyOf = (r: Row, i: number) => `${r.who}-${i}`
+  const chosen = rows.find((r, i) => keyOf(r, i) === selKey) ?? rows[0]
+
+  const main = (
     <>
       <WeekCalendar label={dayLabel(date)} workingDots />
 
@@ -111,13 +124,19 @@ export function ShiftsPage({ loc }: { loc: Location }) {
       />
 
       {/* One container, a row per shift, hairline dividers between. */}
-      {wire ? <WireList rows={6} trailing /> : <Card className="overflow-hidden">
+      {wire ? <WireList rows={split ? 14 : 6} trailing /> : <Card className="overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No shifts</p>
         ) : (
           rows.map((r, i) => (
             // The padding is on the outer row and the divider on the inner one, so dividers stop 16px short of both edges.
-            <div key={`${r.who}-${i}`} className="px-4">
+            <div
+              key={keyOf(r, i)}
+              onClick={split ? () => setSelKey(keyOf(r, i)) : undefined}
+              role={split ? "button" : undefined}
+              aria-current={split && chosen === r ? "true" : undefined}
+              className={cn("px-4", split && "cursor-pointer", split && chosen === r && "bg-[#8f55e5]/[0.1]")}
+            >
             <div className={cn("flex items-center gap-3 py-3 tracking-[-0.43px]", i > 0 && "border-t border-[#ebebeb]")}>
               {/* The role's color: a vertical bar down the left of the row. */}
               <span aria-hidden className="w-1 shrink-0 self-stretch rounded-full" style={{ backgroundColor: roleColor(r.role) }} />
@@ -149,12 +168,75 @@ export function ShiftsPage({ loc }: { loc: Location }) {
       </Card>}
     </>
   )
+  if (!split) return main
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  return (
+    <div className="absolute inset-0 flex">
+      <div className={cn(col, "w-[380px] shrink-0 overflow-y-auto pl-4 pr-2")} style={{ paddingTop: "calc(var(--safe-top) + 54px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        {main}
+      </div>
+      <div className={cn(col, "min-w-0 flex-1 overflow-y-auto pl-2 pr-4")} style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        {chosen ? <ShiftDetail row={chosen} loc={loc} date={date} /> : <WireCard title="No shift selected" h={200} />}
+      </div>
+    </div>
+  )
+}
+
+/** A single shift, opened: who, when, where, and what you can do with it. */
+function ShiftDetail({ row: r, loc, date }: { row: Row; loc: Location; date: Date }) {
+  const wire = useStructure()
+  const hours = r.end - r.start
+  const fact = (label: string, value: string) => (
+    <div className="flex items-center justify-between gap-4 border-t border-[#ebebeb] px-4 py-3 first:border-t-0">
+      <span className="text-[17px] leading-[22px] text-black">{label}</span>
+      <span className="text-[17px] leading-[22px] text-[#8e8e93]">{value}</span>
+    </div>
+  )
+  if (wire) {
+    return (
+      <div className="flex flex-col gap-4">
+        <WireCard title="Shift" h={120} />
+        <WireCard title="Details" h={200} />
+        <WireCard title="Notes" h={96} />
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-4 tracking-[-0.43px]">
+      <div className="flex items-center gap-3 px-1 pt-1">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#ece6fb] text-[20px] font-[590] text-[#6b3fc4]">{r.open ? "?" : initialsOf(r.who)}</span>
+        <div className="min-w-0">
+          <p className="truncate text-[28px] font-[590] leading-[32px] text-black">{r.who}</p>
+          <p className="flex items-center gap-2 text-[15px] leading-5 text-[#8e8e93]">
+            <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: roleColor(r.role) }} />
+            {r.role}
+          </p>
+        </div>
+      </div>
+      <Card className="overflow-hidden">
+        {fact("Date", dayLabel(date))}
+        {fact("Time", `${clock(r.start)} – ${clock(r.end)}`)}
+        {fact("Length", `${hours} hrs`)}
+        {fact("Location", loc.name)}
+      </Card>
+      <Card className="p-4">
+        <p className="text-[15px] font-[510] leading-5 text-black">Notes</p>
+        <p className="pt-1 text-[15px] leading-5 text-[#8e8e93]">{r.open ? "Nobody is on this shift yet." : "No notes on this shift."}</p>
+      </Card>
+      <div className="flex gap-3">
+        <button className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#8f55e5] text-[17px] font-[590] text-white active:opacity-80">{r.open ? "Assign" : "Edit shift"}</button>
+        <button className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#787880]/[0.16] text-[17px] font-[590] text-black active:opacity-80">{r.mine ? "Swap" : "Message"}</button>
+      </div>
+    </div>
+  )
 }
 
 /** Time (formerly Timesheets): a Day / Pay period segmented control, filter chips, and the timesheets needing review. */
-export function TimePage({ loc }: { loc: Location }) {
+export function TimePage({ loc, split }: { loc: Location; /** Two columns (iPad landscape): the day's timesheets on the left, the pay period on the right. */ split?: boolean }) {
   const date = useDateStore((s) => s.date)
-  const view = useDateStore((s) => s.timeView)
+  const storedView = useDateStore((s) => s.timeView)
+  // Split view shows both, so the Day / Pay period choice doesn't apply.
+  const view = split ? "day" : storedView
   const setView = useDateStore((s) => s.setTimeView)
   const [resolved, setResolved] = useState<Record<string, boolean>>({})
   const [open, setOpen] = useState(true)
@@ -164,7 +246,7 @@ export function TimePage({ loc }: { loc: Location }) {
   const pending = loc.timesheets.filter((t) => !resolved[t.id] && (role === "all" || t.role === role))
   const p = loc.payroll
   const wire = useStructure()
-  return (
+  const main = (
     <>
       <WeekCalendar label={view === "day" ? dayLabel(date) : rangeLabel(...payPeriodOf(date))} />
 
@@ -188,9 +270,11 @@ export function TimePage({ loc }: { loc: Location }) {
             <IconSelector size={14} stroke={2.5} />
           </span>
         </GlassChip>
-        <GlassChip active={view === "period"} onClick={() => setView(view === "period" ? "day" : "period")}>
-          Pay period
-        </GlassChip>
+        {!split && (
+          <GlassChip active={view === "period"} onClick={() => setView(view === "period" ? "day" : "period")}>
+            Pay period
+          </GlassChip>
+        )}
       </div>
 
       <ContextMenu
@@ -216,8 +300,7 @@ export function TimePage({ loc }: { loc: Location }) {
 
           {open && wire && (
             <div className="flex flex-col gap-2">
-              <WireCard h={150} />
-              <WireCard h={150} />
+              {Array.from({ length: split ? 5 : 4 }, (_, i) => <WireCard key={i} h={150} />)}
             </div>
           )}
           {open && !wire && (
@@ -279,6 +362,59 @@ export function TimePage({ loc }: { loc: Location }) {
         </div>
       )}
     </>
+  )
+  if (!split) return main
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  return (
+    <div className="absolute inset-0 flex">
+      <div className={cn(col, "w-[380px] shrink-0 overflow-y-auto pl-4 pr-2")} style={{ paddingTop: "calc(var(--safe-top) + 54px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        {main}
+      </div>
+      <div className={cn(col, "min-w-0 flex-1 overflow-y-auto pl-2 pr-4")} style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        <PayPeriod loc={loc} date={date} />
+      </div>
+    </div>
+  )
+}
+
+/** The pay period at a glance: the hours paid, the period's totals, and what each person was paid. */
+function PayPeriod({ loc, date }: { loc: Location; date: Date }) {
+  const wire = useStructure()
+  const p = loc.payroll
+  const issues = (name: string) => loc.timesheets.filter((t) => t.name === name).reduce((n, t) => n + t.issues.length, 0)
+  const paid = (i: number) => (i % 4 === 3 ? 0 : 18 + ((i * 7) % 23))
+  return (
+    <div className="tracking-[-0.43px]">
+      <p className="pb-2 text-[15px] font-[590] leading-5 text-[#8f55e5]">{`Pay period: ${rangeLabel(...payPeriodOf(date))}`}</p>
+      {wire ? (
+        <>
+          <Bar w={150} h={34} />
+          <div className="pb-4 pt-2"><Bar w={80} h={12} /></div>
+          <WireList rows={8} trailing />
+        </>
+      ) : (
+        <>
+          <p className="text-[41px] font-[590] leading-[normal] text-black">{p.hours}</p>
+          <p className="pb-4 text-[15px] font-[510] leading-5 text-[#939393]">Total paid</p>
+          <Card className="mb-4 overflow-hidden">
+            <ListRow first title="Gross pay" trailing={p.gross} />
+            <ListRow title="Next payday" trailing={p.nextPayday} />
+          </Card>
+          <Card className="overflow-hidden">
+            {loc.team.map((m, i) => (
+              <ListRow
+                key={m.name}
+                first={i === 0}
+                leading={<Initials name={m.name} />}
+                title={m.name}
+                subtitle={`Total paid: ${paid(i)} hrs`}
+                trailing={issues(m.name) ? <span className="text-[15px] text-[#d0161f]">{`${issues(m.name)} issues`}</span> : undefined}
+              />
+            ))}
+          </Card>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -345,7 +481,7 @@ function MessageAvatar({ m }: { m: Message }) {
 }
 
 /** Messages: this location's conversations. The business is the page title (toolbar), so no group headers. */
-export function ChatPage({ loc }: { loc: Location }) {
+export function ChatPage({ loc, selectedId, onSelect }: { loc: Location; /** Split view: the open conversation, highlighted in the list. */ selectedId?: string; onSelect?: (id: string) => void }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
   const rows = loc.messages.filter((m) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true))
   const toggle = (f: "unread" | "threads") => setFilter((cur) => (cur === f ? "all" : f))
@@ -363,10 +499,10 @@ export function ChatPage({ loc }: { loc: Location }) {
           Threads
         </GlassChip>
       </div>
-      {wire ? <WireList rows={7} /> : <Card className="overflow-hidden">
+      {wire ? <WireList rows={onSelect ? 14 : 7} /> : <Card className="overflow-hidden">
         {rows.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</p>}
         {rows.map((m, i) => (
-          <button key={m.id} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]")}>
+          <button key={m.id} onClick={onSelect ? () => onSelect(m.id) : undefined} aria-current={selectedId === m.id ? "true" : undefined} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]", selectedId === m.id && "bg-[#8f55e5]/[0.1]")}>
             <MessageAvatar m={m} />
             <span className={cn("flex min-w-0 flex-1 flex-col py-3", i > 0 && "border-t border-[#ebebeb]")}>
               <span className="flex items-baseline justify-between gap-2">
@@ -382,5 +518,57 @@ export function ChatPage({ loc }: { loc: Location }) {
         ))}
       </Card>}
     </>
+  )
+}
+
+/** One conversation, opened: who it's with, the thread, and the composer. */
+function Conversation({ m }: { m: Location["messages"][number] }) {
+  const wire = useStructure()
+  const sk = "block rounded-[20px]"
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[28px] bg-white tracking-[-0.43px]">
+      <div className="flex shrink-0 items-center gap-3 border-b border-black/[0.07] px-5 py-3">
+        <MessageAvatar m={m} />
+        <div className="min-w-0">
+          {wire ? <Bar w={140} h={14} /> : <p className="truncate text-[17px] font-[590] leading-[22px] text-black">{m.title}</p>}
+          {!wire && <p className="text-[13px] leading-[18px] text-[#7f7f7f]">{m.kind === "dm" ? "Direct message" : "Thread"}</p>}
+        </div>
+      </div>
+      <div className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-5">
+        {wire ? (
+          <>
+            <span aria-hidden className={cn(sk, "h-14 w-[55%] self-start bg-[#dedde4]")} />
+            <span aria-hidden className={cn(sk, "h-10 w-[38%] self-end bg-[#8f55e5]/20")} />
+            <span aria-hidden className={cn(sk, "h-20 w-[62%] self-start bg-[#dedde4]")} />
+            <span aria-hidden className={cn(sk, "h-10 w-[30%] self-end bg-[#8f55e5]/20")} />
+          </>
+        ) : (
+          <>
+            <p className="max-w-[70%] self-start rounded-[20px] bg-[#ececf0] px-4 py-2 text-[17px] leading-[22px] text-black">{m.preview}</p>
+            <span aria-hidden className={cn(sk, "h-10 w-[38%] self-end bg-[#8f55e5]/20")} />
+          </>
+        )}
+      </div>
+      <div className="shrink-0 px-4 pb-4">
+        <div className="flex h-11 items-center rounded-full border border-black/10 px-4 text-[17px] text-[#a2a2a8]">{wire ? "" : "Message"}</div>
+      </div>
+    </div>
+  )
+}
+
+/** iPad Messages: the list on the left, the open conversation on the right. */
+export function MessagesSplit({ loc }: { loc: Location }) {
+  const [sel, setSel] = useState(loc.messages[0]?.id)
+  const m = loc.messages.find((x) => x.id === sel) ?? loc.messages[0]
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  return (
+    <div className="absolute inset-0 flex">
+      <div className={cn(col, "w-[40%] min-w-[240px] max-w-[380px] shrink-0 overflow-y-auto pl-4 pr-2")} style={{ paddingTop: "calc(var(--safe-top) + 54px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        <ChatPage loc={loc} selectedId={m?.id} onSelect={setSel} />
+      </div>
+      <div className="min-w-0 flex-1 pl-2 pr-4" style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
+        {m && <Conversation m={m} />}
+      </div>
+    </div>
   )
 }

@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react"
-import { addDays, mondayOf, sameDay, WEEKDAYS_SHORT } from "@/lib/dates"
+import { IconArrowLeft, IconCheck, IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react"
+import { addDays, mondayOf, MONTHS, sameDay, weekdayIndex, WEEKDAYS_SHORT } from "@/lib/dates"
+import { useViewStore } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
 
 /** Material 3 building blocks for the Android structure cut. Flat, tonal, no glass: lists sit straight on the surface. */
@@ -49,13 +50,13 @@ export function ASection({ children, action, onAction, dataAnno, trailing }: { c
 }
 
 /** Skeleton list rows straight on the surface, hairline dividers between them. */
-export function AList({ rows = 3, avatar = true, trailing = false, onRow }: { rows?: number; avatar?: boolean; trailing?: boolean; onRow?: () => void }) {
+export function AList({ rows = 3, avatar = true, trailing = false, onRow, selected, onPick }: { rows?: number; avatar?: boolean; trailing?: boolean; onRow?: () => void; /** A list you choose from (split view): the chosen row, and what picking one does. */ selected?: number; onPick?: (i: number) => void }) {
   return (
-    <div aria-hidden={!onRow}>
+    <div aria-hidden={!onRow && !onPick}>
       {Array.from({ length: rows }, (_, i) => {
-        const Comp = onRow ? "button" : "div"
+        const Comp = onRow || onPick ? "button" : "div"
         return (
-          <Comp key={i} onClick={onRow} className={cn("flex min-h-[72px] w-full items-center gap-4 px-1 py-3 text-left", onRow && "active:bg-black/5", i > 0 && "border-m-divider border-t")}>
+          <Comp key={i} onClick={onPick ? () => onPick(i) : onRow} aria-current={selected === i ? "true" : undefined} className={cn("flex min-h-[72px] w-full items-center gap-4 px-3 py-3 text-left", (onRow || onPick) && "active:bg-black/5", i > 0 && "border-m-divider border-t", selected === i && "bg-m-secondary-container rounded-[16px] border-transparent")}>
             {avatar && <span className="bg-m-skeleton size-10 shrink-0 rounded-full" />}
             <span className="flex min-w-0 flex-1 flex-col gap-[9px]">
               <ABar w="55%" h={12} />
@@ -116,7 +117,7 @@ export function AChips({ children }: { children: ReactNode }) {
 }
 
 /** Seven days, Monday first. The selected day is a filled circle; tapping sets the shared date. */
-export function WeekStrip({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+function WeekRow({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
   const mon = mondayOf(date)
   return (
     <div className="flex justify-between pb-2 pt-1">
@@ -161,7 +162,7 @@ export function AFab({ label, icon, extended, onClick }: { label: string; icon: 
 }
 
 /** Modal bottom sheet: scrim, drag handle, rounded top corners. */
-export function ASheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function ASheet({ title, onClose, full, children }: { title: string; onClose: () => void; /** Rise to full height, just under the status bar, instead of sizing to the content. */ full?: boolean; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", onKey)
@@ -181,7 +182,8 @@ export function ASheet({ title, onClose, children }: { title: string; onClose: (
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.6 }}
         onDragEnd={(_, i) => i.offset.y > 120 && onClose()}
-        className="bg-m-low text-m-on-surface absolute inset-x-0 bottom-0 flex max-h-[88%] flex-col rounded-t-[28px] pb-8"
+        className={cn("bg-m-low text-m-on-surface absolute inset-x-0 bottom-0 flex flex-col rounded-t-[28px] pb-8", full ? "" : "max-h-[88%]")}
+        style={full ? { height: "calc(100% - var(--safe-top))" } : undefined}
       >
         <span aria-hidden className="bg-m-variant mx-auto mt-3 h-1 w-8 shrink-0 rounded-full opacity-40" />
         <h2 className="shrink-0 px-6 pb-2 pt-4 text-[22px] font-normal leading-7">{title}</h2>
@@ -261,17 +263,17 @@ export function ADrawer({ onClose, children }: { onClose: () => void; children: 
 }
 
 /** A full-screen destination: top app bar with a back arrow, content below. Slides in from the right. */
-export function APage({ title, onBack, children, bar, footer, action, z = 40 }: { title: string; onBack: () => void; children: ReactNode; /** A text button at the end of the top bar (e.g. Save). */ action?: ReactNode; /** Replaces the title (e.g. a search field). */ bar?: ReactNode; /** Pinned under the scrolling content (e.g. a composer). */ footer?: ReactNode; z?: number }) {
+export function APage({ title, onBack, children, bar, footer, action, close, rise, z = 40 }: { /** Fade in and up instead of sliding in from the right. */ rise?: boolean; /** An X instead of the back arrow, for a page that is dismissed rather than navigated back from (Settings). */ close?: boolean; title: string; onBack: () => void; children: ReactNode; /** A text button at the end of the top bar (e.g. Save). */ action?: ReactNode; /** Replaces the title (e.g. a search field). */ bar?: ReactNode; /** Pinned under the scrolling content (e.g. a composer). */ footer?: ReactNode; z?: number }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onBack()
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [onBack])
   return (
-    <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={SHEET} className="bg-m-surface absolute inset-0 flex flex-col" style={{ zIndex: z }}>
-      <div className="flex h-16 shrink-0 items-center gap-1 px-1" style={{ marginTop: "var(--safe-top)" }}>
-        <AIconButton label="Back" onClick={onBack} className="text-m-on-surface">
-          <IconArrowLeft size={24} stroke={1.75} />
+    <motion.div initial={rise ? { opacity: 0, y: 32 } : { x: "100%" }} animate={rise ? { opacity: 1, y: 0 } : { x: 0 }} exit={rise ? { opacity: 0, y: 32 } : { x: "100%" }} transition={SHEET} className="bg-m-surface absolute inset-0 flex flex-col" style={{ zIndex: z }}>
+      <div className={cn("flex h-16 shrink-0 items-center gap-1 pr-1", close ? "pl-2" : "pl-1")} style={{ marginTop: "var(--safe-top)" }}>
+        <AIconButton label={close ? "Close" : "Back"} onClick={onBack} className="text-m-on-surface">
+          {close ? <IconX size={24} stroke={1.75} /> : <IconArrowLeft size={24} stroke={1.75} />}
         </AIconButton>
         {bar ?? <h1 className="text-m-on-surface min-w-0 flex-1 text-[22px] leading-7">{title}</h1>}
         {action && <div className="pr-3">{action}</div>}
@@ -283,3 +285,109 @@ export function APage({ title, onBack, children, bar, footer, action, z = 40 }: 
 }
 
 export { AnimatePresence }
+
+/** M3 basic dialog: a centred modal on a scrim, for screens wide enough that a bottom sheet would sprawl. */
+export function ADialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+  return (
+    <div className="absolute inset-0 z-[50] flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={SHEET} onClick={onClose} className="absolute inset-0 bg-[var(--m-scrim)]" />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        transition={SHEET}
+        className="bg-m-low text-m-on-surface relative flex max-h-full w-full max-w-[480px] flex-col rounded-[28px] pb-6"
+      >
+        <h2 className="shrink-0 px-6 pb-2 pt-6 text-[24px] font-normal leading-8">{title}</h2>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+      </motion.div>
+    </div>
+  )
+}
+
+/**
+ * M3 modal side sheet: slides in from the end edge over a scrim, a headline with a close button, secondary content
+ * below. For wide screens, where a bottom sheet would sprawl across the whole width.
+ */
+export function ASideSheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+  return (
+    <div className="absolute inset-0 z-[50]">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={SHEET} onClick={onClose} className="absolute inset-0 bg-[var(--m-scrim)]" />
+      <motion.aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        initial={{ x: "105%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "105%" }}
+        transition={SHEET}
+        className="bg-m-low text-m-on-surface absolute inset-y-2 right-2 flex w-[400px] max-w-[calc(100%-16px)] flex-col rounded-[20px]"
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-2">
+          <h2 className="text-[22px] font-normal leading-7">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="text-m-variant flex size-12 items-center justify-center rounded-full active:bg-black/10">
+            <IconX size={24} stroke={1.75} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+      </motion.aside>
+    </div>
+  )
+}
+
+/** The whole month, always showing: what a tablet has the room for instead of a week. */
+function MonthGrid({ date, onPick, dots }: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+  const [month, setMonth] = useState(() => new Date(date.getFullYear(), date.getMonth(), 1))
+  useEffect(() => {
+    setMonth((m) => (m.getFullYear() === date.getFullYear() && m.getMonth() === date.getMonth() ? m : new Date(date.getFullYear(), date.getMonth(), 1)))
+  }, [date])
+  const first = mondayOf(month)
+  const rows = Math.ceil((weekdayIndex(month) + new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()) / 7)
+  const go = (delta: number) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))
+  return (
+    <div className="pb-2 pt-1">
+      <div className="flex items-center justify-between pb-1">
+        <AIconButton label="Previous month" onClick={() => go(-1)}><IconChevronLeft size={22} stroke={1.75} /></AIconButton>
+        <p className="text-m-on-surface text-[16px] font-medium leading-6">{`${MONTHS[month.getMonth()]} ${month.getFullYear()}`}</p>
+        <AIconButton label="Next month" onClick={() => go(1)}><IconChevronRight size={22} stroke={1.75} /></AIconButton>
+      </div>
+      <div className="flex justify-between pb-1">
+        {WEEKDAYS_SHORT.map((n, i) => <span key={i} className="text-m-variant w-11 text-center text-[12px] font-medium leading-4">{n[0]}</span>)}
+      </div>
+      {Array.from({ length: rows }, (_, r) => (
+        <div key={r} className="flex justify-between">
+          {Array.from({ length: 7 }, (_, c) => {
+            const d = addDays(first, r * 7 + c)
+            const on = sameDay(d, date)
+            const inMonth = d.getMonth() === month.getMonth()
+            return (
+              <button key={c} onClick={() => onPick(d)} aria-pressed={on} aria-label={`${WEEKDAYS_SHORT[c]} ${d.getDate()}`} className="flex w-11 flex-col items-center">
+                <span className={cn("flex size-10 items-center justify-center rounded-full text-[16px] leading-6", on ? "bg-m-primary text-m-on-primary font-medium" : inMonth ? "text-m-on-surface" : "text-m-outline")}>{d.getDate()}</span>
+                <span className={cn("size-[6px] rounded-full", dots?.(c) ? "bg-m-primary" : "bg-transparent")} />
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Seven days on a phone, the whole month on a tablet. */
+export function WeekStrip(props: { date: Date; onPick: (d: Date) => void; dots?: (i: number) => boolean }) {
+  const tablet = useViewStore((s) => s.device === "tablet")
+  return tablet ? <MonthGrid {...props} /> : <WeekRow {...props} />
+}

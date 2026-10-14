@@ -8,6 +8,7 @@ import {
   IconCalendarPlus,
   IconPlus,
   IconSearch,
+  IconChevronRight,
   IconSelector,
   IconUser,
   IconUserFilled,
@@ -15,7 +16,7 @@ import {
   IconWalk,
   IconX,
 } from "@tabler/icons-react"
-import { IPhoneFrame } from "@/components/ios/IPhoneFrame"
+import { IosFrame } from "@/components/ios/IosFrame"
 import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
@@ -33,12 +34,13 @@ import { HOME_PAGE_TITLES, HomePage, type HomePageId } from "@/pages/HomePages"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
 import { AccessoryContent, BottomAccessory, TabBar, type TabId } from "@/components/ios/TabBar"
+import { IpadSidebar, SIDEBAR_SPRING, SIDEBAR_W, SidebarToggle } from "@/components/ios/IpadSidebar"
 import { Squircle } from "@/components/squircle"
 import { EdgeBlur } from "@/components/ios/EdgeBlur"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
-import { ChatPage, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
+import { ChatPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
 import { HOUR_LABELS, LOCATIONS, USER_EARNINGS, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
 import { Initials } from "@/components/ios/list"
@@ -204,7 +206,7 @@ function TitleText({ text }: { text: string }) {
   )
 }
 
-function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { view: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
+function Toolbar({ view, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { view: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
   const manager = view === "manager"
   const wire = useStructure()
   const locName = useLocName()
@@ -213,13 +215,14 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
       className="absolute inset-x-4 z-20 flex items-start justify-between gap-3 pb-[10px]"
       style={{ top: "var(--safe-top)" }}
     >
-      <div className="flex min-w-0 flex-1 flex-col items-start">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {leading}
         <button
           onClick={canSwitch ? onTitle : undefined}
           aria-haspopup={canSwitch ? "menu" : undefined}
           data-anno="location-title"
           disabled={!canSwitch}
-          className="flex h-11 w-full min-w-0 items-center justify-start tracking-[-0.43px] text-[#1a1a1a]"
+          className="flex h-11 min-w-0 flex-1 items-center justify-start tracking-[-0.43px] text-[#1a1a1a]"
         >
           <TitleText text={locName(loc)} />
           {canSwitch && <IconSelector size={17} stroke={2.5} className="ml-[3px] shrink-0 text-[#4e4e4e]" />}
@@ -240,11 +243,13 @@ function Toolbar({ view, loc, unread, actions, hideBell, canSwitch, onClock, clo
           )}
           {!hideBell && <BellButton unread={unread} onClick={onBell} />}
         </LiquidGlass>
-        <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
-            {wire ? <Initials name={ANON.name} size={42} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
-          </button>
-        </LiquidGlass>
+        {!hideProfile && (
+          <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
+            <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
+              {wire ? <Initials name={ANON.name} size={42} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
+            </button>
+          </LiquidGlass>
+        )}
       </div>
     </div>
   )
@@ -271,6 +276,8 @@ function ScreenScroll({
   fade?: boolean
   children: ReactNode
 }) {
+  // Room for the floating tab bar and clock accessory on a phone; an iPad has neither.
+  const tablet = useViewStore((s) => s.device === "tablet")
   return (
     <motion.div
       key={locationId}
@@ -284,10 +291,25 @@ function ScreenScroll({
       )}
       style={{
         paddingTop: `calc(var(--safe-top) + ${top}px)`,
-        paddingBottom: "calc(var(--safe-bottom) + 160px)",
+        paddingBottom: `calc(var(--safe-bottom) + ${tablet ? 32 : 160}px)`,
       }}
     >
       {children}
+    </motion.div>
+  )
+}
+
+/**
+ * Two columns for a wide screen (iPad landscape): a fixed-width side with the headline content, and a scrolling
+ * side with everything else. Each column scrolls on its own; the toolbar floats over both.
+ */
+function SplitScroll({ locationId, onScroll, gap, left, right }: { locationId: string; onScroll: ScrollHandler; gap?: string; left: ReactNode; right: ReactNode }) {
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 flex flex-col overflow-y-auto"
+  const pad = { paddingTop: "calc(var(--safe-top) + 66px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }
+  return (
+    <motion.div key={locationId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex">
+      <div className={cn(col, "w-[380px] shrink-0 pl-4 pr-2", gap)} style={pad}>{left}</div>
+      <div onScroll={onScroll} className={cn(col, "min-w-0 flex-1 pl-2 pr-4", gap)} style={pad}>{right}</div>
     </motion.div>
   )
 }
@@ -416,11 +438,18 @@ function LocationRowBody({ l }: { l: Location }) {
   const locName = useLocName()
   const wire = useStructure()
   if (wire) {
+    // Enough going on to read as a real, tappable row: the name over a line, a figure and a chip, and a chevron.
     return (
-      <span className="flex items-center gap-3">
-        <Bar w="45%" h={12} />
-        <span className="flex-1" />
-        <Bar w={40} h={12} />
+      <span className="flex w-full items-center gap-3 py-3 text-left tracking-[-0.43px]">
+        <span className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="truncate text-[17px] font-normal leading-[22px] text-black">{locName(l)}</span>
+          <Bar w="45%" h={10} />
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-[6px]">
+          <Bar w={46} h={12} />
+          <span aria-hidden className="block h-[18px] w-10 rounded-[7px] bg-[#dedde4]" />
+        </span>
+        <IconChevronRight size={18} stroke={2.5} className="shrink-0 text-[#c7c7cc]" />
       </span>
     )
   }
@@ -461,12 +490,14 @@ function AllLocationsWidget({ onOpen }: { onOpen: (l: Location, row: HTMLElement
     return (
       <div data-anno="all-locations">
       <WireCard h={200}>
-        <span aria-hidden className="mt-3 block h-24 rounded-[14px] bg-[#dedde4]" />
-        {LOCATIONS.map((l) => (
-          <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-label={locName(l)} className="mt-3 flex w-full items-center gap-3 text-left active:opacity-60">
-            <LocationRowBody l={l} />
-          </button>
-        ))}
+        <span aria-hidden className="mb-3 mt-3 block h-24 rounded-[14px] bg-[#dedde4]" />
+        <div className="border-t border-black/10">
+          {LOCATIONS.map((l, i) => (
+            <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-label={locName(l)} className={cn("block w-full text-left active:opacity-60", i > 0 && "border-t border-black/10")}>
+              <LocationRowBody l={l} />
+            </button>
+          ))}
+        </div>
       </WireCard>
       </div>
     )
@@ -618,10 +649,10 @@ function BusinessOverview({ loc, from, clone, onClosed }: { loc: Location; from:
   )
 }
 
-function ManagerDashboard({ loc, multi, onScroll, onOpenPage, onOpenBusiness }: { loc: Location; multi?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void; onOpenBusiness: (l: Location, row: HTMLElement) => void }) {
+function ManagerDashboard({ loc, multi, split, onScroll, onOpenPage, onOpenBusiness }: { loc: Location; multi?: boolean; /** Two columns (iPad landscape). */ split?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void; onOpenBusiness: (l: Location, row: HTMLElement) => void }) {
   const wire = useStructure()
-  return (
-    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={152} className="gap-4">
+  const hero = (
+    <>
       {multi ? (
         <section className="-mt-2">
           <SectionHeader>All Locations</SectionHeader>
@@ -643,7 +674,10 @@ function ManagerDashboard({ loc, multi, onScroll, onOpenPage, onOpenBusiness }: 
       )}
 
       <StatusWidget loc={loc} />
-
+    </>
+  )
+  const rest = (
+    <>
       <section>
         <SectionHeader>Needs Review</SectionHeader>
         {wire ? <WireList rows={3} avatar={false} trailing /> : <ListCard
@@ -668,6 +702,13 @@ function ManagerDashboard({ loc, multi, onScroll, onOpenPage, onOpenBusiness }: 
       </section>
 
       <EventsSection loc={loc} />
+    </>
+  )
+  if (split) return <SplitScroll locationId={loc.id} onScroll={onScroll} gap="gap-4" left={hero} right={rest} />
+  return (
+    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={152} className="gap-4">
+      {hero}
+      {rest}
     </ScreenScroll>
   )
 }
@@ -786,11 +827,11 @@ function Shiftmates({ photos, extra }: { photos: number[]; extra: number }) {
 
 const cardLabel = "absolute left-[13px] top-[11px] text-[15px] font-[510] leading-[22px] tracking-[-0.43px] text-black"
 
-function EmployeeDashboard({ loc, onScroll, onOpenPage }: { loc: Location; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void }) {
+function EmployeeDashboard({ loc, split, onScroll, onOpenPage }: { loc: Location; /** Two columns (iPad landscape). */ split?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void }) {
   const e = loc.employee
   const wire = useStructure()
-  return (
-    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={94}>
+  const hero = (
+    <>
       <WeekChart loc={loc} />
 
       {wire ? (
@@ -800,7 +841,10 @@ function EmployeeDashboard({ loc, onScroll, onOpenPage }: { loc: Location; onScr
           {e.greeting}
         </p>
       )}
-
+    </>
+  )
+  const rest = (
+    <>
       <div className="flex gap-3 pt-4">
         <button onClick={() => onOpenPage("earnings")} aria-label="Open earnings" data-anno="earnings" className="flex flex-1 text-left active:opacity-80">
           <Card className="relative h-28 w-full">
@@ -825,6 +869,13 @@ function EmployeeDashboard({ loc, onScroll, onOpenPage }: { loc: Location; onScr
 
       {/* Some employees have access to the manager log. */}
       <ManagerLogWidget loc={loc} onOpen={() => onOpenPage("log")} />
+    </>
+  )
+  if (split) return <SplitScroll locationId={loc.id} onScroll={onScroll} left={hero} right={rest} />
+  return (
+    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={94}>
+      {hero}
+      {rest}
     </ScreenScroll>
   )
 }
@@ -848,6 +899,13 @@ function IosHome() {
   const tabs: readonly TabId[] = userType === "employee" ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const [tab, setTab] = useState<TabId>("home")
+  // iPad: the tab bar becomes Apple's sidebar, and the app's content slides over to make room for it.
+  const tablet = useViewStore((s) => s.device === "tablet")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const paneLeft = tablet && sidebarOpen ? SIDEBAR_W : 0
+  // iPad on its side has room for two columns: the content splits into a left side and a right side.
+  const landscape = useViewStore((s) => s.orientation === "landscape")
+  const split = tablet && landscape
   // A different kind of user can have different tabs: start again from Home.
   useEffect(() => {
     setTab("home")
@@ -893,8 +951,9 @@ function IosHome() {
   const [biz, setBiz] = useState<{ loc: Location; from: Box; clone: ReactNode } | null>(null)
   const openBiz = useCallback((l: Location, row: HTMLElement) => {
     const from = boxOf(row)
-    if (from) setBiz({ loc: l, from, clone: <LocationRowBody l={l} /> })
-  }, [])
+    // The overview fills the content pane, so measure from the pane's edge, not the screen's.
+    if (from) setBiz({ loc: l, from: { ...from, left: from.left - paneLeft }, clone: <LocationRowBody l={l} /> })
+  }, [paneLeft])
   const closeBiz = useCallback(() => setBiz(null), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   // tabBarMinimizeBehavior(.onScrollDown): the tab bar collapses to one icon with the accessory nested beside it as
@@ -929,16 +988,41 @@ function IosHome() {
   const subtitle = wireCut ? "" : rawSubtitle
   // The Chat tab never shows the accessory, whatever the shift state.
   // Employees get the anchored accessory (not on Chat); owners and managers get the time clock button in the toolbar instead.
-  const showAccessory = tab !== "chat" && userType === "employee"
+  const showAccessory = !tablet && tab !== "chat" && userType === "employee"
 
   return (
-    <IPhoneFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+    <IosFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+      {tablet && (
+        <IpadSidebar
+          tabs={tabs}
+          tab={tab}
+          onTab={(t) => { setProfileOpen(false); setHomePage(null); setTab(t) }}
+          dots={{ chat: loc.messages.some((m) => m.unread) }}
+          open={sidebarOpen}
+          onToggle={() => setSidebarOpen((o) => !o)}
+          onProfile={() => setProfileOpen(true)}
+          onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
+          clock={{ title, subtitle, status: clockState.status, onOpen: () => setHalfOpen(true) }}
+        />
+      )}
+      {/* Everything but the sheets lives in this pane, which slides over as the sidebar opens and closes. */}
+      <motion.div initial={false} animate={{ left: paneLeft }} transition={SIDEBAR_SPRING} className="absolute inset-y-0 right-0">
       {tab === "home" ? (
         view === "manager" ? (
-          <ManagerDashboard loc={loc} multi={userType === "multi"} onScroll={onScroll} onOpenPage={setHomePage} onOpenBusiness={openBiz} />
+          <ManagerDashboard loc={loc} split={split} multi={userType === "multi"} onScroll={onScroll} onOpenPage={setHomePage} onOpenBusiness={openBiz} />
         ) : (
-          <EmployeeDashboard loc={loc} onScroll={onScroll} onOpenPage={setHomePage} />
+          <EmployeeDashboard loc={loc} split={split} onScroll={onScroll} onOpenPage={setHomePage} />
         )
+      ) : tab === "chat" && tablet ? (
+        <MessagesSplit key={loc.id} loc={loc} />
+      ) : tab === "shifts" && split ? (
+        <OverlayRoot.Provider value={screen}>
+          <ShiftsPage key={loc.id} loc={loc} split />
+        </OverlayRoot.Provider>
+      ) : tab === "time" && split ? (
+        <OverlayRoot.Provider value={screen}>
+          <TimePage key={loc.id} loc={loc} split />
+        </OverlayRoot.Provider>
       ) : (
         // Menus opened from a page (e.g. the Shifts filter) render into the screen overlay.
         <OverlayRoot.Provider value={screen}>
@@ -953,7 +1037,7 @@ function IosHome() {
       <EdgeBlur
         top={{ strength: 24, steps: 6, height: "calc(var(--safe-top) + 64px)" }}
         // Taller and firmer than the top edge: this one has to lift the nav bar (and the clock bar) off whatever scrolls under it.
-        bottom={{ strength: 28, steps: 8, height: "calc(var(--safe-bottom) + 140px)", tint: "var(--ios-page-tint-strong, rgba(243,242,246,0.92))" }}
+        bottom={tablet ? false : { strength: 28, steps: 8, height: "calc(var(--safe-bottom) + 140px)", tint: "var(--ios-page-tint-strong, rgba(243,242,246,0.92))" }}
       />
       <Toolbar
         view={view}
@@ -964,6 +1048,8 @@ function IosHome() {
         showClock={tab === "home"}
         clockActive={clockState.status === "in"}
         hideBell={tab === "chat"}
+        hideProfile={tablet}
+        leading={tablet && !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined}
         actions={
           tab === "shifts" ? (
             <button
@@ -989,6 +1075,17 @@ function IosHome() {
             </>
           ) : undefined
         } onBell={() => setRequestsOpen(true)} onTitle={() => setMenuOpen((o) => !o)} onProfile={() => setProfileOpen(true)} />
+      <LocationMenu open={menuOpen} onClose={closeMenu} />
+      <AnimatePresence>
+        {homePage && (
+          <FullPage key={homePage} title={HOME_PAGE_TITLES[homePage]} onBack={closeHomePage}>
+            <HomePage id={homePage} loc={loc} />
+          </FullPage>
+        )}
+      </AnimatePresence>
+      {biz && <BusinessOverview key={biz.loc.id} loc={biz.loc} from={biz.from} clone={biz.clone} onClosed={closeBiz} />}
+      {profileOpen && tablet && <ProfileSheet inline loc={loc} onClose={closeProfile} />}
+      </motion.div>
       <motion.div style={{ visibility: accessoryVisibility }} className="pointer-events-none absolute inset-0 z-20">
         <AnimatePresence initial={false}>
         {!minimized && showAccessory && (
@@ -1008,20 +1105,22 @@ function IosHome() {
         )}
         </AnimatePresence>
       </motion.div>
-      <TabBar
-        tabs={tabs}
-        dots={{ chat: loc.messages.some((m) => m.unread) }}
-        tab={tab}
-        onTab={(t) => {
-          setTab(t)
-          setMinimized(false)
-          lastTop.current = 0
-        }}
-        onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
-        minimized={minimized}
-        onExpand={() => setMinimized(false)}
-        inlineAccessory={!showAccessory ? null : <BottomAccessory placement="inline" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setMinimized(false)} />}
-      />
+      {!tablet && (
+        <TabBar
+          tabs={tabs}
+          dots={{ chat: loc.messages.some((m) => m.unread) }}
+          tab={tab}
+          onTab={(t) => {
+            setTab(t)
+            setMinimized(false)
+            lastTop.current = 0
+          }}
+          onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
+          minimized={minimized}
+          onExpand={() => setMinimized(false)}
+          inlineAccessory={!showAccessory ? null : <BottomAccessory placement="inline" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setMinimized(false)} />}
+        />
+      )}
       {halfOpen && (
         <HalfSheet
           progress={halfP}
@@ -1050,21 +1149,12 @@ function IosHome() {
         }}
         onClose={closePlus}
       />
-      <LocationMenu open={menuOpen} onClose={closeMenu} />
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
       {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} />}
-      <AnimatePresence>
-        {homePage && (
-          <FullPage key={homePage} title={HOME_PAGE_TITLES[homePage]} onBack={closeHomePage}>
-            <HomePage id={homePage} loc={loc} />
-          </FullPage>
-        )}
-      </AnimatePresence>
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
-      {biz && <BusinessOverview key={biz.loc.id} loc={biz.loc} from={biz.from} clone={biz.clone} onClosed={closeBiz} />}
-      {profileOpen && <ProfileSheet loc={loc} onClose={closeProfile} />}
+      {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
-    </IPhoneFrame>
+    </IosFrame>
   )
 }

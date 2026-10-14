@@ -17,7 +17,8 @@ import {
   IconHelp,
   IconLock,
   IconMapPin,
-  IconPencil,
+  IconMenu2,
+  IconMenuDeep,
   IconPlus,
   IconSearch,
   IconSend,
@@ -29,11 +30,11 @@ import { LinearBlur } from "@/components/ui/progressive-blur"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
-import { ABar, ACard, ADrawer, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
+import { ABar, ACard, ADialog, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
 import { LOCATIONS, USER_SCHEDULE, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
-import { ANON, useLocName } from "@/store/useViewStore"
+import { ANON, useLocName, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
 import { accessoryFor, useClock } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
@@ -67,6 +68,7 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
 type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
+const SETTINGS: PageSpec = { id: "settings", kind: "settings", title: "Settings" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
 
 /** Placeholder avatar: the user's two initials on a tonal circle. */
@@ -83,16 +85,18 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ loc, tab, canSwitch, scrolled, pending, showClock, clockActive, onTitle, onBell, onClock, onProfile }: { loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const locName = useLocName()
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
-      {/* The avatar opens the navigation drawer. */}
-      <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
-        <Avatar size={32} />
-      </button>
-      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className="text-m-on-surface flex min-w-0 flex-1 items-center gap-1 text-left">
+      {/* The avatar opens the navigation drawer (with a rail, the avatar lives in the rail instead). */}
+      {!rail && (
+        <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
+          <Avatar size={32} />
+        </button>
+      )}
+      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 flex-1 items-center gap-1 text-left", rail && "pl-2")}>
         <span className="line-clamp-2 min-w-0 text-[18px] font-medium leading-6">{locName(loc)}</span>
         {canSwitch && <IconChevronDown size={20} stroke={2} className="text-m-variant shrink-0" />}
       </button>
@@ -103,6 +107,13 @@ function TopBar({ loc, tab, canSwitch, scrolled, pending, showClock, clockActive
             {clockActive && <span aria-hidden className="absolute -right-[2px] -top-[2px] size-[9px] rounded-full bg-[#34c759]" />}
           </span>
         </AIconButton>
+      )}
+      {plus && (
+        <span data-anno="plus" className="contents">
+          <AIconButton label={plus.label} onClick={plus.onClick}>
+            <IconPlus size={24} stroke={1.75} />
+          </AIconButton>
+        </span>
       )}
       {/* Messages has its own action up here (search) and, like iOS, no bell. */}
       {tab === "chat" && (
@@ -163,6 +174,103 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant }: { tabs: TabId[]; tab:
   )
 }
 
+/** Rail widths: collapsed (icon over label) and expanded (icon beside label). */
+const RAIL_W = 96
+const RAIL_OPEN_W = 220
+const RAIL_EASE = { duration: 0.3, ease: [0.2, 0, 0, 1] } as const
+
+/**
+ * Material 3 navigation rail, for tablets. Top to bottom: the menu
+ * button that expands and collapses the rail, the avatar (opens settings), the assistant (managers), then the
+ * destinations. Collapsed it is 96dp wide with labels under the icons; expanded the labels sit beside them.
+ * The app's content slides right as it grows (see AndroidApp).
+ */
+function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssistant, clock }: { clock?: { title: string; status: "out" | "in" | "break"; onOpen: () => void }; tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; open: boolean; onToggle: () => void; onProfile: () => void; onAssistant?: () => void }) {
+  const pill = (on: boolean) => cn("flex items-center transition-colors", open ? "h-14 w-full gap-3 rounded-full pl-4 pr-6" : "h-8 w-14 justify-center rounded-full", on && "bg-m-secondary-container")
+  const label = (text: string, strong?: boolean) => (open ? <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.15 }} className={cn("whitespace-nowrap text-[14px] leading-5", strong ? "font-bold" : "font-medium")}>{text}</motion.span> : null)
+  return (
+    <motion.nav
+      data-anno="nav-rail"
+      aria-label="Primary"
+      initial={false}
+      animate={{ width: open ? RAIL_OPEN_W : RAIL_W }}
+      transition={RAIL_EASE}
+      className="bg-m-container absolute inset-y-0 left-0 z-30 flex flex-col overflow-hidden"
+      style={{ paddingTop: "calc(var(--safe-top) + 8px)", paddingBottom: 16 }}
+    >
+      <div className={cn("flex flex-col", open ? "items-stretch px-3" : "items-center")}>
+        <button onClick={onToggle} aria-label={open ? "Collapse navigation rail" : "Expand navigation rail"} aria-expanded={open} className={cn("text-m-variant flex size-14 items-center justify-center rounded-full active:bg-black/10", open && "ml-1")}>
+          {open ? <IconMenuDeep size={24} stroke={1.75} /> : <IconMenu2 size={24} stroke={1.75} />}
+        </button>
+        <button onClick={onProfile} aria-label="Open settings" aria-haspopup="dialog" data-anno="profile" className={cn("text-m-on-surface mt-1 flex items-center rounded-full active:bg-black/10", open ? "h-14 w-full gap-3 pl-3 pr-6" : "size-14 justify-center")}>
+          <Avatar size={40} />
+          {open && <span className="truncate text-[14px] font-medium leading-5">{ANON.name}</span>}
+        </button>
+        {onAssistant && (
+          <button onClick={onAssistant} aria-label="Assistant" aria-haspopup="dialog" className={cn("mt-3 flex h-14 items-center justify-center gap-3 self-center rounded-[16px] bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85", open ? "w-full px-4" : "w-14")}>
+            <span aria-hidden className="block shrink-0 bg-white" style={maskStyle("/android/assistant-solid-24.svg", 24)} />
+            {open && <span className="whitespace-nowrap text-[14px] font-medium leading-5">Assistant</span>}
+          </button>
+        )}
+      </div>
+      <div className={cn("mt-6 flex flex-col", open ? "gap-1 px-3" : "items-center gap-3")}>
+        {tabs.map((id) => {
+          const { label: text, icon } = TABS[id]
+          const on = tab === id
+          return (
+            <button key={id} onClick={() => onTab(id)} aria-current={on ? "page" : undefined} className={cn("flex", open ? "w-full" : "flex-col items-center gap-1")} style={{ color: on ? "var(--m-nav-active)" : "var(--m-nav-inactive)" }}>
+              <span className={pill(on)}>
+                <span className="relative flex">
+                  <span aria-hidden className="block bg-current" style={maskStyle(icon, 24)} />
+                  {id === "chat" && unread > 0 && (
+                    <span aria-label={`${unread} unread`} className="bg-[var(--m-badge)] absolute -top-[5px] flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white" style={{ left: 16 }}>
+                      {unread}
+                    </span>
+                  )}
+                </span>
+                {label(text, on)}
+              </span>
+              {!open && <span className={cn("whitespace-nowrap text-[12px] leading-normal", on ? "font-bold" : "font-medium")}>{text}</span>}
+            </button>
+          )
+        })}
+      </div>
+      {clock && <RailClock open={open} {...clock} />}
+    </motion.nav>
+  )
+}
+
+/**
+ * The time clock at the foot of the rail. Collapsed: a round vertical pill, the break and meal buttons over the
+ * status icon. Expanded: a squarer card that adds the status text. Either opens the time clock dialog.
+ */
+function RailClock({ open, title, status, onOpen }: { open: boolean; title: string; status: "out" | "in" | "break"; onOpen: () => void }) {
+  // One layout in both states: the rows stay put and the expanded card just reveals each row's text.
+  const row = cn("flex items-center rounded-full active:bg-black/10", open ? "h-10 w-full gap-3 pl-0 pr-4" : "size-10 justify-center")
+  const text = (t: string) => (open ? <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.15 }} className="whitespace-nowrap text-[14px] font-medium leading-5">{t}</motion.span> : null)
+  const icon = (src: string) => <span aria-hidden className="flex size-10 shrink-0 items-center justify-center"><span className="block bg-current" style={maskStyle(src, 24)} /></span>
+  return (
+    <div data-anno="clock-accessory" className={cn("bg-m-high text-m-on-surface mt-auto flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.14)]", open ? "mx-3 rounded-[20px] p-1" : "mx-auto w-14 items-center rounded-full py-2")}>
+      {status === "in" && (
+        <>
+          <button onClick={onOpen} aria-label="Take break" className={row}>{icon("/phone/break-solid.svg")}{text("Take break")}</button>
+          <button onClick={onOpen} aria-label="Take meal" className={row}>{icon("/phone/meal.svg")}{text("Take meal")}</button>
+        </>
+      )}
+      {status !== "in" && open && (
+        <button onClick={onOpen} className="bg-m-primary text-m-on-primary m-1 h-10 rounded-full px-4 text-[14px] font-medium tracking-[0.1px] active:opacity-85">{status === "break" ? "End break" : "Clock in"}</button>
+      )}
+      <button onClick={onOpen} aria-haspopup="dialog" aria-label={title} className={row}>
+        <span className="relative flex size-10 shrink-0 items-center justify-center">
+          <IconClock size={24} stroke={1.75} />
+          {status === "in" && <span aria-hidden className="absolute right-[7px] top-[7px] size-[9px] rounded-full bg-[#34c759] ring-2 ring-[var(--m-container-high)]" />}
+        </span>
+        {text(title)}
+      </button>
+    </div>
+  )
+}
+
 function LocationMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const locName = useLocName()
   const id = useLocationStore((s) => s.locationId)
@@ -205,17 +313,48 @@ const Section = ({ title, action, onAction, headerAnno, children }: { title: str
   </section>
 )
 
-function HomeEmployee({ onOpen }: { onOpen: (p: PageSpec) => void }) {
+/** Two columns for a wide screen (tablet landscape): a fixed-width side and a flexible side, each scrolling on its own. */
+function SplitCols({ left, right }: { left: ReactNode; right: ReactNode }) {
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden overflow-y-auto px-4 pb-6"
   return (
-    <div className="flex flex-col gap-3">
+    <div className="absolute inset-0 flex" style={{ paddingTop: "calc(var(--safe-top) + 64px)" }}>
+      <div className={cn(col, "w-[380px] shrink-0")}>{left}</div>
+      <div className={cn(col, "min-w-0 flex-1 pl-2")}>{right}</div>
+    </div>
+  )
+}
+
+/** A chosen item, opened: skeleton cards under their titles. */
+function DetailCards({ cards }: { cards: [string, number][] }) {
+  return (
+    <div className="flex flex-col gap-3 pt-2">
+      {cards.map(([t, h]) => <ACard key={t} title={t} h={h} />)}
+    </div>
+  )
+}
+
+function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
+  const hero = (
+    <>
       <ACard title="My week" h={216} />
       <ALines />
+    </>
+  )
+  const rest = (
+    <>
       <div className="flex gap-3">
         <ACard title="Earnings" h={112} onClick={() => onOpen(EARNINGS)} className="flex-1" />
         <ACard title="Shiftmates" h={112} onClick={() => onOpen(SHIFTMATES)} className="flex-1" />
       </div>
       <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
+    </>
+  )
+  if (split) return <SplitCols left={<div className="flex flex-col gap-3">{hero}</div>} right={<div className="flex flex-col gap-3">{rest}</div>} />
+  return (
+    <div className="flex flex-col gap-3">
+      {hero}
+      {rest}
     </div>
   )
 }
@@ -271,10 +410,10 @@ function BusinessPage({ loc, from, onClosed }: { loc: Location; from: Box; onClo
   )
 }
 
-function HomeManager({ multi, onOpen, onOpenBiz }: { multi: boolean; onOpen: (p: PageSpec) => void; onOpenBiz: (l: Location, row: HTMLElement) => void }) {
+function HomeManager({ multi, split, onOpen, onOpenBiz }: { multi: boolean; split?: boolean; onOpen: (p: PageSpec) => void; onOpenBiz: (l: Location, row: HTMLElement) => void }) {
   const locName = useLocName()
-  return (
-    <div className="flex flex-col gap-3">
+  const hero = (
+    <>
       {multi ? (
         <ACard title="All locations" h={200} dataAnno="all-locations">
           <span aria-hidden className="bg-m-skeleton mt-3 block h-24 rounded-[12px]" />
@@ -294,10 +433,21 @@ function HomeManager({ multi, onOpen, onOpenBiz }: { multi: boolean; onOpen: (p:
       )}
       <ALines />
       <ACard title="Status" h={150} />
+    </>
+  )
+  const rest = (
+    <>
       <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
       <Section title="My Week (Shifts)"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
+    </>
+  )
+  if (split) return <SplitCols left={<div className="flex flex-col gap-3">{hero}</div>} right={<div className="flex flex-col gap-3">{rest}</div>} />
+  return (
+    <div className="flex flex-col gap-3">
+      {hero}
+      {rest}
     </div>
   )
 }
@@ -309,12 +459,13 @@ const SHIFT_FILTERS = [
 ] as const
 
 /** Shifts: the week strip, then the day's summary with the filter as a dropdown beside it, like iOS. */
-function ShiftsTab() {
+function ShiftsTab({ split }: { split?: boolean }) {
+  const [sel, setSel] = useState(0)
   const date = useDateStore((s) => s.date)
   const setDate = useDateStore((s) => s.setDate)
   const [filter, setFilter] = useState<(typeof SHIFT_FILTERS)[number]["id"]>("all")
   const [menu, setMenu] = useState(false)
-  return (
+  const main = (
     <div>
       <WeekStrip date={date} onPick={setDate} dots={(i) => !!USER_SCHEDULE[i]} />
       <div className="relative flex items-start justify-between gap-3 pb-3 pt-1">
@@ -349,32 +500,47 @@ function ShiftsTab() {
           )}
         </AnimatePresence>
       </div>
-      <AList rows={6} trailing />
+      <AList rows={split ? 14 : 6} trailing selected={split ? sel : undefined} onPick={split ? setSel : undefined} />
+    </div>
+  )
+  if (!split) return main
+  return <SplitCols left={main} right={<DetailCards cards={[["Shift", 120], ["Details", 200], ["Notes", 96]]} />} />
+}
+
+/** The pay period at a glance: the hours paid and what each person was paid. */
+function PayPeriodPane() {
+  return (
+    <div className="flex flex-col gap-1 pt-2">
+      <ASection>Pay period</ASection>
+      <ABar w={150} h={34} />
+      <p className="text-m-variant pb-2 pt-1 text-[16px] leading-6">Total paid</p>
+      <AList rows={9} trailing />
     </div>
   )
 }
 
-function TimeTab() {
+function TimeTab({ split }: { split?: boolean }) {
   const date = useDateStore((s) => s.date)
   const setDate = useDateStore((s) => s.setDate)
-  const view = useDateStore((s) => s.timeView)
+  const storedView = useDateStore((s) => s.timeView)
+  // Split view shows both, so the Day / Pay period choice doesn't apply.
+  const view = split ? "day" : storedView
   const setView = useDateStore((s) => s.setTimeView)
   const [issues, setIssues] = useState(false)
-  return (
+  const main = (
     <div>
       <WeekStrip date={date} onPick={setDate} />
       <AChips>
         <AChip leading={<IconSearch size={18} stroke={2} />} />
         <AChip selected={issues} onClick={() => setIssues((v) => !v)}>Issues</AChip>
         <AChip trailing={<IconChevronDown size={18} stroke={2} />}>Roles</AChip>
-        <AChip selected={view === "period"} onClick={() => setView(view === "period" ? "day" : "period")}>Pay period</AChip>
+        {!split && <AChip selected={view === "period"} onClick={() => setView(view === "period" ? "day" : "period")}>Pay period</AChip>}
       </AChips>
       {view === "day" ? (
         <>
           <ASection>Needs review</ASection>
           <div className="flex flex-col gap-3 pt-1">
-            <ACard h={150} />
-            <ACard h={150} />
+            {Array.from({ length: split ? 6 : 4 }, (_, i) => <ACard key={i} h={150} />)}
           </div>
         </>
       ) : (
@@ -385,6 +551,8 @@ function TimeTab() {
       )}
     </div>
   )
+  if (!split) return main
+  return <SplitCols left={main} right={<PayPeriodPane />} />
 }
 
 function MoneyTab() {
@@ -397,7 +565,7 @@ function MoneyTab() {
   )
 }
 
-function MessagesTab() {
+function MessagesTab({ selected, onPick }: { /** Split view (tablet landscape): the open conversation and what choosing one does. */ selected?: number; onPick?: (i: number) => void }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
   const toggle = (f: "unread" | "threads") => setFilter((c) => (c === f ? "all" : f))
   return (
@@ -406,7 +574,48 @@ function MessagesTab() {
         <AChip selected={filter === "unread"} onClick={() => toggle("unread")}>Unread</AChip>
         <AChip selected={filter === "threads"} onClick={() => toggle("threads")}>Threads</AChip>
       </AChips>
-      <AList rows={7} />
+      <AList rows={onPick ? 14 : 7} selected={selected} onPick={onPick} />
+    </div>
+  )
+}
+
+/** One conversation, opened: who it's with, the thread, and the composer, as skeletons. */
+function ConversationPane() {
+  const bubble = "block rounded-[20px]"
+  return (
+    <div className="bg-m-container flex h-full flex-col overflow-hidden rounded-[28px]">
+      <div className="border-m-divider flex shrink-0 items-center gap-4 border-b px-5 py-4">
+        <span className="bg-m-skeleton size-10 shrink-0 rounded-full" />
+        <span className="flex flex-col gap-[9px]">
+          <ABar w={140} h={12} />
+          <ABar w={80} h={10} />
+        </span>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-5">
+        <span aria-hidden className={cn(bubble, "bg-m-skeleton h-14 w-[55%] self-start")} />
+        <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[38%] self-end")} />
+        <span aria-hidden className={cn(bubble, "bg-m-skeleton h-20 w-[62%] self-start")} />
+        <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[30%] self-end")} />
+      </div>
+      <div className="shrink-0 px-4 pb-4">
+        <div className="border-m-outline h-12 rounded-full border" />
+      </div>
+    </div>
+  )
+}
+
+/** Tablet Messages: the list on the left, the open conversation on the right. */
+function MessagesSplit() {
+  const [sel, setSel] = useState(0)
+  const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  return (
+    <div className="absolute inset-0 flex" style={{ paddingTop: "calc(var(--safe-top) + 64px)" }}>
+      <div className={cn(col, "w-[40%] min-w-[240px] max-w-[380px] shrink-0 overflow-y-auto px-4 pb-6")}>
+        <MessagesTab selected={sel} onPick={setSel} />
+      </div>
+      <div className="min-w-0 flex-1 pb-4 pl-1 pr-4 pt-2">
+        <ConversationPane />
+      </div>
     </div>
   )
 }
@@ -415,28 +624,30 @@ function MessagesTab() {
 // Sheets and pages
 // ---------------------------------------------------------------------------
 
-function RequestsSheet({ multi, onClose }: { multi: boolean; onClose: () => void }) {
+function RequestsSheet({ multi, side, onClose }: { multi: boolean; /** A side sheet instead of a bottom sheet (wide screens). */ side?: boolean; onClose: () => void }) {
+  const Shell = side ? ASideSheet : ASheet
   const filters = ["Team", "Mine", "Store", ...(multi ? ["All locations"] : [])]
   const [f, setF] = useState("Team")
   return (
-    <ASheet title="Requests" onClose={onClose}>
+    <Shell title="Requests" onClose={onClose} {...(side ? {} : { full: true })}>
       <AChips>
         {filters.map((x) => (
           <AChip key={x} selected={f === x} onClick={() => setF(x)}>{x}</AChip>
         ))}
       </AChips>
       <AList rows={4} />
-    </ASheet>
+    </Shell>
   )
 }
 
-function ClockSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+function ClockSheet({ loc, dialog, onClose }: { loc: Location; /** A centred dialog instead of a bottom sheet (wide screens). */ dialog?: boolean; onClose: () => void }) {
   const locName = useLocName()
   const st = useClock(loc)
   const role = st.role ?? loc.employee.timeClock.role
   const main = st.status === "out" ? "Clock in" : st.status === "break" ? "End break" : "Clock out"
+  const Shell = dialog ? ADialog : ASheet
   return (
-    <ASheet title="Time clock" onClose={onClose}>
+    <Shell title="Time clock" onClose={onClose}>
       <div aria-hidden className="bg-m-skeleton h-36 rounded-[16px]" />
       <div className="py-2">
         <ARow icon={<IconMapPin size={24} stroke={1.75} />} label={locName(loc)} />
@@ -450,7 +661,7 @@ function ClockSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
         </div>
       )}
       <button onClick={onClose} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85">{main}</button>
-    </ASheet>
+    </Shell>
   )
 }
 
@@ -458,11 +669,11 @@ function ClockSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
  * The time clock as one long bar above the navigation (the same idea as iOS's accessory): the status on the left,
  * the actions on the right. A bar rather than a FAB because it carries state and more than one action.
  */
-function ClockBar({ title, status, onOpen }: { title: string; status: "out" | "in" | "break"; onOpen: () => void }) {
+function ClockBar({ title, status, bottom, onOpen }: { bottom: number; title: string; status: "out" | "in" | "break"; onOpen: () => void }) {
   const glyph = (src: string) => ({ width: 24, height: 24, maskImage: `url(${src})`, WebkitMaskImage: `url(${src})`, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }) as const
   const round = "flex size-10 items-center justify-center rounded-full active:bg-black/10"
   return (
-    <div data-anno="clock-accessory" className="bg-m-high text-m-on-surface absolute inset-x-4 z-20 flex h-14 items-center gap-3 rounded-full pl-4 pr-2 shadow-[0_2px_8px_rgba(0,0,0,0.14)]" style={{ bottom: 100 }}>
+    <div data-anno="clock-accessory" className="bg-m-high text-m-on-surface absolute inset-x-4 z-20 flex h-14 items-center gap-3 rounded-full pl-4 pr-2 shadow-[0_2px_8px_rgba(0,0,0,0.14)]" style={{ bottom }}>
       <button onClick={onOpen} aria-haspopup="dialog" aria-label={title} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <span className="relative size-6 shrink-0">
           <IconClock size={24} stroke={1.75} />
@@ -646,7 +857,7 @@ function SearchField() {
 
 /**
  * The profile cards: the location PIN, shoutouts, stats. One card at a time, switched from a tab row. Not a swipe
- * carousel: inside the drawer, sideways swipes close it and vertical ones scroll it.
+ * carousel: inside a drawer, sideways swipes close it and vertical ones scroll it.
  */
 function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   const loc = useLocation()
@@ -853,7 +1064,7 @@ function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: b
         </Section>
         <div className="pt-2">
           {["Personal Information", "Shared Name", "Tax & Bank Information", "Resume"].map((l) => (
-            <button key={l} className="flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5">
+            <button key={l} onClick={() => onOpen({ id: l.toLowerCase().replace(/\W+/g, "-"), kind: "generic", title: l })} className="flex h-14 w-full items-center justify-between px-1 text-left text-[16px] active:bg-black/5">
               {l}
               <IconChevronRight size={20} stroke={2} className="text-m-variant" />
             </button>
@@ -896,13 +1107,22 @@ export function AndroidApp() {
   const [tab, setTab] = useState<TabId>("home")
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
-  const [drawer, setDrawer] = useState(false)
+  // Tablets (600dp and wider in either orientation) swap the bottom bar for a side rail. A phone on its side keeps its
+  // portrait layout, turned in the frame (see AndroidFrame).
+  const device = useViewStore((v) => v.device)
+  const rail = device === "tablet"
+  const landscape = useViewStore((v) => v.orientation === "landscape")
+  // Tablet on its side has room for two columns on Home, Shifts and Time (Messages splits in both orientations).
+  const split = rail && landscape
+  const [railOpen, setRailOpen] = useState(false)
+  const railW = rail ? (railOpen ? RAIL_OPEN_W : RAIL_W) : 0
   // A business overview grows out of the row tapped in the all-locations card.
   const [biz, setBiz] = useState<{ loc: Location; from: Box } | null>(null)
   // Shifts' plus offers two things, like the iOS menu: add a shift or an event.
   const [fabMenu, setFabMenu] = useState(false)
   const [sheet, setSheet] = useState<null | "requests" | "clock" | "shift" | "event">(null)
   const [stack, setStack] = useState<PageSpec[]>([])
+  const goTab = (t: TabId) => { setStack([]); setTab(t) }
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
   const pop = () => setStack((s) => s.slice(0, -1))
 
@@ -922,33 +1142,72 @@ export function AndroidApp() {
   const clock = useClock(loc)
   const { title: clockTitle } = accessoryFor(loc, clock)
   // Employees get the clock as a bar above the navigation on every tab but Messages, like iOS: status plus actions.
-  const showClockBar = employee && tab !== "chat"
+  const showClockBar = employee && tab !== "chat" && !rail
 
-  // One FAB per tab. The main action of the tab is extended (icon + label); the rest are icon-only.
-  const fab =
-    tab === "home" ? null
+  // The tab's add action. Phones put it in the top bar with the other actions (a FAB would fight the assistant
+  // button); tablets keep a FAB, since the assistant lives in the rail there.
+  const plus =
+    tab === "shifts" ? { label: "Add", onClick: () => setFabMenu((o) => !o) }
+    : tab === "time" ? { label: "Add time entry", onClick: () => open({ id: "timecard", kind: "timecard", title: "Add time card" }) }
+    : tab === "chat" ? { label: "New message", onClick: () => {} }
+    : null
+  // Tablet Messages is a split view with its own composer where the FAB would sit, so its new-message action goes in the top bar instead.
+  const fab = !rail || tab === "chat" ? null
     : tab === "shifts" ? <AFab label="Add" icon={<IconPlus size={24} stroke={1.75} />} onClick={() => setFabMenu((o) => !o)} />
     : tab === "time" ? <AFab label="Add time entry" icon={<IconPlus size={24} stroke={1.75} />} onClick={() => open({ id: "timecard", kind: "timecard", title: "Add time card" })} />
-    : tab === "chat" ? <AFab extended label="New message" icon={<IconPencil size={24} stroke={1.75} />} />
     : null
+  const addMenu = (cls: string, origin: string) => (
+    <AnimatePresence>
+      {fabMenu && tab === "shifts" && (
+        <>
+          <div className="fixed inset-0 -z-10" onPointerDown={() => setFabMenu(false)} />
+          <motion.div role="menu" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.15 }} style={{ transformOrigin: origin }} className={cn("bg-m-high text-m-on-surface absolute w-[200px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]", cls)}>
+            {[["Add shift", IconCalendarPlus, () => setSheet("shift")], ["Add event", IconCalendarEvent, () => setSheet("event")]].map(([label, Icon, run]) => {
+              const I = Icon as typeof IconCalendarPlus
+              return (
+                <button key={label as string} role="menuitem" onClick={() => { setFabMenu(false); (run as () => void)() }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
+                  <I size={22} stroke={1.5} className="text-m-variant" />
+                  {label as string}
+                </button>
+              )
+            })}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+
+  const assistant = employee ? undefined : () => open({ id: "assistant", kind: "assistant", title: "Assistant" })
+  const unread = loc.messages.filter((m) => m.unread).length
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      <motion.div
+      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => setSheet("clock") }} />}
+      {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
+      <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
+      {tab === "chat" && rail && <MessagesSplit key={loc.id} />}
+      {split && tab !== "chat" && tab !== "money" && (
+        <motion.div key={`${tab}:${loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+          {tab === "home" && (employee ? <HomeEmployee split onOpen={open} /> : <HomeManager multi={userType === "multi"} split onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
+          {tab === "shifts" && <ShiftsTab split />}
+          {tab === "time" && <TimeTab split />}
+        </motion.div>
+      )}
+      {!(tab === "chat" && rail) && !(split && tab !== "money") && <motion.div
         key={`${tab}:${loc.id}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.18 }}
         onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: 200 }}
+        style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: rail ? 120 : 200 }}
       >
-        {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from }) }} />)}
+        {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab />}
         {tab === "money" && <MoneyTab />}
         {tab === "chat" && <MessagesTab />}
-      </motion.div>
+      </motion.div>}
 
       <TopBar
         loc={loc}
@@ -956,57 +1215,28 @@ export function AndroidApp() {
         canSwitch={multi}
         scrolled={scrolled}
         pending={pending}
-        showClock={!employee && tab === "home"}
+        showClock={!employee && tab === "home" && !rail}
         clockActive={clock.status === "in"}
+        rail={rail}
+        plus={rail && tab !== "chat" ? undefined : (plus ?? undefined)}
         onTitle={() => setMenu((m) => !m)}
         onBell={() => setSheet("requests")}
         onClock={() => setSheet("clock")}
-        onProfile={() => setDrawer(true)}
+        onProfile={() => open(SETTINGS)}
       />
-      <NavBar tabs={tabs} tab={tab} onTab={setTab} unread={loc.messages.filter((m) => m.unread).length} onAssistant={employee ? undefined : () => open({ id: "assistant", kind: "assistant", title: "Assistant" })} />
-      {showClockBar && <ClockBar title={clockTitle} status={clock.status} onOpen={() => setSheet("clock")} />}
+      {!rail && <NavBar tabs={tabs} tab={tab} onTab={goTab} unread={unread} onAssistant={assistant} />}
+      {showClockBar && <ClockBar title={clockTitle} status={clock.status} bottom={100} onOpen={() => setSheet("clock")} />}
       {fab && (
-        <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: showClockBar ? 172 : 108 }}>
+        <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}
-          <AnimatePresence>
-            {fabMenu && tab === "shifts" && (
-              <>
-                <div className="fixed inset-0 -z-10" onPointerDown={() => setFabMenu(false)} />
-                <motion.div role="menu" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.15 }} style={{ transformOrigin: "bottom right" }} className="bg-m-high text-m-on-surface absolute bottom-16 right-0 w-[200px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
-                  {[["Add shift", IconCalendarPlus, () => setSheet("shift")], ["Add event", IconCalendarEvent, () => setSheet("event")]].map(([label, Icon, run]) => {
-                    const I = Icon as typeof IconCalendarPlus
-                    return (
-                      <button key={label as string} role="menuitem" onClick={() => { setFabMenu(false); (run as () => void)() }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
-                        <I size={22} stroke={1.5} className="text-m-variant" />
-                        {label as string}
-                      </button>
-                    )
-                  })}
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+          {addMenu("bottom-16 right-0", "bottom right")}
         </div>
       )}
-
-      {biz && <BusinessPage key={biz.loc.id} loc={biz.loc} from={biz.from} onClosed={() => setBiz(null)} />}
+      {!rail && <div className="absolute inset-x-0 top-0 z-30">{addMenu("right-3 top-[calc(var(--safe-top)+56px)]", "top right")}</div>}
       <LocationMenu open={menu} onClose={() => setMenu(false)} />
 
-      <AnimatePresence>
-        {sheet === "requests" && <RequestsSheet key="requests" multi={multi} onClose={() => setSheet(null)} />}
-        {sheet === "clock" && <ClockSheet key="clock" loc={loc} onClose={() => setSheet(null)} />}
-        {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
-        {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {drawer && (
-          <ADrawer key="drawer" onClose={() => setDrawer(false)}>
-            {/* Same content as the Settings sheet; picking a row closes the tray and opens that page. */}
-            <SettingsPage manager={!employee} onOpen={(p) => { setDrawer(false); open(p) }} />
-          </ADrawer>
-        )}
-      </AnimatePresence>
+      {/* Pages and overviews fill the pane, so with a rail they open beside it, not over it. */}
+      {biz && <BusinessPage key={biz.loc.id} loc={biz.loc} from={biz.from} onClosed={() => setBiz(null)} />}
 
       <AnimatePresence>
         {stack.map((p, i) => (
@@ -1015,6 +1245,8 @@ export function AndroidApp() {
             title={p.title}
             z={40 + i}
             onBack={pop}
+            close={p.kind === "settings"}
+            rise={p.kind === "settings" && !rail}
             bar={p.kind === "team" ? <SearchField /> : undefined}
             footer={p.kind === "assistant" ? <Composer /> : undefined}
             action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
@@ -1023,6 +1255,16 @@ export function AndroidApp() {
           </APage>
         ))}
       </AnimatePresence>
+      </motion.div>
+
+
+      <AnimatePresence>
+        {sheet === "requests" && <RequestsSheet key="requests" multi={multi} side={rail} onClose={() => setSheet(null)} />}
+        {sheet === "clock" && <ClockSheet key="clock" loc={loc} dialog={rail} onClose={() => setSheet(null)} />}
+        {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
+        {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
+      </AnimatePresence>
+
           </AndroidFrame>
   )
 }

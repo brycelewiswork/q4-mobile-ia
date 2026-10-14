@@ -12,7 +12,8 @@
     "title": "Settings moves to the left",
     "body": "Android typically launches a settings menu from the top left instead of iOS' top right position.",
     "side": "left",
-    "platform": "android"
+    "platform": "android",
+    "device": "phone"
   },
   {
     "id": "earnings",
@@ -164,5 +165,29 @@
     "body": "Stays in the settings area. But, we can show data at a glance for better status and less taps. ",
     "side": "right",
     "platform": "ios"
+  },
+  {
+    "id": "c180558b-ed18-4f86-afce-c4be284ae32e",
+    "selector": "[aria-label=\"Settings\"] > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(3) > button:nth-child(1) > div:nth-child(1)",
+    "title": "Earnings",
+    "body": "Show data at a glance and allow users to tap through to a full page experience. For employees, we'll also show this data on the Home page",
+    "side": "left",
+    "platform": "ios"
+  },
+  {
+    "id": "870f1cde-e440-4702-a640-29b4cd0833c0",
+    "selector": ":scope > div:nth-child(2) > div:nth-child(1) > div:nth-child(1)",
+    "title": "Split View",
+    "body": "On tablet, we have space to show individual messages while we show the messages overview. This is an established pattern.",
+    "side": "left",
+    "device": "tablet"
+  },
+  {
+    "id": "97129d69-a5e6-4b29-bdfa-902e3b64249f",
+    "selector": "[data-anno=\"clock-accessory\"]",
+    "title": "Shift Widget",
+    "body": "On tablet, we dock this to the bottom left for easy access and quick status check. Tapping still opens a dedicated view. ",
+    "side": "left",
+    "device": "tablet"
   }
 ]

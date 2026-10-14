@@ -7,6 +7,7 @@ import { BASE_MONDAY, DEMO_TODAY, MONTHS, WEEKDAYS_SHORT, addDays, mondayOf, sam
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import { useDateStore } from "@/store/useDateStore"
+import { useViewStore } from "@/store/useViewStore"
 
 /** Weeks you can scroll through, either side of the demo week. */
 const SPAN = 26
@@ -25,7 +26,7 @@ const PILL_UP = NUMBER_TOP // the collapsed pill reaches up over the heading, to
  * It reads and writes the shared date, so Shifts and Time always agree. Swiping to another week keeps
  * the same weekday selected.
  */
-export function WeekCalendar({ label, workingDots }: { label: string; /** Shifts: a dot under each day the person is scheduled to work. */ workingDots?: boolean }) {
+function WeekStrip({ label, workingDots }: { label: string; /** Shifts: a dot under each day the person is scheduled to work. */ workingDots?: boolean }) {
   const date = useDateStore((s) => s.date)
   const setDate = useDateStore((s) => s.setDate)
   const scroller = useRef<HTMLDivElement>(null)
@@ -337,4 +338,63 @@ export function WeekCalendar({ label, workingDots }: { label: string; /** Shifts
       </motion.div>
     </div>
   )
+}
+
+/**
+ * The whole month, always showing: what a tablet has the room for instead of a week strip. Same shared date as the
+ * strip, so Shifts and Time still agree; the arrows page between months.
+ */
+function MonthCalendar({ workingDots }: { workingDots?: boolean }) {
+  const date = useDateStore((s) => s.date)
+  const setDate = useDateStore((s) => s.setDate)
+  const [month, setMonth] = useState(() => new Date(date.getFullYear(), date.getMonth(), 1))
+  // Follow the date when it's changed somewhere else.
+  useEffect(() => {
+    setMonth((m) => (m.getFullYear() === date.getFullYear() && m.getMonth() === date.getMonth() ? m : new Date(date.getFullYear(), date.getMonth(), 1)))
+  }, [date])
+  const first = mondayOf(month)
+  const lead = weekdayIndex(month)
+  const rows = Math.ceil((lead + new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()) / 7)
+  const go = (delta: number) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))
+  return (
+    <div className="pb-3 pt-1 tracking-[-0.43px]">
+      <div className="flex items-center justify-between pb-2">
+        <button aria-label="Previous month" onClick={() => go(-1)} className="flex size-8 items-center justify-center rounded-full text-[#8f55e5] active:bg-black/5">
+          <IconChevronLeft size={22} stroke={2} />
+        </button>
+        <p className="text-[17px] font-[590] leading-[22px] text-[#747182]">{`${MONTHS[month.getMonth()]} ${month.getFullYear()}`}</p>
+        <button aria-label="Next month" onClick={() => go(1)} className="flex size-8 items-center justify-center rounded-full text-[#8f55e5] active:bg-black/5">
+          <IconChevronRight size={22} stroke={2} />
+        </button>
+      </div>
+      <div className="flex justify-between pb-1">
+        {WEEKDAYS_SHORT.map((n, i) => (
+          <span key={n + i} className="w-11 text-center text-[13px] leading-4 text-[#7f7f7f]">{n[0]}</span>
+        ))}
+      </div>
+      {Array.from({ length: rows }, (_, r) => (
+        <div key={r} className="flex justify-between">
+          {Array.from({ length: 7 }, (_, c) => {
+            const d = addDays(first, r * 7 + c)
+            const inMonth = d.getMonth() === month.getMonth()
+            const on = sameDay(d, date)
+            return (
+              <button key={c} onClick={() => setDate(d)} aria-pressed={on} aria-label={`${WEEKDAYS_SHORT[c]} ${d.getDate()}`}>
+                <Squircle as="span" cornerRadius={14} className={cn("flex w-11 flex-col items-center gap-1 py-1 transition-colors duration-200", on ? "bg-[rgba(120,120,128,0.16)]" : "bg-transparent")}>
+                  <span className={cn("text-[17px] leading-[22px]", on ? "font-[590] text-black" : "font-[510]", !on && (sameDay(d, DEMO_TODAY) ? "text-[#8f55e5]" : inMonth ? "text-[#8e8e93]" : "text-[#c7c7cc]"))}>{d.getDate()}</span>
+                  {workingDots && <span aria-hidden className={cn("size-[7px] rounded-full", USER_SCHEDULE[c] ? "bg-[#8f55e5]" : "bg-transparent")} />}
+                </Squircle>
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** The calendar for Shifts and Time: a week strip that expands to the month on a phone, the month itself on a tablet. */
+export function WeekCalendar(props: { label: string; workingDots?: boolean }) {
+  const tablet = useViewStore((s) => s.device === "tablet")
+  return tablet ? <MonthCalendar workingDots={props.workingDots} /> : <WeekStrip {...props} />
 }

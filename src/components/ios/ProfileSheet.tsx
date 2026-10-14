@@ -375,7 +375,7 @@ const PAGE_VARIANTS = {
  * The Settings sheet with iOS push navigation: rows push a page in from the
  * right, the back button pops it.
  */
-export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+export function ProfileSheet({ loc, inline, onClose }: { loc: Location; /** Fill the content pane (iPad) instead of rising as a sheet. */ inline?: boolean; onClose: () => void }) {
   const [nav, setNav] = useState<{ page: PageId | null; dir: Dir; arg?: string }>({ page: null, dir: "push" })
   const { page, dir, arg } = nav
   const [editing, setEditing] = useState(false)
@@ -390,6 +390,7 @@ export function ProfileSheet({ loc, onClose }: { loc: Location; onClose: () => v
 
   return (
     <Sheet
+      inline={inline}
       title={page ? PAGES[page].title : "Settings"}
       onClose={onClose}
       onBack={page ? () => go({ page: page === "personal" || page === "resume" ? "account" : null, dir: "pop" }) : undefined}

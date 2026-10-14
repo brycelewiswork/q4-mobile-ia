@@ -1,6 +1,6 @@
 import seed from "@/annotations.json"
 import type { UserType } from "@/store/useUserTypeStore"
-import type { Platform } from "@/store/useViewStore"
+import type { Device, Orientation, Platform } from "@/store/useViewStore"
 
 /**
  * A note that sits beside the phone and points at something on screen. It shows while its target (a CSS
@@ -23,6 +23,9 @@ export type Annotation = {
   users?: UserType[]
   /** Only in this version of the design (Android is always Structure). Unset = both. */
   detail?: "full" | "structure"
+  /** Only on phones / tablets, and only upright / on its side. Unset = every screen shape. */
+  device?: Device
+  orientation?: Orientation
 }
 
 export const SEED_ANNOTATIONS = seed as Annotation[]

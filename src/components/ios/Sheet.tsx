@@ -28,6 +28,7 @@ export function Sheet({
   closeSide = "right",
   edgeBlur = { top: true },
   footer,
+  inline,
   children,
 }: {
   title: string
@@ -42,6 +43,8 @@ export function Sheet({
   titleSlot?: ReactNode
   /** Pinned to the bottom of the sheet over the scrolling content (e.g. a search bar). */
   footer?: ReactNode
+  /** Fill the container it is mounted in (the content pane) instead of rising over the screen: no scrim, grabber or rounded top; it slides in from the right. */
+  inline?: boolean
   /** Scroll returns to the top whenever this changes (a new page was pushed/popped). */
   resetKey?: string
   /**
@@ -58,12 +61,13 @@ export function Sheet({
   const scrollRef = useRef<HTMLDivElement>(null)
   // Start fully below the screen, then spring up.
   const y = useMotionValue(900)
+  const x = useMotionValue("100%")
   const scrim = useTransform(y, [0, 600], [0.2, 0])
 
   useEffect(() => {
-    const controls = animate(y, 0, SPRING)
+    const controls = inline ? animate(x, "0%", SPRING) : animate(y, 0, SPRING)
     return () => controls.stop()
-  }, [y])
+  }, [y, x, inline])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 })
@@ -73,9 +77,13 @@ export function Sheet({
   const dismiss = useCallback(() => {
     if (closing.current) return
     closing.current = true
+    if (inline) {
+      animate(x, "100%", { ...SPRING, onComplete: onClose })
+      return
+    }
     const h = sheetRef.current?.offsetHeight ?? 800
     animate(y, h + 40, { ...SPRING, onComplete: onClose })
-  }, [y, onClose])
+  }, [y, x, inline, onClose])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss()
@@ -88,7 +96,7 @@ export function Sheet({
   useEffect(() => {
     const el = sheetRef.current
     const scroller = scrollRef.current
-    if (!el || !scroller) return
+    if (inline || !el || !scroller) return
 
     let active = false
     let dragging = false
@@ -163,7 +171,7 @@ export function Sheet({
       el.removeEventListener("touchend", end)
       el.removeEventListener("touchcancel", end)
     }
-  }, [y, dismiss])
+  }, [y, inline, dismiss])
 
   const closeButton = (
     <LiquidGlass
@@ -176,6 +184,48 @@ export function Sheet({
       </button>
     </LiquidGlass>
   )
+
+  if (inline) {
+    return (
+      <div ref={setLayer} className="absolute inset-0 z-[45] overflow-hidden">
+        <OverlayRoot.Provider value={layer}>
+          <motion.div ref={sheetRef} role="dialog" aria-label={title} style={{ x }} className="absolute inset-0 select-none bg-[#f3f2f6]">
+            <div
+              ref={scrollRef}
+              className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+              style={{ paddingTop: "calc(var(--safe-top) + 70px)", paddingBottom: "calc(var(--safe-bottom) + 24px)" }}
+            >
+              {children}
+            </div>
+            <EdgeBlur {...edgeBlur} />
+            {footer && <div className="absolute inset-x-0 bottom-0 z-10">{footer}</div>}
+            <div className="absolute inset-x-0 z-20 h-[70px]" style={{ top: "var(--safe-top)" }}>
+              {titleSlot ? (
+                <div className="absolute inset-x-[72px] top-4 flex h-11 items-center justify-center">{titleSlot}</div>
+              ) : (
+                <h2 className="pointer-events-none absolute inset-x-0 top-[29px] text-center text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">{title}</h2>
+              )}
+              {onBack && (
+                <LiquidGlass mode="small" radius={999} className="absolute left-4 top-4 flex size-11 items-center justify-center">
+                  <button onClick={onBack} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                    <IconChevronLeft size={24} stroke={2} />
+                  </button>
+                </LiquidGlass>
+              )}
+              {closeSide === "left" ? (
+                <>
+                  {closeButton}
+                  {typeof action === "function" ? action(dismiss) : action}
+                </>
+              ) : (
+                typeof action === "function" ? action(dismiss) : (action ?? closeButton)
+              )}
+            </div>
+          </motion.div>
+        </OverlayRoot.Provider>
+      </div>
+    )
+  }
 
   return (
     <div ref={setLayer} className="absolute inset-0 z-[45]">

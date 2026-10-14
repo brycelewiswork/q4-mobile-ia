@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { IconArrowsHorizontal, IconChevronDown, IconDeviceMobile, IconStack2, IconTrash, IconUser } from "@tabler/icons-react"
+import { IconArrowsHorizontal, IconChevronDown, IconDeviceMobile, IconDeviceTablet, IconRectangle, IconStack2, IconTrash, IconUser } from "@tabler/icons-react"
 import type { Annotation } from "@/annotations"
 import { useNotes, useNotesStore } from "@/store/useNotesStore"
 import { useUserTypeStore, USER_TYPES } from "@/store/useUserTypeStore"
 import { useViewStore } from "@/store/useViewStore"
 import { describe, selectorFor } from "@/lib/selectorFor"
 import { cn } from "@/lib/utils"
+import { NOTES_CARD_W, NOTES_GAP, NOTES_MARGIN } from "@/lib/device"
 
-const CARD_W = 236
-const GAP = 44 // between the phone and a note
+const CARD_W = NOTES_CARD_W
+const GAP = NOTES_GAP // between the phone and a note
 const STACK_GAP = 12
 const MIN_VISIBLE = 0.6
 const SCREEN = ".ios-screen, .android-screen"
@@ -27,7 +28,7 @@ const same = (a: Live[], b: Live[]) =>
 const topAt = (x: number, y: number) => document.elementsFromPoint(x, y).find((e) => !e.closest("[data-notes-ui]")) ?? null
 
 /** Every frame: which notes' targets are really visible in the phone, and where. Cheap — a handful of elements. */
-function useLive(enabled: boolean, platform: string, user: string, detail: string, notes: Annotation[]) {
+function useLive(enabled: boolean, platform: string, user: string, detail: string, device: string, orientation: string, notes: Annotation[]) {
   const [live, setLive] = useState<{ items: Live[]; screen: DOMRect | null }>({ items: [], screen: null })
   const prev = useRef<Live[]>([])
   const screenRef = useRef<DOMRect | null>(null)
@@ -44,7 +45,7 @@ function useLive(enabled: boolean, platform: string, user: string, detail: strin
       if (screen) {
         const s = screen.getBoundingClientRect()
         for (const a of notes) {
-          if ((a.platform && a.platform !== platform) || (a.detail && a.detail !== detail) || (a.users && !a.users.includes(user as never))) continue
+          if ((a.platform && a.platform !== platform) || (a.detail && a.detail !== detail) || (a.device && a.device !== device) || (a.orientation && a.orientation !== orientation) || (a.users && !a.users.includes(user as never))) continue
           // A pin has to name exactly one element. Zero means it isn't on screen; more than one means it's
           // ambiguous here (a path made on the other platform, say), and pointing at the wrong thing is worse.
           let el: HTMLElement | null = null
@@ -78,7 +79,7 @@ function useLive(enabled: boolean, platform: string, user: string, detail: strin
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [enabled, platform, user, detail, notes])
+  }, [enabled, platform, user, detail, device, orientation, notes])
   return live
 }
 
@@ -168,6 +169,20 @@ function Note({ a, side, left, top, editing, onHeight }: { a: Annotation; side: 
                 options={[["both", "Both versions"], ["full", "Full only"], ["structure", "Structure only"]]}
               />
             )}
+            <ChipSelect
+              icon={<IconDeviceTablet size={14} stroke={2} />}
+              label="Which device shows this note"
+              value={a.device ?? "both"}
+              onChange={(v) => update(a.id, { device: v === "both" ? undefined : (v as Annotation["device"]) })}
+              options={[["both", "Phone and tablet"], ["phone", "Phone only"], ["tablet", "Tablet only"]]}
+            />
+            <ChipSelect
+              icon={<IconRectangle size={14} stroke={2} />}
+              label="Which orientation shows this note"
+              value={a.orientation ?? "both"}
+              onChange={(v) => update(a.id, { orientation: v === "both" ? undefined : (v as Annotation["orientation"]) })}
+              options={[["both", "Upright and sideways"], ["portrait", "Portrait only"], ["landscape", "Landscape only"]]}
+            />
             <button onClick={() => remove(a.id)} aria-label="Delete note" className={cn(chip, "bg-black/5 text-[#d0161f] dark:bg-white/10")}>
               <IconTrash size={14} stroke={2} />
             </button>
@@ -272,18 +287,22 @@ export function Annotations() {
   const picking = useNotesStore((s) => s.picking)
   // Android only exists as the structure cut.
   const detail = useViewStore((s) => (s.platform === "android" ? "structure" : s.detail))
-  const { items, screen } = useLive(on || editing, platform, user, detail, notes)
+  const device = useViewStore((s) => s.device)
+  const orientation = useViewStore((s) => s.orientation)
+  const { items, screen } = useLive(on || editing, platform, user, detail, device, orientation, notes)
   const [heights, setHeights] = useState<Record<string, number>>({})
+  // A side whose notes run past the window scrolls on the wheel (editing makes notes taller, so it happens a lot).
+  const [scroll, setScroll] = useState({ left: 0, right: 0 })
   const [vw, setVw] = useState(window.innerWidth)
   useEffect(() => {
     const f = () => setVw(window.innerWidth)
     window.addEventListener("resize", f)
     return () => window.removeEventListener("resize", f)
   }, [])
-  if (!(on || editing) || !screen || vw < screen.width + 2 * (CARD_W + GAP + 12)) return null
+  if (!(on || editing) || !screen || vw < screen.width + NOTES_MARGIN) return null
 
   // Stack each side top to bottom, each note as close to its target's height as the ones above allow.
-  const placed = (["left", "right"] as const).flatMap((side) => {
+  const stacked = (["left", "right"] as const).flatMap((side) => {
     let floor = screen.top
     return items
       .filter((l) => l.side === side)
@@ -295,10 +314,21 @@ export function Annotations() {
         return { ...l, x, top, h }
       })
   })
+  const maxScroll = (side: "left" | "right") => Math.max(0, Math.max(0, ...stacked.filter((p) => p.side === side).map((p) => p.top + p.h)) + 16 - window.innerHeight)
+  const offset = (side: "left" | "right") => Math.min(scroll[side], maxScroll(side))
+  const placed = stacked.map((p) => ({ ...p, top: p.top - offset(p.side) }))
+  const onWheel = (e: React.WheelEvent) => {
+    const side = e.clientX < (screen.left + screen.right) / 2 ? "left" : "right"
+    const max = maxScroll(side)
+    if (!max || (e.clientX > screen.left && e.clientX < screen.right)) return
+    setScroll((c) => ({ ...c, [side]: Math.min(max, Math.max(0, c[side] + e.deltaY)) }))
+  }
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-0 z-[70]">
+      <div className="pointer-events-none fixed inset-0 z-[70]" onWheel={onWheel}>
+        {/* Margin strips that catch the wheel where a side overflows, below the page controls so those stay clickable. */}
+        {(["left", "right"] as const).map((side) => maxScroll(side) > 0 && <div key={side} data-notes-ui className="pointer-events-auto fixed bottom-0 top-[72px]" style={side === "left" ? { left: 0, width: screen.left } : { left: screen.right, right: 0 }} />)}
         <svg aria-hidden className="absolute inset-0 size-full overflow-visible">
           <AnimatePresence>
             {placed.map((p) => {

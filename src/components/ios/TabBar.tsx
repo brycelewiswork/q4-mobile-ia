@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 const BRAND = "#8f55e5"
 const LABEL_VIBRANT = "#141414"
 
-const TABS = [
+export const TABS = [
   { id: "home", label: "Home", icon: "/phone/tab-home.svg", fill: "/phone/tab-home-fill.svg" },
   { id: "money", label: "Money", icon: "/phone/tab-money.svg", fill: "/phone/tab-money-fill.svg" },
   { id: "shifts", label: "Shifts", icon: "/phone/tab-shifts.svg", fill: "/phone/tab-shifts-fill.svg" },
