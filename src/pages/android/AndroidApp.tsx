@@ -22,12 +22,14 @@ import {
   IconSearch,
   IconSend,
   IconUsers,
+  IconX,
 } from "@tabler/icons-react"
+import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { LinearBlur } from "@/components/ui/progressive-blur"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
-import { ABar, ACard, ADrawer, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
+import { ABar, ACard, ADrawer, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
 import { LOCATIONS, USER_SCHEDULE, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { useLocation, useLocationStore } from "@/store/useLocationStore"
@@ -62,9 +64,9 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
   chat: { label: "Messages", icon: "/android/chat-solid.svg" },
 }
 
-type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
+type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "settings" | "team" | "assistant" | "generic"; title: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
-const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Earnings" }
+const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
 
 /** Placeholder avatar: the user's two initials on a tonal circle. */
@@ -84,7 +86,8 @@ function Avatar({ size }: { size: number }) {
 function TopBar({ loc, tab, canSwitch, scrolled, pending, showClock, clockActive, onTitle, onBell, onClock, onProfile }: { loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const locName = useLocName()
   return (
-    <div className={cn("absolute inset-x-0 z-20 flex h-16 items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ top: "var(--safe-top)" }}>
+    // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
+    <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
       {/* The avatar opens the navigation drawer. */}
       <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
         <Avatar size={32} />
@@ -132,7 +135,7 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant }: { tabs: TabId[]; tab:
     <div data-anno="nav-bar" className="absolute inset-x-0 bottom-0 z-20 isolate">
       <LinearBlur side="bottom" strength={24} className="-z-10" style={{ top: -24 }} />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ top: -24, background: "linear-gradient(to top, color-mix(in srgb, var(--m-surface) 50%, transparent) 15%, transparent)" }} />
-      <nav className="flex w-full items-center" style={{ padding: "16px 24px 20px", gap: onAssistant ? 20 : 0, minHeight: 92 }}>
+      <nav className="flex w-full items-center" style={{ padding: "16px 24px 20px", gap: onAssistant ? 14 : 0, minHeight: 92 }}>
         {tabs.map((id) => {
           const { label, icon } = TABS[id]
           const on = tab === id
@@ -217,21 +220,71 @@ function HomeEmployee({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   )
 }
 
-function HomeManager({ multi, onOpen }: { multi: boolean; onOpen: (p: PageSpec) => void }) {
+/** A location row in the all-locations card, and what the business overview grows out of. */
+function AndroidLocRow({ name }: { name: string }) {
+  // Enough going on to read as a real, tappable row: the business name over a line, a figure and a chip, and a chevron.
+  return (
+    <span className="flex min-h-[68px] w-full items-center gap-3 py-3">
+      <span className="flex min-w-0 flex-1 flex-col gap-[8px]">
+        <span className="text-m-on-surface truncate text-[16px] leading-6">{name}</span>
+        <ABar w="45%" h={10} />
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-[6px]">
+        <ABar w={46} h={12} />
+        <span aria-hidden className="bg-m-skeleton block h-[18px] w-10 rounded-[6px]" />
+      </span>
+      <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
+    </span>
+  )
+}
+
+/** One business's overview: a hero graph and sub-cards, empty. It grows out of the tapped row; the X shrinks it back. */
+function BusinessPage({ loc, from, onClosed }: { loc: Location; from: Box; onClosed: () => void }) {
   const locName = useLocName()
-  const setLocation = useLocationStore((s) => s.setLocation)
+  return (
+    <ExpandSurface
+      from={from}
+      clone={<AndroidLocRow name={locName(loc)} />}
+      cardClass="bg-m-container"
+      pageClass="bg-m-surface"
+      onClosed={onClosed}
+      z={31}
+      button={(close) => (
+        <button onClick={close} aria-label="Close" className="text-m-on-surface flex size-12 items-center justify-center rounded-full active:bg-black/10">
+          <IconX size={24} stroke={1.75} />
+        </button>
+      )}
+    >
+      <div className="flex flex-col gap-3 px-4" style={{ paddingTop: "calc(var(--safe-top) + 64px)", paddingBottom: 40 }}>
+        <h1 className="text-m-on-surface text-[28px] leading-9">{locName(loc)}</h1>
+        <ACard title="Sales and labor" h={260} />
+        <div className="flex gap-3">
+          <ACard title="Labor" h={96} className="flex-1" />
+          <ACard title="Team" h={96} className="flex-1" />
+        </div>
+        <ACard title="Status" h={150} />
+        <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
+        <Section title="Manager Log"><AList rows={2} avatar={false} /></Section>
+        <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
+      </div>
+    </ExpandSurface>
+  )
+}
+
+function HomeManager({ multi, onOpen, onOpenBiz }: { multi: boolean; onOpen: (p: PageSpec) => void; onOpenBiz: (l: Location, row: HTMLElement) => void }) {
+  const locName = useLocName()
   return (
     <div className="flex flex-col gap-3">
       {multi ? (
         <ACard title="All locations" h={200} dataAnno="all-locations">
           <span aria-hidden className="bg-m-skeleton mt-3 block h-24 rounded-[12px]" />
-          {LOCATIONS.map((l) => (
-            <button key={l.id} onClick={() => setLocation(l.id)} aria-label={locName(l)} className="mt-3 flex items-center gap-3 text-left active:opacity-60">
-              <ABar w="45%" h={12} />
-              <span className="flex-1" />
-              <ABar w={40} h={12} />
-            </button>
-          ))}
+          <div className="mt-3">
+            {LOCATIONS.map((l, i) => (
+              <button key={l.id} onClick={(e) => onOpenBiz(l, e.currentTarget)} aria-label={locName(l)} className={cn("block w-full text-left active:bg-black/5", i > 0 && "border-m-divider border-t")}>
+                <AndroidLocRow name={locName(l)} />
+              </button>
+            ))}
+          </div>
         </ACard>
       ) : (
         <div className="flex flex-col gap-1 py-2">
@@ -419,7 +472,7 @@ function ClockBar({ title, status, onOpen }: { title: string; status: "out" | "i
       </button>
       {status === "in" && (
         <>
-          <button onClick={onOpen} aria-label="Clock out" className={round}><span aria-hidden className="block bg-current" style={glyph("/phone/clock-solid.svg")} /></button>
+          <button onClick={onOpen} aria-label="Start break" className={round}><span aria-hidden className="block bg-current" style={glyph("/phone/break-solid.svg")} /></button>
           <button onClick={onOpen} aria-label="Start meal break" className={round}><span aria-hidden className="block bg-current" style={glyph("/phone/meal.svg")} /></button>
         </>
       )}
@@ -477,14 +530,108 @@ function Field({ label }: { label: string }) {
   )
 }
 
-function AddShiftSheet({ onClose }: { onClose: () => void }) {
+/** A row in a form card: the label, the current choice and a chevron; tapping opens a small menu of the options. */
+function SelectRow({ label, value, options, onPick, first }: { label: string; value: ReactNode; options: { id: string; label: string }[]; onPick: (id: string) => void; first?: boolean }) {
+  const [open, setOpen] = useState(false)
   return (
-    <ASheet title="Add shift" onClose={onClose}>
-      <div className="flex flex-col gap-3 pb-4 pt-1">
-        {["Who", "Role", "Day", "Start", "End"].map((l) => <Field key={l} label={l} />)}
+    <div className={cn("relative", !first && "border-m-divider border-t")}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 px-4 text-left active:bg-black/5">
+        <span className="flex-1 text-[16px] leading-6">{label}</span>
+        <span className="text-m-variant flex items-center text-[16px] leading-6">{value}</span>
+        <IconChevronDown size={20} stroke={2} className="text-m-variant shrink-0" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[55]" onPointerDown={() => setOpen(false)} />
+          <div role="menu" className="bg-m-high text-m-on-surface absolute right-2 top-12 z-[56] w-[230px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+            {options.map((o) => (
+              <button key={o.id} role="menuitem" onClick={() => { onPick(o.id); setOpen(false) }} className="flex h-12 w-full items-center px-4 text-left text-[16px] active:bg-black/10">
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+const FormCard = ({ children }: { children: ReactNode }) => <div className="bg-m-container overflow-visible rounded-[16px]">{children}</div>
+
+/** Add shift (Shifts tab, Add shift): the same fields as iOS, with empty values where the data would be. */
+function AddShiftSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+  const locName = useLocName()
+  const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const [locId, setLocId] = useState(loc.id)
+  const target = LOCATIONS.find((l) => l.id === locId) ?? loc
+  const roles = target.employee.timeClock?.roles ?? Array.from(new Set(target.team.map((m) => m.role)))
+  const [who, setWho] = useState("open")
+  const [role, setRole] = useState(roles[0])
+  const people = [{ id: "open", label: "Open shift" }, ...target.team.map((_, i) => ({ id: String(i), label: `Person ${i + 1}` }))]
+  return (
+    <AFormSheet title="Add shift" onClose={onClose}>
+      <ASection>Basic details</ASection>
+      <FormCard>
+        {multi ? (
+          <SelectRow first label="Location" value={locName(target)} options={LOCATIONS.map((l) => ({ id: l.id, label: locName(l) }))} onPick={(id) => { setLocId(id); setWho("open") }} />
+        ) : (
+          <div className="flex min-h-14 items-center px-4 text-[16px]"><span className="flex-1">Location</span><span className="text-m-variant">{locName(target)}</span></div>
+        )}
+        <SelectRow label="Team member" value={people.find((p) => p.id === who)!.label} options={people} onPick={setWho} />
+        <SelectRow label="Role" value={role} options={roles.map((r) => ({ id: r, label: r }))} onPick={setRole} />
+      </FormCard>
+
+      <ASection>Date & time</ASection>
+      <FormCard>
+        <div className="flex min-h-14 items-center px-4 text-[16px]"><span className="flex-1">Date</span><ABar w={80} h={12} /></div>
+        <div className="border-m-divider flex min-h-14 items-center border-t px-4 text-[16px]"><span className="flex-1">Time</span><ABar w={40} h={12} /></div>
+        <div className="border-m-divider border-t px-4 pb-3 pt-6">
+          <div className="flex justify-between"><ABar w={52} h={10} /><ABar w={52} h={10} /></div>
+          <div aria-label="Start and end time" role="group" className="relative mx-1 mt-3 h-6">
+            <span className="bg-m-skeleton absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" />
+            <span className="bg-m-primary absolute top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ left: "25%", right: "30%" }} />
+            <span className="bg-m-primary absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ left: "25%" }} />
+            <span className="bg-m-primary absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ left: "70%" }} />
+          </div>
+        </div>
+      </FormCard>
+
+      <div className="mt-3">
+        <FormCard>
+          <textarea rows={3} aria-label="Shift note" placeholder="Add a shift note..." className="text-m-on-surface placeholder:text-m-outline block w-full resize-none rounded-[16px] bg-transparent p-4 text-[16px] leading-6 outline-none" />
+        </FormCard>
       </div>
-      <button onClick={onClose} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85">Add shift</button>
-    </ASheet>
+    </AFormSheet>
+  )
+}
+
+/** Create event (Shifts tab, Add event): the title up top (and mirrored in the sheet's top row), then the details. */
+function AddEventSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+  const locName = useLocName()
+  const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const [locId, setLocId] = useState(loc.id)
+  const target = LOCATIONS.find((l) => l.id === locId) ?? loc
+  const [title, setTitle] = useState("")
+  return (
+    <AFormSheet title="Create event" ready={title.trim().length > 0} onClose={onClose} titleNode={<span className="truncate text-[20px] leading-7">{title.trim() || "Create event"}</span>}>
+      <FormCard>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Event title" placeholder="Event title" className="text-m-on-surface placeholder:text-m-outline block w-full rounded-[16px] bg-transparent px-4 py-4 text-center text-[24px] font-medium leading-8 outline-none" />
+      </FormCard>
+
+      <ASection>Event details</ASection>
+      <FormCard>
+        {multi ? (
+          <SelectRow first label="Location" value={locName(target)} options={LOCATIONS.map((l) => ({ id: l.id, label: locName(l) }))} onPick={setLocId} />
+        ) : (
+          <div className="flex min-h-14 items-center px-4 text-[16px]"><span className="flex-1">Location</span><span className="text-m-variant">{locName(target)}</span></div>
+        )}
+        <div className="border-m-divider flex min-h-14 items-center border-t px-4 text-[16px]"><span className="flex-1">Date</span><ABar w={80} h={12} /></div>
+        <div className="border-m-divider border-t">
+          <textarea rows={4} aria-label="Event details" placeholder="Add details for this event..." className="text-m-on-surface placeholder:text-m-outline block w-full resize-none bg-transparent p-4 text-[16px] leading-6 outline-none" />
+        </div>
+      </FormCard>
+      <p className="text-m-variant px-2 pt-3 text-[14px] leading-5">Events will be added to the schedule for the entire team to view.</p>
+    </AFormSheet>
   )
 }
 
@@ -501,7 +648,7 @@ function SearchField() {
  * The profile cards: the location PIN, shoutouts, stats. One card at a time, switched from a tab row. Not a swipe
  * carousel: inside the drawer, sideways swipes close it and vertical ones scroll it.
  */
-function ProfileCarousel() {
+function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   const loc = useLocation()
   const locName = useLocName()
   const [page, setPage] = useState<"pin" | "shoutouts" | "stats">("pin")
@@ -533,13 +680,13 @@ function ProfileCarousel() {
         </div>
       )}
       {page === "shoutouts" && (
-        <ACard title="Shoutouts" h={168}>
+        <ACard title="Shoutouts" h={168} onClick={() => onOpen({ id: "shoutouts", kind: "shoutouts", title: "Shoutouts" })}>
           <ALines lines={3} className="pt-3" />
           <ABar w={80} h={10} className="mt-2 self-end" />
         </ACard>
       )}
       {page === "stats" && (
-        <ACard title="Stats" h={168}>
+        <ACard title="Stats" h={168} onClick={() => onOpen({ id: "stats", kind: "stats", title: "Stats" })}>
           <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 pt-3">
             {stats.map((l) => (
               <div key={l} className="flex flex-col gap-[6px]">
@@ -569,9 +716,9 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
         </span>
         <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
       </button>
-      <ProfileCarousel />
+      <ProfileCarousel onOpen={onOpen} />
       <div className="flex gap-3 pb-1">
-        <ACard title="Earnings" h={96} className="flex-1" dataAnno="drawer-earnings" onClick={() => onOpen({ id: "earnings", kind: "earnings", title: "Earnings" })} />
+        <ACard title="Earnings" h={96} className="flex-1" dataAnno="drawer-earnings" onClick={() => onOpen({ id: "earnings", kind: "earnings", title: "Money" })} />
         <ACard title="Time off" h={96} className="flex-1" dataAnno="drawer-timeoff" onClick={() => onOpen({ id: "timeoff", kind: "timeoff", title: "Time off" })} />
       </div>
       {manager && (
@@ -605,6 +752,25 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
         })}
       </div>
       <button className="h-12 w-full px-1 text-left text-[16px] text-[var(--m-error)] active:bg-black/5">Sign out</button>
+      {/* Footer: the logo, small, then the version and legal link as quiet subtext (as on iOS). */}
+      <div className="flex flex-col items-center gap-3 pb-4 pt-6">
+        <img src="/phone/logo-h.png" alt="Homebase" className="h-7 w-auto" />
+        <p className="flex items-center gap-2 text-[13px] leading-[18px] text-[color-mix(in_srgb,var(--m-outline)_65%,var(--m-container-low))]">
+          <span>Version 5.22 (5271)</span>
+          <span aria-hidden>•</span>
+          <button className="active:opacity-60">Terms &amp; privacy</button>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/** A switch row inside a location card. Defined at the top level so it keeps its identity (and the thumb its animation) across renders. */
+function SwitchRow({ title, checked, onChange, disabled }: { title: string; checked: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
+  return (
+    <div className="border-m-divider flex min-h-14 items-center gap-4 border-t py-2">
+      <span className="min-w-0 flex-1 text-[16px] leading-6">{title}</span>
+      <ASwitch disabled={disabled} checked={checked} onChange={onChange} label={title} />
     </div>
   )
 }
@@ -617,12 +783,6 @@ function LocationsPage({ multi }: { multi: boolean }) {
   const [editing, setEditing] = useState<string | null>(null)
   const get = (id: string) => on[id] ?? { mobile: true, geofence: false }
   const set = (id: string, patch: Partial<{ mobile: boolean; geofence: boolean }>) => setOn((o) => ({ ...o, [id]: { ...get(id), ...patch } }))
-  const Row = ({ title, checked, onChange, disabled }: { title: string; checked: boolean; onChange: (v: boolean) => void; disabled: boolean }) => (
-    <div className="border-m-divider flex min-h-14 items-center gap-4 border-t py-2">
-      <span className="min-w-0 flex-1 text-[16px] leading-6">{title}</span>
-      <ASwitch disabled={disabled} checked={checked} onChange={onChange} label={title} />
-    </div>
-  )
   return (
     <div className="flex flex-col gap-1 pt-1">
       {LOCATIONS.filter((_, i) => multi || i === 0).map((l) => {
@@ -635,8 +795,8 @@ function LocationsPage({ multi }: { multi: boolean }) {
                 PIN
                 <ABar w={48} h={10} />
               </div>
-              <Row title="Mobile app clock-in" disabled={!isEditing} checked={get(l.id).mobile} onChange={(v) => set(l.id, { mobile: v })} />
-              <Row title="Geofence" disabled={!isEditing} checked={get(l.id).geofence} onChange={(v) => set(l.id, { geofence: v })} />
+              <SwitchRow title="Mobile app clock-in" disabled={!isEditing} checked={get(l.id).mobile} onChange={(v) => set(l.id, { mobile: v })} />
+              <SwitchRow title="Geofence" disabled={!isEditing} checked={get(l.id).geofence} onChange={(v) => set(l.id, { geofence: v })} />
             </ACard>
           </section>
         )
@@ -657,15 +817,22 @@ function LocationsPage({ multi }: { multi: boolean }) {
 function PageBody({ spec, manager, multi, onOpen }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void }) {
   switch (spec.kind) {
     case "locations": return <LocationsPage multi={multi} />
-    case "timecard": return <TimeCardForm />
-    case "log": return <div className="pt-2"><AList rows={5} avatar={false} /></div>
-    case "earnings": return (
-      <div className="flex flex-col gap-3 pt-2">
-        <ABar w={130} h={34} />
-        <ACard title="This pay period" h={110} />
-        <Section title="Recent pay stubs"><AList rows={3} avatar={false} trailing /></Section>
+    case "shoutouts": return <div className="flex flex-col gap-3 pt-2">{[0, 1, 2].map((i) => <ACard key={i} h={112}><ALines lines={3} className="pt-1" /></ACard>)}</div>
+    case "stats": return (
+      <div className="flex flex-col gap-1 pt-2">
+        <div className="flex gap-3">
+          <ACard title="On-time rate" h={96} className="flex-1" />
+          <ACard title="Rating" h={96} className="flex-1" />
+        </div>
+        <Section title="Attendance"><AList rows={3} avatar={false} trailing /></Section>
+        <Section title="Work"><AList rows={2} avatar={false} trailing /></Section>
+        <Section title="Feedback"><AList rows={1} avatar={false} trailing /></Section>
       </div>
     )
+    case "timecard": return <TimeCardForm />
+    case "log": return <div className="pt-2"><AList rows={5} avatar={false} /></div>
+    // Earnings is one card on the Money tab, so it opens that tab's content as a page.
+    case "earnings": return <MoneyTab />
     case "shiftmates":
     case "team": return <div className="pt-2"><AList rows={8} trailing={spec.kind === "shiftmates"} /></div>
     case "timeoff": return (
@@ -730,9 +897,11 @@ export function AndroidApp() {
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
   const [drawer, setDrawer] = useState(false)
+  // A business overview grows out of the row tapped in the all-locations card.
+  const [biz, setBiz] = useState<{ loc: Location; from: Box } | null>(null)
   // Shifts' plus offers two things, like the iOS menu: add a shift or an event.
   const [fabMenu, setFabMenu] = useState(false)
-  const [sheet, setSheet] = useState<null | "requests" | "clock" | "shift">(null)
+  const [sheet, setSheet] = useState<null | "requests" | "clock" | "shift" | "event">(null)
   const [stack, setStack] = useState<PageSpec[]>([])
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
   const pop = () => setStack((s) => s.slice(0, -1))
@@ -774,7 +943,7 @@ export function AndroidApp() {
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: 200 }}
       >
-        {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} />)}
+        {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from }) }} />)}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab />}
         {tab === "money" && <MoneyTab />}
@@ -804,7 +973,7 @@ export function AndroidApp() {
               <>
                 <div className="fixed inset-0 -z-10" onPointerDown={() => setFabMenu(false)} />
                 <motion.div role="menu" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.15 }} style={{ transformOrigin: "bottom right" }} className="bg-m-high text-m-on-surface absolute bottom-16 right-0 w-[200px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
-                  {[["Add shift", IconCalendarPlus, () => setSheet("shift")], ["Add event", IconCalendarEvent, () => undefined]].map(([label, Icon, run]) => {
+                  {[["Add shift", IconCalendarPlus, () => setSheet("shift")], ["Add event", IconCalendarEvent, () => setSheet("event")]].map(([label, Icon, run]) => {
                     const I = Icon as typeof IconCalendarPlus
                     return (
                       <button key={label as string} role="menuitem" onClick={() => { setFabMenu(false); (run as () => void)() }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
@@ -820,12 +989,14 @@ export function AndroidApp() {
         </div>
       )}
 
+      {biz && <BusinessPage key={biz.loc.id} loc={biz.loc} from={biz.from} onClosed={() => setBiz(null)} />}
       <LocationMenu open={menu} onClose={() => setMenu(false)} />
 
       <AnimatePresence>
         {sheet === "requests" && <RequestsSheet key="requests" multi={multi} onClose={() => setSheet(null)} />}
         {sheet === "clock" && <ClockSheet key="clock" loc={loc} onClose={() => setSheet(null)} />}
-        {sheet === "shift" && <AddShiftSheet key="shift" onClose={() => setSheet(null)} />}
+        {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
+        {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
       </AnimatePresence>
 
       <AnimatePresence>

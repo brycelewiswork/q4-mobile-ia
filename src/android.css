@@ -40,6 +40,8 @@
   --m-secondary-container: #4a4458;
   --m-on-secondary-container: #e8def8;
   --m-skeleton: #3a3741;
+  --expand-shadow: rgba(0, 0, 0, 0.55);
+  --expand-shadow-near: rgba(0, 0, 0, 0.35);
   --m-nav-active: #a77bf0;
   --m-nav-inactive: #9a97a3;
 }
@@ -51,8 +53,12 @@
 .bg-m-primary-container { background-color: var(--m-primary-container); }
 .bg-m-secondary-container { background-color: var(--m-secondary-container); }
 .bg-m-skeleton { background-color: var(--m-skeleton); }
+.bg-m-on-primary { background-color: var(--m-on-primary); }
+.bg-m-outline { background-color: var(--m-outline); }
+.bg-m-variant { background-color: var(--m-variant); }
 .text-m-on-surface { color: var(--m-on-surface); }
 .text-m-variant { color: var(--m-variant); }
+.text-m-outline { color: var(--m-outline); }
 .text-m-primary { color: var(--m-primary); }
 .text-m-on-primary { color: var(--m-on-primary); }
 .text-m-on-primary-container { color: var(--m-on-primary-container); }

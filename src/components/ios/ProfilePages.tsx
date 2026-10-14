@@ -3,7 +3,7 @@ import { useLocName } from "@/store/useViewStore"
 import { useStructure } from "@/store/useViewStore"
 import { WireCard, WireList, WireValue } from "@/components/wire/Wire"
 import { useState, type ComponentType } from "react"
-import { IconBan, IconCheck, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled } from "@tabler/icons-react"
+import { IconBan, IconCheck, IconCircleCheckFilled, IconClockFilled, IconMessageCircleFilled, IconPhoneFilled, IconStarFilled } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { GlassChip } from "@/components/ios/GlassChip"
 import { Card, GroupFooter, GroupLabel, Initials, ListRow, SectionHeader, Switch } from "@/components/ios/list"
@@ -14,7 +14,78 @@ import { cn } from "@/lib/utils"
 
 const ROUNDED = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif'
 
-/** Earnings from the Settings cards: the same page the Home widget opens. */
+/** Shoutouts: what teammates have said about you here, newest first. The quote leads; the author and when sit quietly beneath. */
+function Shoutouts({ loc }: PageProps) {
+  const wire = useStructure()
+  const all = [{ ...loc.profile.shoutout, when: "Today" }, ...loc.profile.moreShoutouts]
+  const mark = "pointer-events-none absolute select-none font-[Georgia,'Times_New_Roman',serif] text-[84px] font-bold leading-none text-[#8f55e5]/[0.16]"
+  return (
+    <div className="flex flex-col gap-3 pb-6 tracking-[-0.43px]">
+      {all.map((s, i) =>
+        wire ? (
+          <WireCard key={i} h={110} />
+        ) : (
+          <Card key={i} className="relative overflow-hidden p-5">
+            <span aria-hidden className={`${mark} -left-1 top-[6px]`}>“</span>
+            <span aria-hidden className={`${mark} -bottom-[38px] right-1`}>”</span>
+            <p className="relative px-2 text-[17px] font-[510] leading-[22px] text-[#2c2935]">{s.quote.replace(/^[“"]\s*|\s*[”"]$/g, "")}</p>
+            <p className="relative flex items-baseline justify-end gap-2 px-2 pt-3 text-right">
+              <span className="text-[15px] font-[590] leading-5 text-[#7440d1]">{s.author}</span>
+              <span className="text-[13px] leading-[18px] text-[#8e8e93]">{s.when}</span>
+            </p>
+          </Card>
+        ),
+      )}
+    </div>
+  )
+}
+
+/** Stats: the headline numbers up top, then every figure in a labelled group. */
+function Stats({ loc }: PageProps) {
+  const wire = useStructure()
+  const s = loc.profile.stats
+  const groups: { title: string; rows: [string, string | number][] }[] = [
+    { title: "Attendance", rows: [["On-time rate", s.onTime], ["Missed clock-outs", s.missedClockOuts], ["No-shows", s.noShows]] },
+    { title: "Work", rows: [["Shifts worked", s.shifts], ["Hours per week", s.hours]] },
+    { title: "Feedback", rows: [["Avg shift rating", `${s.rating} / 5`]] },
+  ]
+  return (
+    <div className="flex flex-col gap-2 pb-6 tracking-[-0.43px]">
+      {wire ? (
+        <div className="flex gap-3">
+          <WireCard title="On-time rate" h={96} className="flex-1" />
+          <WireCard title="Rating" h={96} className="flex-1" />
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <Card className="flex-1 p-4">
+            <p className="text-[15px] font-[510] leading-5 text-[#2c2935]">On-time rate</p>
+            <p className="text-[34px] font-bold leading-[41px] text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{s.onTime}</p>
+          </Card>
+          <Card className="flex-1 p-4">
+            <p className="text-[15px] font-[510] leading-5 text-[#2c2935]">Rating</p>
+            <p className="flex items-center gap-1 text-[34px] font-bold leading-[41px] text-[#2c2935]" style={{ fontFamily: ROUNDED }}>
+              {s.rating}
+              <IconStarFilled size={20} className="text-[#8f55e5]" />
+            </p>
+          </Card>
+        </div>
+      )}
+      {groups.map((g) => (
+        <section key={g.title}>
+          <GroupLabel>{g.title}</GroupLabel>
+          <Card className="overflow-hidden">
+            {g.rows.map(([label, value], i) => (
+              <ListRow key={label} first={i === 0} title={label} trailing={<WireValue w={48}>{value}</WireValue>} />
+            ))}
+          </Card>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/** Earnings from the Settings cards: the same page the Home widget opens (the Money tab's content). */
 function Earnings({ loc }: PageProps) {
   return <HomePage id="earnings" loc={loc} />
 }
@@ -67,6 +138,8 @@ export type PageId =
   | "security"
   | "support"
   | "earnings"
+  | "shoutouts"
+  | "stats"
   | "timeoff"
 
 type PageProps = { loc: Location; editing?: boolean; arg?: string; /** The Team page's search text (the field is pinned to the sheet's bottom). */ query?: string; onOpen?: (p: PageId, arg?: string) => void }
@@ -537,6 +610,8 @@ export const PAGES: Record<PageId, { title: string; Component: ComponentType<Pag
   notifications: { title: "Notifications & Alerts", Component: Notifications },
   security: { title: "Password & Security", Component: Security },
   support: { title: "Support", Component: Support },
-  earnings: { title: "Earnings", Component: Earnings },
+  earnings: { title: "Money", Component: Earnings },
   timeoff: { title: "Time off", Component: TimeOff },
+  shoutouts: { title: "Shoutouts", Component: Shoutouts },
+  stats: { title: "Stats", Component: Stats },
 }

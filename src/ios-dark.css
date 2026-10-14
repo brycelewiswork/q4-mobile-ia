@@ -8,7 +8,7 @@
  */
 
 /* Screen and surfaces */
-.dark .ios-screen { background-color: #1c1c1e; --ios-page-tint: rgba(28, 28, 30, 0.7); }
+.dark .ios-screen { --expand-shadow: rgba(0, 0, 0, 0.55); --expand-shadow-near: rgba(0, 0, 0, 0.35); background-color: #1c1c1e; --ios-page-tint: rgba(28, 28, 30, 0.7); --ios-page-tint-strong: rgba(28, 28, 30, 0.92); }
 .dark .ios-screen .bg-\[\#f3f2f6\] { background-color: #1c1c1e; }
 .dark .ios-screen .bg-white,
 .dark .ios-screen .bg-\[\#fbfbfc\] { background-color: #252527; }
@@ -16,6 +16,9 @@
 .dark .ios-screen .bg-\[\#e9e8ec\],
 .dark .ios-screen .bg-\[\#ebe8ef\],
 .dark .ios-screen .bg-\[\#e9e6df\] { background-color: #333335; }
+/* The frosted toolbar behind a scrolled overview page, and its hairline. */
+.dark .ios-screen .bg-\[\#f3f2f6\]\/70 { background-color: rgb(28 28 30 / 0.7); }
+.dark .ios-screen .border-black\/\[0\.14\] { border-color: rgb(255 255 255 / 0.14); }
 /* Structure-mode skeleton fill. */
 .dark .ios-screen .bg-\[\#dedde4\] { background-color: #3a3a3c; }
 .dark .ios-screen .bg-\[\#ece6fb\],

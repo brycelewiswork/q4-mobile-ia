@@ -53,6 +53,8 @@ export type Location = {
     address: string
     pin: string
     shoutout: { quote: string; author: string }
+    /** Earlier shoutouts, newest first (the Shoutouts page lists them under the featured one). */
+    moreShoutouts: { quote: string; author: string; when: string }[]
     stats: {
       onTime: string
       shifts: number
@@ -75,6 +77,8 @@ export type Location = {
   /** Mon…Sun dollars for the all-locations chart; days that haven't happened are 0. */
   weekSales: number[]
   weekLabor: number[]
+  /** Projected sales for the days still to come (0 for days that have happened). Labor is projected from laborPct. */
+  weekForecast: number[]
   managerMessage: string
   /** Hourly columns: Now, 1PM … 7PM. `actual` is bold, `planned` is gray beneath it. */
   status: Record<SegmentId, { actual: number[]; planned: number[] }>
@@ -177,6 +181,10 @@ export const LOCATIONS: Location[] = [
         quote: "“Kelli did an amazing job today! She jumped in the register when the line got long, she unclogged the sink in the rest room, and she helped an elderly customer carry his bags. All with a huge smile on her face 💜⭐”",
         author: "Rosie Atkins",
       },
+      moreShoutouts: [
+        { quote: "Stayed late to help close out a full class and still wiped down every machine. Never has to be asked.", author: "Marcus Webb", when: "Last week" },
+        { quote: "Greeted every single member by name this morning. It really sets the tone for the whole floor.", author: "Priya Nair", when: "2 weeks ago" },
+      ],
       stats: { onTime: "33%", shifts: 49, hours: 22, rating: "4.3", missedClockOuts: 3, noShows: 2 },
       timeOff: { balance: "120 hr", plan: "Full-time salaried", accrual: "Accrues 4.6 hr every pay period", upcoming: [{ range: "Nov 24 – Nov 28", status: "Approved" }, { range: "Dec 23 – Dec 26", status: "Pending" }] },
       availability: [
@@ -191,8 +199,9 @@ export const LOCATIONS: Location[] = [
     },
     sales: 131410,
     laborPct: 12.1,
-    weekSales: [118200, 126900, 131410, 0, 0, 0, 0],
-    weekLabor: [14302, 15355, 15901, 0, 0, 0, 0],
+    weekSales: [124800, 112300, 131410, 0, 0, 0, 0],
+    weekLabor: [15100, 13800, 15901, 0, 0, 0, 0],
+    weekForecast: [0, 0, 0, 122500, 148900, 163200, 139700],
     managerMessage: "Good morning! Still waiting on Jason to clock in. Overall sales and labor are on track.",
     status: {
       people: { actual: [6, 7, 7, 8, 8, 9, 9, 7], planned: [7, 7, 7, 8, 8, 9, 9, 7] },
@@ -291,6 +300,10 @@ export const LOCATIONS: Location[] = [
         quote: "“The morning rush was wild and Bryce kept the line moving the whole time. Every customer left with a smile and a warm croissant. We’re lucky to have him on the team.”",
         author: "Dana Kim",
       },
+      moreShoutouts: [
+        { quote: "Remembered a regular's order before she even reached the counter. That's the kind of thing people talk about.", author: "Jonah Pike", when: "Last week" },
+        { quote: "Taught the new hire the espresso machine in one shift. Patient, clear, and funny.", author: "Mina Ortiz", when: "3 weeks ago" },
+      ],
       stats: { onTime: "94%", shifts: 31, hours: 28, rating: "4.8", missedClockOuts: 0, noShows: 0 },
       timeOff: { balance: "64 hr", plan: "Part-time hourly", accrual: "Accrues 1 hr for every 30 worked", upcoming: [{ range: "Nov 3", status: "Approved" }] },
       availability: [
@@ -305,8 +318,9 @@ export const LOCATIONS: Location[] = [
     },
     sales: 86250,
     laborPct: 16.5,
-    weekSales: [79800, 82400, 86250, 0, 0, 0, 0],
-    weekLabor: [13167, 13596, 14231, 0, 0, 0, 0],
+    weekSales: [88400, 76900, 86250, 0, 0, 0, 0],
+    weekLabor: [14350, 12480, 14231, 0, 0, 0, 0],
+    weekForecast: [0, 0, 0, 81200, 99800, 112400, 90100],
     managerMessage: "Good morning! Everyone is clocked in. Sales are running 6% behind forecast, so lunch coverage is worth a look.",
     status: {
       people: { actual: [4, 4, 5, 5, 5, 6, 6, 4], planned: [4, 5, 5, 5, 6, 6, 6, 4] },
@@ -403,6 +417,10 @@ export const LOCATIONS: Location[] = [
         quote: "“Stepped in to cover two no-call shifts this week without being asked, and still ran the orientation on Monday. Huge thank you!”",
         author: "Alex Rivera",
       },
+      moreShoutouts: [
+        { quote: "Caught a safety issue on the floor before it became a problem and fixed it right away.", author: "Dana Kim", when: "Last week" },
+        { quote: "Covered a double without complaining and kept the whole crew in a good mood.", author: "Sam Okafor", when: "2 weeks ago" },
+      ],
       stats: { onTime: "71%", shifts: 18, hours: 36, rating: "4.1", missedClockOuts: 5, noShows: 1 },
       timeOff: { balance: "38 hr", plan: "Full-time hourly", accrual: "Accrues 1 hr for every 40 worked", upcoming: [] },
       availability: [
@@ -417,8 +435,9 @@ export const LOCATIONS: Location[] = [
     },
     sales: 58730,
     laborPct: 9.6,
-    weekSales: [52300, 55100, 58730, 0, 0, 0, 0],
-    weekLabor: [5021, 5290, 5638, 0, 0, 0, 0],
+    weekSales: [56800, 49200, 58730, 0, 0, 0, 0],
+    weekLabor: [5440, 4780, 5638, 0, 0, 0, 0],
+    weekForecast: [0, 0, 0, 53800, 66900, 74100, 61200],
     managerMessage: "Good morning! Two people are late and the lobby is busy. Labor is running 11% over plan.",
     status: {
       people: { actual: [3, 4, 4, 4, 5, 5, 5, 3], planned: [5, 5, 5, 5, 5, 5, 5, 4] },

@@ -8,7 +8,7 @@ const BRAND = "#8f55e5"
 const LABEL_VIBRANT = "#141414"
 
 const TABS = [
-  { id: "home", label: "Home", icon: "/phone/tab-home-fill.svg", fill: "/phone/tab-home-fill.svg" },
+  { id: "home", label: "Home", icon: "/phone/tab-home.svg", fill: "/phone/tab-home-fill.svg" },
   { id: "money", label: "Money", icon: "/phone/tab-money.svg", fill: "/phone/tab-money-fill.svg" },
   { id: "shifts", label: "Shifts", icon: "/phone/tab-shifts.svg", fill: "/phone/tab-shifts-fill.svg" },
   { id: "time", label: "Time", icon: "/phone/tab-time.svg", fill: "/phone/tab-time-fill.svg" },
@@ -86,8 +86,8 @@ export function AccessoryContent({
       </button>
       {!inline && (
         <div className="flex items-center gap-4">
-          <button aria-label="Clock out" className="active:opacity-60">
-            <img src="/phone/clock-solid.svg" alt="" className="size-5" />
+          <button aria-label="Start break" className="active:opacity-60">
+            <img src="/phone/break-solid.svg" alt="" className="size-6" />
           </button>
           <button aria-label="Start meal break" className="active:opacity-60">
             <img src="/phone/meal.svg" alt="" className="size-6 p-[2px]" />

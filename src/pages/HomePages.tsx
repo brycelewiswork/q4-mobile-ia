@@ -1,14 +1,15 @@
-import { Card, GroupLabel, Initials, ListRow, SectionHeader } from "@/components/ios/list"
-import { USER_EARNINGS, type Location } from "@/data/locations"
+import { Card, GroupLabel, Initials, ListRow } from "@/components/ios/list"
+import type { Location } from "@/data/locations"
+import { MoneyPage } from "@/pages/TabPages"
 import { useStructure } from "@/store/useViewStore"
-import { Bar, WireCard, WireList } from "@/components/wire/Wire"
+import { WireList } from "@/components/wire/Wire"
 
 /** The full pages the home dashboard widgets open (see FullPage). */
 export type HomePageId = "log" | "earnings" | "shiftmates"
 
 export const HOME_PAGE_TITLES: Record<HomePageId, string> = {
   log: "Manager Log",
-  earnings: "Earnings",
+  earnings: "Money",
   shiftmates: "Shiftmates",
 }
 
@@ -26,50 +27,6 @@ function ManagerLogPage({ loc }: { loc: Location }) {
           <p className="pt-1 text-[17px] leading-[22px] text-[#2c2935]">{e.note}</p>
         </Card>
       ))}
-    </div>
-  )
-}
-
-/** Earnings belong to the person (same at every location); the pay stubs come from the location. */
-function EarningsPage({ loc }: { loc: Location }) {
-  const { today, period } = USER_EARNINGS
-  if (useStructure()) {
-    return (
-      <div className="flex flex-col gap-4 pt-2 tracking-[-0.43px]">
-        <div>
-          <p className="pb-2 text-[15px] font-[510] leading-5 text-[#939393]">Today</p>
-          <Bar w={130} h={34} />
-        </div>
-        <WireCard title="This pay period" h={110} />
-        <div>
-          <SectionHeader>Recent pay stubs</SectionHeader>
-          <WireList rows={3} avatar={false} trailing />
-        </div>
-      </div>
-    )
-  }
-  return (
-    <div className="flex flex-col gap-4 pt-2 tracking-[-0.43px]">
-      <div>
-        <p className="text-[15px] font-[510] leading-5 text-[#939393]">Today</p>
-        <p className="text-[41px] font-[590] leading-[normal] text-black">{today.amount}</p>
-        <p className="text-[15px] leading-5 text-[#7f7f7f]">{today.detail}</p>
-      </div>
-
-      <Card className="p-4">
-        <p className="text-[15px] leading-5 text-[#7f7f7f]">This pay period</p>
-        <p className="text-[28px] font-[590] leading-[34px] text-black">{period.amount}</p>
-        <p className="text-[15px] leading-5 text-[#7f7f7f]">{period.payday}</p>
-      </Card>
-
-      <div>
-        <SectionHeader>Recent pay stubs</SectionHeader>
-        <Card className="overflow-hidden">
-          {loc.payroll.stubs.map((s, i) => (
-            <ListRow key={s.period} first={i === 0} chevron title={s.period} trailing={s.net} />
-          ))}
-        </Card>
-      </div>
     </div>
   )
 }
@@ -113,6 +70,7 @@ function ShiftmatesPage({ loc }: { loc: Location }) {
 
 export function HomePage({ id, loc }: { id: HomePageId; loc: Location }) {
   if (id === "log") return <ManagerLogPage loc={loc} />
-  if (id === "earnings") return <EarningsPage loc={loc} />
+  // Earnings is one card on the Money tab, so tapping it shows that tab's content as a page.
+  if (id === "earnings") return <MoneyPage loc={loc} />
   return <ShiftmatesPage loc={loc} />
 }

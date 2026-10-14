@@ -202,7 +202,9 @@ export function WeekCalendar({ label, workingDots }: { label: string; /** Shifts
       <motion.div
         aria-hidden
         initial={false}
-        animate={{ clipPath: `inset(0px 0px ${fullH - (open ? openH : closedH)}px 0px round ${open ? 30 : 0}px)` }}
+        // Closing retracts the glass all the way up (to nothing), not just back to the strip's height: stopping at the strip left a
+        // frosted band that then vanished in a single frame when the panel was hidden.
+        animate={{ clipPath: `inset(0px 0px ${fullH - (open ? openH : 0)}px 0px round ${open ? 30 : 0}px)` }}
         transition={SPRING}
         onAnimationComplete={() => {
           if (!open) setPanelOn(false)

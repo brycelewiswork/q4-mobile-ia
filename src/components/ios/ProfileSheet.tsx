@@ -2,7 +2,7 @@ import { Bar, BarLines } from "@/components/wire/Wire"
 import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
-import { IconCheck, IconPencil } from "@tabler/icons-react"
+import { IconCheck, IconChecklist, IconPencil, IconUsers } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
@@ -56,30 +56,37 @@ function PinCard({ loc }: { loc: Location }) {
   )
 }
 
-function ShoutoutCard({ loc }: { loc: Location }) {
+/** Shoutouts: the card is the quote. A label, the words large and dark, who said it in the brand purple, and giant faint quotation marks framing it. */
+function ShoutoutCard({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
   const s = loc.profile.shoutout
   const wire = useStructure()
+  // The marks are big and mostly transparent: texture, not text.
+  const mark = "pointer-events-none absolute select-none font-[Georgia,'Times_New_Roman',serif] text-[120px] font-bold leading-none text-[#8f55e5]/[0.16]"
   return (
-    <Card className="flex h-[228px] flex-col gap-1 overflow-hidden p-4 text-[14px] leading-5 tracking-[-0.43px] text-[#2c2935]">
-      <p>Shoutouts</p>
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <button onClick={onOpen} aria-label="Open shoutouts" className="block w-full text-left active:opacity-80">
+    <Card className="relative flex h-[228px] flex-col overflow-hidden p-5 tracking-[-0.43px]">
+      <span aria-hidden className={`${mark} -left-1 top-[18px]`}>“</span>
+      <span aria-hidden className={`${mark} -bottom-[52px] right-1`}>”</span>
+      <p className="relative text-[13px] font-[590] leading-[18px] text-[#747182]">Shoutouts</p>
+      <div className="relative flex min-h-0 flex-1 flex-col justify-center gap-3 px-2">
         {wire ? (
           <>
-            <BarLines lines={3} />
+            <BarLines lines={3} className="py-0" />
             <Bar w={80} h={10} className="self-end" />
           </>
         ) : (
           <>
-            <p>{s.quote}</p>
-            <p className="text-right">{s.author}</p>
+            <p className="line-clamp-6 text-[17px] font-[510] leading-[22px] text-[#2c2935]">{s.quote.replace(/^[“"]\s*|\s*[”"]$/g, "")}</p>
+            <p className="text-right text-[15px] font-[590] leading-5 text-[#7440d1]">{s.author}</p>
           </>
         )}
       </div>
     </Card>
+    </button>
   )
 }
 
-function StatsCard({ loc }: { loc: Location }) {
+function StatsCard({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
   const s = loc.profile.stats
   const wire = useStructure()
   const Stat = ({ value, label }: { value: ReactNode; label: string }) => (
@@ -89,6 +96,7 @@ function StatsCard({ loc }: { loc: Location }) {
     </div>
   )
   return (
+    <button onClick={onOpen} aria-label="Open stats" className="block w-full text-left active:opacity-80">
     <Card className="flex h-[228px] flex-col gap-1 overflow-hidden p-4 tracking-[-0.43px]">
       <p className="text-[14px] leading-5 text-[#2c2935]">Stats</p>
       <div className="flex min-h-0 flex-1">
@@ -115,6 +123,7 @@ function StatsCard({ loc }: { loc: Location }) {
         </div>
       </div>
     </Card>
+    </button>
   )
 }
 
@@ -124,6 +133,7 @@ function StatsCard({ loc }: { loc: Location }) {
 
 function Carousel({ pages }: { pages: { key: string; label: string; node: ReactNode }[] }) {
   const [page, setPage] = useState(0)
+  const dragged = useRef(false) // a swipe must not also count as a tap on the card under the finger
   const x = useMotionValue(0)
   const frame = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -164,7 +174,13 @@ function Carousel({ pages }: { pages: { key: string; label: string; node: ReactN
           dragMomentum={false}
           dragConstraints={{ left: -last * (width + GAP), right: 0 }}
           style={{ x, gap: GAP }}
+          onDragStart={() => {
+            dragged.current = true
+          }}
           onDragEnd={(_, info) => {
+            window.setTimeout(() => {
+              dragged.current = false
+            }, 0)
             const swipe = info.offset.x + info.velocity.x * 0.2
             const threshold = width / 4
             go(swipe < -threshold ? page + 1 : swipe > threshold ? page - 1 : page)
@@ -177,6 +193,12 @@ function Carousel({ pages }: { pages: { key: string; label: string; node: ReactN
               role="group"
               aria-roledescription="slide"
               aria-label={`${i + 1} of ${pages.length}`}
+              onClickCapture={(e) => {
+                if (dragged.current) {
+                  e.stopPropagation()
+                  e.preventDefault()
+                }
+              }}
               className="w-full shrink-0"
             >
               {p.node}
@@ -211,7 +233,7 @@ function Carousel({ pages }: { pages: { key: string; label: string; node: ReactN
 // Settings rows
 // ---------------------------------------------------------------------------
 
-type Row = { icon: string; label: string; trailing?: string; page: PageId }
+type Row = { /** An exported SVG path, or an icon element. */ icon: string | ReactNode; label: string; trailing?: string; page: PageId }
 
 function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }) {
   return (
@@ -219,7 +241,7 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
       {rows.map((r, i) => (
         <button key={r.label} onClick={() => onOpen(r.page)} className="flex h-[52px] w-full items-center pr-4 text-left active:bg-black/[0.04]">
           <span className="flex size-[52px] shrink-0 items-center justify-center pr-2">
-            <img src={r.icon} alt="" className="size-5" />
+            {typeof r.icon === "string" ? <img src={r.icon} alt="" className="size-5" /> : r.icon}
           </span>
           <span className={cn("flex h-full min-w-0 flex-1 items-center gap-4 tracking-[-0.43px]", i > 0 && "border-t border-[#ebebeb]")}>
             <span className="flex-1 truncate text-[17px] leading-[22px] text-[#2c2935]">{r.label}</span>
@@ -233,10 +255,10 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
 }
 
 const WORK_ROWS: Row[] = [
-  { label: "Team", page: "team" },
-  { label: "Task Manager", page: "tasks" },
-  { label: "Payroll", page: "payroll" },
-].map((r) => ({ ...r, icon: "/phone/row-money.svg", page: r.page as PageId }))
+  { label: "Team", page: "team", icon: <IconUsers size={20} stroke={1.75} className="text-[#8f55e5]" /> },
+  { label: "Task Manager", page: "tasks", icon: <IconChecklist size={20} stroke={1.75} className="text-[#8f55e5]" /> },
+  { label: "Payroll", page: "payroll", icon: "/phone/row-money.svg" },
+]
 
 const ACCOUNT_ROWS: Row[] = [
   { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
@@ -262,8 +284,8 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
 
   const pages = [
     { key: "pin", label: "PIN card", node: <PinCard loc={loc} /> },
-    { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} /> },
-    { key: "stats", label: "Stats", node: <StatsCard loc={loc} /> },
+    { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} onOpen={() => onOpen("shoutouts")} /> },
+    { key: "stats", label: "Stats", node: <StatsCard loc={loc} onOpen={() => onOpen("stats")} /> },
   ]
 
   return (

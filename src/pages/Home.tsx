@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
-import { AnimatePresence, motion, useMotionValue, useTransform } from "motion/react"
+import { AnimatePresence, motion, useMotionValue, useTransform, type MotionValue } from "motion/react"
 import {
   IconBell,
   IconCheck,
@@ -13,6 +13,7 @@ import {
   IconUserFilled,
   IconClockFilled,
   IconWalk,
+  IconX,
 } from "@tabler/icons-react"
 import { IPhoneFrame } from "@/components/ios/IPhoneFrame"
 import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
@@ -25,6 +26,7 @@ import { AssistantSheet } from "@/components/ios/AssistantSheet"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { LocationMenu } from "@/components/ios/LocationMenu"
 import { TimeClockContent, sheetHeightFor } from "@/components/ios/TimeClockContent"
+import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { FullPage } from "@/components/ios/FullPage"
 import { TimeCardSheet } from "@/components/ios/TimeCardSheet"
 import { HOME_PAGE_TITLES, HomePage, type HomePageId } from "@/pages/HomePages"
@@ -366,98 +368,265 @@ const BLUE = "#8f55e5"
 const GREEN = "#12a53b"
 
 /**
- * Multiple locations only: every location side by side — a sales-vs-labor week chart over the combined
- * numbers, then a row per location (headcount, clocked in, sales, labor %). Takes the top of the page.
+ * The sales-vs-labor week: a pair of bars per day, labelled with the day's sales. Days that have happened are solid; the
+ * days still to come are a lighter projection, so the week reads as a whole instead of stopping at today. Used by the
+ * all-locations widget and each business.
  */
-function AllLocationsWidget({ onPick }: { onPick: (id: string) => void }) {
+function SalesLaborChart({ sales, labor, forecast, forecastLaborPct, H = 84 }: { sales: number[]; labor: number[]; forecast?: number[]; /** Labor for projected days, as a share of their sales. */ forecastLaborPct?: number; H?: number }) {
+  const days = ["M", "T", "W", "T", "F", "S", "S"]
+  const proj = forecast ?? days.map(() => 0)
+  const max = Math.max(...sales, ...proj, 1)
+  const TOP = 24 // the chart's top padding
+  const rule = "rgba(120,120,128,0.2)"
+  return (
+    <div className="relative px-1 pb-3 pt-6">
+      {/* Faint rules at the baseline, halfway and the top of the scale. */}
+      {[0, 1, 2].map((k) => (
+        <span key={k} aria-hidden className="pointer-events-none absolute inset-x-1" style={{ top: TOP + 22 + H - (k * H) / 2, borderTop: `1px ${k === 0 ? "solid" : "dashed"} ${rule}` }} />
+      ))}
+      <div className="relative flex items-end justify-between">
+        {days.map((d, i) => {
+          const actual = sales[i] > 0
+          const value = actual ? sales[i] : proj[i]
+          const lab = actual ? labor[i] : (proj[i] * (forecastLaborPct ?? 13)) / 100
+          return (
+            <div key={i} className="flex w-[44px] flex-col items-center">
+              <div className="relative flex items-end gap-[6px]" style={{ height: H + 22, opacity: actual ? 1 : 0.4 }}>
+                {value > 0 && (
+                  <>
+                    <span className="absolute left-1/2 -translate-x-[78%] whitespace-nowrap text-[11px] font-[590] leading-4" style={{ bottom: (value / max) * H + 4, color: BLUE }}>
+                      {fmtK(value)}
+                    </span>
+                    <span className="w-[7px] rounded-full" style={{ height: (value / max) * H, backgroundColor: BLUE }} />
+                    <span className="w-[7px] rounded-full" style={{ height: Math.max(4, (lab / max) * H), backgroundColor: GREEN }} />
+                  </>
+                )}
+              </div>
+              <span className="pt-1 text-[12px] font-[590] leading-4 text-[#747182]">{d}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** One location's row in the all-locations card: name, headcount, clocked in, sales, labor %. Also what the page grows out of. */
+function LocationRowBody({ l }: { l: Location }) {
+  const locName = useLocName()
+  const wire = useStructure()
+  if (wire) {
+    return (
+      <span className="flex items-center gap-3">
+        <Bar w="45%" h={12} />
+        <span className="flex-1" />
+        <Bar w={40} h={12} />
+      </span>
+    )
+  }
+  const clocked = l.team.filter((m) => m.status === "on").length
+  return (
+    <span className="flex w-full items-start justify-between gap-3 py-3 text-left tracking-[-0.43px]">
+      <span className="min-w-0">
+        <span className="block text-[17px] font-normal leading-[22px] text-black">{locName(l)}</span>
+        <span className="mt-1 flex items-center gap-3 text-[15px] leading-5 text-[#7f7f7f]">
+          <span className="flex items-center gap-1">
+            <IconUserFilled size={16} />
+            {l.team.length}
+          </span>
+          <span className="flex items-center gap-1">
+            <IconClockFilled size={16} />
+            {clocked}
+          </span>
+        </span>
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="text-[17px] font-[590] leading-[22px] text-black">{money(l.sales)}</span>
+        <span className="rounded-[7px] px-[7px] py-[1px] text-[13px] font-[510] leading-[18px] text-white" style={{ backgroundColor: l.laborPct < 15 ? GREEN : "#d0161f" }}>
+          {l.laborPct}%
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * Multiple locations only: every location side by side — a sales-vs-labor week chart over the combined
+ * numbers, then a row per location. Tapping a row opens that business's overview, growing out of the row.
+ */
+function AllLocationsWidget({ onOpen }: { onOpen: (l: Location, row: HTMLElement) => void }) {
   const locName = useLocName()
   const wire = useStructure()
   if (wire) {
     return (
       <div data-anno="all-locations">
-      <WireCard title="All locations" h={200}>
+      <WireCard h={200}>
         <span aria-hidden className="mt-3 block h-24 rounded-[14px] bg-[#dedde4]" />
         {LOCATIONS.map((l) => (
-          <button key={l.id} onClick={() => onPick(l.id)} aria-label={locName(l)} className="mt-3 flex items-center gap-3 text-left active:opacity-60">
-            <Bar w="45%" h={12} />
-            <span className="flex-1" />
-            <Bar w={40} h={12} />
+          <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-label={locName(l)} className="mt-3 flex w-full items-center gap-3 text-left active:opacity-60">
+            <LocationRowBody l={l} />
           </button>
         ))}
       </WireCard>
       </div>
     )
   }
-  const days = ["M", "T", "W", "T", "F", "S", "S"]
-  const sales = days.map((_, i) => LOCATIONS.reduce((n, l) => n + l.weekSales[i], 0))
-  const labor = days.map((_, i) => LOCATIONS.reduce((n, l) => n + l.weekLabor[i], 0))
-  const max = Math.max(...sales)
-  const H = 84
+  const days = [0, 1, 2, 3, 4, 5, 6]
+  const sales = days.map((i) => LOCATIONS.reduce((n, l) => n + l.weekSales[i], 0))
+  const labor = days.map((i) => LOCATIONS.reduce((n, l) => n + l.weekLabor[i], 0))
+  const forecast = days.map((i) => LOCATIONS.reduce((n, l) => n + l.weekForecast[i], 0))
+  const pct = LOCATIONS.reduce((n, l) => n + l.laborPct, 0) / LOCATIONS.length
   return (
     <div data-anno="all-locations">
     <Card className="bg-[#e9e8ec] p-4 tracking-[-0.43px]">
-      <div className="flex items-end justify-between px-1 pb-3 pt-6">
-        {days.map((d, i) => (
-          <div key={i} className="flex w-[44px] flex-col items-center">
-            <div className="relative flex items-end gap-[6px]" style={{ height: H + 22 }}>
-              {sales[i] > 0 && (
-                <>
-                  <span className="absolute left-1/2 -translate-x-[78%] whitespace-nowrap text-[11px] font-[590] leading-4" style={{ bottom: (sales[i] / max) * H + 4, color: BLUE }}>
-                    {fmtK(sales[i])}
-                  </span>
-                  <span className="w-[7px] rounded-full" style={{ height: (sales[i] / max) * H, backgroundColor: BLUE }} />
-                  <span className="w-[7px] rounded-full" style={{ height: (labor[i] / max) * H, backgroundColor: GREEN }} />
-                </>
-              )}
-            </div>
-            <span className="pt-1 text-[12px] font-[590] leading-4 text-[#747182]">{d}</span>
-          </div>
-        ))}
-      </div>
+      <SalesLaborChart sales={sales} labor={labor} forecast={forecast} forecastLaborPct={pct} />
       <div className="border-t border-black/10">
-        {LOCATIONS.map((l, i) => {
-          const clocked = l.team.filter((m) => m.status === "on").length
-          return (
-            <button
-              key={l.id}
-              onClick={() => onPick(l.id)}
-              className={cn("flex w-full items-start justify-between gap-3 py-3 text-left active:opacity-60", i > 0 && "border-t border-black/10")}
-            >
-              <span className="min-w-0">
-                <span className="block text-[17px] font-[590] leading-[22px] text-black">{locName(l)}</span>
-                <span className="mt-1 flex items-center gap-3 text-[15px] leading-5 text-[#7f7f7f]">
-                  <span className="flex items-center gap-1">
-                    <IconUserFilled size={16} />
-                    {l.team.length}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <IconClockFilled size={16} />
-                    {clocked}
-                  </span>
-                </span>
-              </span>
-              <span className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-[17px] font-[590] leading-[22px] text-black">{money(l.sales)}</span>
-                <span className="rounded-[8px] px-2 py-[2px] text-[15px] font-[590] leading-5 text-white" style={{ backgroundColor: l.laborPct < 15 ? GREEN : "#d0161f" }}>
-                  {l.laborPct}%
-                </span>
-              </span>
-            </button>
-          )
-        })}
+        {LOCATIONS.map((l, i) => (
+          <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} className={cn("block w-full text-left active:opacity-60", i > 0 && "border-t border-black/10")}>
+            <LocationRowBody l={l} />
+          </button>
+        ))}
       </div>
     </Card>
     </div>
   )
 }
 
-function ManagerDashboard({ loc, multi, onScroll, onOpenPage }: { loc: Location; multi?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void }) {
-  const setLocation = useLocationStore((s) => s.setLocation)
+/** The big page title: fades out as the page scrolls, while the toolbar's copy fades in (the iOS large-title behaviour). */
+function LargeTitle({ scrollY, children }: { scrollY: MotionValue<number>; children: ReactNode }) {
+  const opacity = useTransform(scrollY, [0, 50], [1, 0])
+  return <motion.h1 style={{ opacity }} className="text-[28px] font-[590] leading-[34px] text-black">{children}</motion.h1>
+}
+
+function ToolbarTitle({ scrollY, children }: { scrollY: MotionValue<number>; children: ReactNode }) {
+  const opacity = useTransform(scrollY, [30, 70], [0, 1])
+  return (
+    <motion.h2 style={{ opacity }} className="flex h-11 items-center justify-center px-16 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
+      <span className="truncate">{children}</span>
+    </motion.h2>
+  )
+}
+
+/**
+ * One business's overview (multiple locations): its own hero graph, then the same kinds of cards the dashboard has,
+ * for just this location. It grows out of the row that was tapped; the X shrinks it back.
+ */
+function BusinessOverview({ loc, from, clone, onClosed }: { loc: Location; from: Box; clone: ReactNode; onClosed: () => void }) {
+  const wire = useStructure()
+  const locName = useLocName()
+  const on = loc.team.filter((m) => m.status === "on").length
+  return (
+    <ExpandSurface
+      from={from}
+      clone={clone}
+      cardClass={wire ? "bg-white" : "bg-[#e9e8ec]"}
+      pageClass="bg-[#f3f2f6]"
+      onClosed={onClosed}
+      // Like a large title: the name in the toolbar fades in as the big one scrolls away.
+      frostedToolbar
+      toolbar={(scrollY) => <ToolbarTitle scrollY={scrollY}>{locName(loc)}</ToolbarTitle>}
+      button={(close) => (
+        <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
+          <button onClick={close} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+            <IconX size={24} stroke={2} />
+          </button>
+        </LiquidGlass>
+      )}
+    >
+      {(scrollY) => (
+      <div className="flex flex-col gap-4 px-4 tracking-[-0.43px]" style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
+        <LargeTitle scrollY={scrollY}>{locName(loc)}</LargeTitle>
+
+        {wire ? (
+          <>
+            <WireCard title="Sales and labor" h={260} />
+            <div className="flex gap-3">
+              <WireCard title="Labor" h={96} className="flex-1" />
+              <WireCard title="Team" h={96} className="flex-1" />
+            </div>
+          </>
+        ) : (
+          <>
+            <Card className="p-4">
+              <p className="text-[34px] font-[590] leading-[41px] text-black">{money(loc.sales)}</p>
+              <p className="text-[15px] font-[510] leading-5 text-[#939393]">Total sales</p>
+              <SalesLaborChart sales={loc.weekSales} labor={loc.weekLabor} forecast={loc.weekForecast} forecastLaborPct={loc.laborPct} H={120} />
+              <div className="flex gap-4 text-[13px] leading-[18px] text-[#747182]">
+                <span className="flex items-center gap-[6px]"><span className="size-2 rounded-full" style={{ backgroundColor: BLUE }} />Sales</span>
+                <span className="flex items-center gap-[6px]"><span className="size-2 rounded-full" style={{ backgroundColor: GREEN }} />Labor</span>
+              </div>
+            </Card>
+            <div className="flex gap-3">
+              <Card className="flex-1 p-4">
+                <p className="text-[15px] font-[510] leading-5 text-black">Labor</p>
+                <p className="text-[28px] font-[590] leading-[34px]" style={{ color: loc.laborPct < 15 ? GREEN : "#d0161f" }}>{loc.laborPct}%</p>
+                <p className="text-[13px] leading-[18px] text-[#7f7f7f]">of sales</p>
+              </Card>
+              <Card className="flex-1 p-4">
+                <p className="text-[15px] font-[510] leading-5 text-black">Team</p>
+                <p className="text-[28px] font-[590] leading-[34px] text-black">{on}<span className="text-[17px] font-normal text-[#7f7f7f]"> of {loc.team.length}</span></p>
+                <p className="text-[13px] leading-[18px] text-[#7f7f7f]">clocked in</p>
+              </Card>
+            </div>
+          </>
+        )}
+
+        <StatusWidget loc={loc} />
+
+        <section>
+          <SectionHeader>Needs Review</SectionHeader>
+          {wire ? (
+            <WireList rows={3} avatar={false} trailing />
+          ) : (
+            <ListCard
+              rows={loc.review.map((r, i) => ({ key: `${r.title}${i}`, title: r.title, detail: r.detail }))}
+              empty={
+                <>
+                  <IconCheck size={20} stroke={3} className="rounded-full bg-[#999] p-[3px] text-white" />
+                  <span className="text-[17px] leading-6">All caught up</span>
+                </>
+              }
+            />
+          )}
+        </section>
+
+        <section>
+          <SectionHeader>Manager Log</SectionHeader>
+          {wire ? (
+            <WireList rows={2} avatar={false} />
+          ) : loc.managerLog.length === 0 ? (
+            <Card className="flex h-[62px] items-center justify-center text-[17px] text-[#999]">No notes yet</Card>
+          ) : (
+            <Card className="overflow-hidden">
+              {loc.managerLog.map((e, i) => (
+                <div key={e.when + e.author} className={cn("px-4 py-3", i > 0 && "border-t border-black/[0.07]")}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-[15px] font-[590] leading-5 text-black">{e.author}</span>
+                    <span className="shrink-0 text-[13px] leading-[18px] text-[#8e8e93]">{e.when}</span>
+                  </div>
+                  <p className="line-clamp-2 pt-[2px] text-[15px] leading-5 text-[#2c2935]">{e.note}</p>
+                </div>
+              ))}
+            </Card>
+          )}
+        </section>
+
+        <EventsSection loc={loc} />
+      </div>
+      )}
+    </ExpandSurface>
+  )
+}
+
+function ManagerDashboard({ loc, multi, onScroll, onOpenPage, onOpenBusiness }: { loc: Location; multi?: boolean; onScroll: ScrollHandler; onOpenPage: (p: HomePageId) => void; onOpenBusiness: (l: Location, row: HTMLElement) => void }) {
   const wire = useStructure()
   return (
-    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={112} className="gap-4">
+    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={152} className="gap-4">
       {multi ? (
-        <AllLocationsWidget onPick={setLocation} />
+        <section className="-mt-2">
+          <SectionHeader>All Locations</SectionHeader>
+          <AllLocationsWidget onOpen={onOpenBusiness} />
+        </section>
       ) : (
         <div className="flex flex-col items-center gap-1 py-3 tracking-[-0.43px]">
           {wire ? <Bar w={150} h={34} className="mb-1 self-start" /> : <p className="w-full text-[41px] font-[590] leading-[normal] text-black">{money(loc.sales)}</p>}
@@ -621,7 +790,7 @@ function EmployeeDashboard({ loc, onScroll, onOpenPage }: { loc: Location; onScr
   const e = loc.employee
   const wire = useStructure()
   return (
-    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={54}>
+    <ScreenScroll locationId={loc.id} onScroll={onScroll} top={94}>
       <WeekChart loc={loc} />
 
       {wire ? (
@@ -720,6 +889,13 @@ function IosHome() {
   // The dashboard widgets (manager log, earnings, shiftmates) open full pages above the tab bar.
   const [homePage, setHomePage] = useState<HomePageId | null>(null)
   const closeHomePage = useCallback(() => setHomePage(null), [])
+  // A business overview grows out of the row that was tapped in the all-locations card.
+  const [biz, setBiz] = useState<{ loc: Location; from: Box; clone: ReactNode } | null>(null)
+  const openBiz = useCallback((l: Location, row: HTMLElement) => {
+    const from = boxOf(row)
+    if (from) setBiz({ loc: l, from, clone: <LocationRowBody l={l} /> })
+  }, [])
+  const closeBiz = useCallback(() => setBiz(null), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   // tabBarMinimizeBehavior(.onScrollDown): the tab bar collapses to one icon with the accessory nested beside it as
   // you scroll down, and comes back as you scroll up. Switched OFF: the bar stays fully expanded. Flip to re-enable.
@@ -759,7 +935,7 @@ function IosHome() {
     <IPhoneFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
       {tab === "home" ? (
         view === "manager" ? (
-          <ManagerDashboard loc={loc} multi={userType === "multi"} onScroll={onScroll} onOpenPage={setHomePage} />
+          <ManagerDashboard loc={loc} multi={userType === "multi"} onScroll={onScroll} onOpenPage={setHomePage} onOpenBusiness={openBiz} />
         ) : (
           <EmployeeDashboard loc={loc} onScroll={onScroll} onOpenPage={setHomePage} />
         )
@@ -776,7 +952,8 @@ function IosHome() {
       )}
       <EdgeBlur
         top={{ strength: 24, steps: 6, height: "calc(var(--safe-top) + 64px)" }}
-        bottom={{ strength: 20, steps: 6, height: "calc(var(--safe-bottom) + 88px)" }}
+        // Taller and firmer than the top edge: this one has to lift the nav bar (and the clock bar) off whatever scrolls under it.
+        bottom={{ strength: 28, steps: 8, height: "calc(var(--safe-bottom) + 140px)", tint: "var(--ios-page-tint-strong, rgba(243,242,246,0.92))" }}
       />
       <Toolbar
         view={view}
@@ -803,11 +980,11 @@ function IosHome() {
             </button>
           ) : tab === "chat" ? (
             <>
-              <button aria-label="Search messages" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconSearch size={24} stroke={1.75} />
-              </button>
               <button aria-label="New message" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
                 <IconPlus size={24} stroke={1.75} />
+              </button>
+              <button aria-label="Search messages" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconSearch size={24} stroke={1.75} />
               </button>
             </>
           ) : undefined
@@ -885,6 +1062,7 @@ function IosHome() {
         )}
       </AnimatePresence>
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
+      {biz && <BusinessOverview key={biz.loc.id} loc={biz.loc} from={biz.from} clone={biz.clone} onClosed={closeBiz} />}
       {profileOpen && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
     </IPhoneFrame>

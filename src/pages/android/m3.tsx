@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { IconArrowLeft, IconCheck } from "@tabler/icons-react"
+import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react"
 import { addDays, mondayOf, sameDay, WEEKDAYS_SHORT } from "@/lib/dates"
 import { cn } from "@/lib/utils"
 
@@ -186,6 +186,44 @@ export function ASheet({ title, onClose, children }: { title: string; onClose: (
         <span aria-hidden className="bg-m-variant mx-auto mt-3 h-1 w-8 shrink-0 rounded-full opacity-40" />
         <h2 className="shrink-0 px-6 pb-2 pt-4 text-[22px] font-normal leading-7">{title}</h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+      </motion.div>
+    </div>
+  )
+}
+
+/**
+ * A taller modal sheet for forms: a top row with a close X, the title (or your own node) and a Save text button, over
+ * scrolling content. Scrim tap, Esc or the X closes it; Save closes it too (the prototype doesn't keep what you entered).
+ */
+export function AFormSheet({ title, titleNode, onClose, ready = true, children }: { title: string; /** Replaces the drawn title in the top row (e.g. a mirror of a title field). */ titleNode?: ReactNode; onClose: () => void; ready?: boolean; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+  return (
+    <div className="absolute inset-0 z-[50]">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={SHEET} onClick={onClose} className="absolute inset-0 bg-[var(--m-scrim)]" />
+      <motion.div
+        role="dialog"
+        aria-label={title}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={SHEET}
+        className="bg-m-low text-m-on-surface absolute inset-x-0 bottom-0 flex h-[92%] flex-col rounded-t-[28px]"
+      >
+        <span aria-hidden className="bg-m-variant mx-auto mt-3 h-1 w-8 shrink-0 rounded-full opacity-40" />
+        <div className="flex h-14 shrink-0 items-center gap-1 px-1">
+          <AIconButton label="Close" onClick={onClose} className="text-m-on-surface">
+            <IconX size={24} stroke={1.75} />
+          </AIconButton>
+          <div className="flex min-w-0 flex-1 justify-center text-[20px] leading-7">{titleNode ?? <span className="truncate">{title}</span>}</div>
+          <button onClick={onClose} disabled={!ready} className={cn("h-10 rounded-full px-4 text-[14px] font-medium tracking-[0.1px]", ready ? "text-m-primary active:bg-black/10" : "text-m-outline")}>
+            Save
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
       </motion.div>
     </div>
   )
