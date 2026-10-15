@@ -19,11 +19,14 @@ type State = {
   /** The thread whose card is open. */
   active: string | null
   showResolved: boolean
+  /** Pins on the page. Off by default: other people's numbers would crowd the thing being looked at. */
+  showPins: boolean
 
   setPanelOpen: (o: boolean) => void
   setPicking: (p: boolean) => void
   setActive: (id: string | null) => void
   setShowResolved: (v: boolean) => void
+  setShowPins: (v: boolean) => void
 
   refresh: () => Promise<void>
   add: (body: string, anchor: Anchor | undefined, parent?: string) => Promise<Comment | null>
@@ -59,10 +62,12 @@ export const useCommentsStore = create<State>()(
         picking: false,
         active: null,
         showResolved: false,
+        showPins: false,
         setPanelOpen: (panelOpen) => set({ panelOpen }),
         setPicking: (picking) => set({ picking, ...(picking ? { active: null } : {}) }),
         setActive: (active) => set({ active }),
         setShowResolved: (showResolved) => set({ showResolved }),
+        setShowPins: (showPins) => set({ showPins }),
         refresh: async () => {
           try {
             const comments = await fetchComments(get().clientId)
@@ -88,6 +93,6 @@ export const useCommentsStore = create<State>()(
         remove: (id) => act({ action: "delete", id }, (cs) => cs.filter((c) => c.id !== id && c.parent !== id)).catch(() => undefined),
       }
     },
-    { name: "q4-comments", partialize: (s) => ({ name: s.name, clientId: s.clientId, showResolved: s.showResolved }) },
+    { name: "q4-comments", partialize: (s) => ({ name: s.name, clientId: s.clientId, showResolved: s.showResolved, showPins: s.showPins }) },
   ),
 )

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { IconCheck, IconMessageCircle, IconMessageCirclePlus, IconPencil, IconTrash, IconX } from "@tabler/icons-react"
+import { IconCheck, IconEye, IconEyeOff, IconMessageCircle, IconMessageCirclePlus, IconPencil, IconTrash, IconX } from "@tabler/icons-react"
 import { ago, threadsOf, type Anchor, type Thread } from "@/lib/comments"
 import { describe, selectorFor } from "@/lib/selectorFor"
 import { cn } from "@/lib/utils"
@@ -295,6 +295,8 @@ export function CommentsLayer() {
   const picking = useCommentsStore((s) => s.picking)
   const active = useCommentsStore((s) => s.active)
   const showResolved = useCommentsStore((s) => s.showResolved)
+  const showPins = useCommentsStore((s) => s.showPins)
+  const setShowPins = useCommentsStore((s) => s.setShowPins)
   const setPanelOpen = useCommentsStore((s) => s.setPanelOpen)
   const setPicking = useCommentsStore((s) => s.setPicking)
   const setActive = useCommentsStore((s) => s.setActive)
@@ -347,7 +349,8 @@ export function CommentsLayer() {
     <>
       {/* Pins on whatever has comments. */}
       <div data-comments-ui className="pointer-events-none fixed inset-0 z-[75]">
-        {pins.map((p) => {
+        {/* With comments off, no pins at all, except the thread you have open: what you are writing or reading right now. */}
+        {pins.filter((p) => showPins || p.id === active).map((p) => {
           const t = threads.find((x) => x.top.id === p.id)
           if (!t) return null
           return (
@@ -446,6 +449,9 @@ export function CommentsLayer() {
 
       {/* The controls: start a comment, and open the list. */}
       <div data-comments-ui className="fixed bottom-4 right-4 z-[80] flex items-center gap-2">
+        <button onClick={() => setShowPins(!showPins)} aria-pressed={showPins} aria-label={showPins ? "Hide comments on the page" : "Show comments on the page"} title={showPins ? "Hide comments on the page" : "Show comments on the page"} className={cn(bar, "bg-white px-3 text-[#2c2935] dark:bg-neutral-800 dark:text-neutral-100", showPins && "ring-2 ring-[#8f55e5]/50")}>
+          {showPins ? <IconEye size={18} stroke={2} /> : <IconEyeOff size={18} stroke={2} />}
+        </button>
         <button onClick={() => { setPanelOpen(false); setPicking(!picking) }} aria-pressed={picking} className={cn(bar, picking ? "text-white" : "bg-white text-[#2c2935] dark:bg-neutral-800 dark:text-neutral-100")} style={picking ? { backgroundColor: PURPLE } : undefined}>
           <IconMessageCirclePlus size={18} stroke={2} />
           {picking ? "Cancel" : "Comment"}
