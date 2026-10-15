@@ -32,6 +32,18 @@ interface CanvasStageProps {
   showToolbar?: boolean
   toolbarActions?: ReactNode
   className?: string
+  /** Fit the content to the viewport (instead of centring it at 100%) on mount, on the toolbar's fit button, and whenever `fitKey` changes. */
+  fit?: boolean
+  fitKey?: string | number
+  fitPadding?: number
+  /** Extra room kept clear along the top when fitting (for a panel floating over it). */
+  fitTop?: number
+  /** A Figma-like dot grid that pans and zooms with the content. */
+  grid?: boolean
+  /** The grid dots' colour (default a soft grey). */
+  gridColor?: string
+  /** Keyboard: + / − zoom, 0 = 100%, shift+1 = fit. Off while typing in a field. */
+  shortcuts?: boolean
 }
 
 export function CanvasStage({
@@ -41,6 +53,13 @@ export function CanvasStage({
   showToolbar = true,
   toolbarActions,
   className,
+  fit = false,
+  fitKey,
+  fitPadding = 64,
+  fitTop = 0,
+  grid = false,
+  gridColor = "rgba(120,120,128,0.32)",
+  shortcuts = false,
 }: CanvasStageProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -76,10 +95,14 @@ export function CanvasStage({
     const vp = viewportRef.current
     const ct = contentRef.current
     if (!vp || !ct) return
+    // Fitting zooms out (never in past 100%) until the whole content, plus padding, is in view.
+    const zoom = fit
+      ? clamp(Math.min((vp.clientWidth - fitPadding * 2) / ct.offsetWidth, (vp.clientHeight - fitPadding * 2 - fitTop) / ct.offsetHeight, 1), minZoom, maxZoom)
+      : 1
     const next: View = {
-      zoom: 1,
-      x: (vp.clientWidth - ct.offsetWidth) / 2,
-      y: (vp.clientHeight - ct.offsetHeight) / 2,
+      zoom,
+      x: (vp.clientWidth - ct.offsetWidth * zoom) / 2,
+      y: fit ? Math.max(fitPadding + fitTop, (vp.clientHeight - ct.offsetHeight * zoom + fitTop) / 2) : (vp.clientHeight - ct.offsetHeight) / 2,
     }
     setView(next)
     if (seedHistory) {
@@ -88,13 +111,24 @@ export function CanvasStage({
     } else {
       commit(next)
     }
-  }, [commit])
+  }, [commit, fit, fitPadding, fitTop, minZoom, maxZoom])
 
   // Centre content on mount and seed the history baseline.
   useLayoutEffect(() => {
     centre(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // The content changed shape (another tree, say): fit it again.
+  const firstFit = useRef(true)
+  useLayoutEffect(() => {
+    if (firstFit.current) {
+      firstFit.current = false
+      return
+    }
+    if (fit) centre()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitKey])
 
   // Cursor-anchored zoom / pan. Native non-passive listener so ⌘/Ctrl+wheel can
   // preventDefault (otherwise the browser page-zooms).
@@ -131,6 +165,8 @@ export function CanvasStage({
   const drag = useRef<{ px: number; py: number; vx: number; vy: number } | null>(null)
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.button !== 1) return
+    // Things on the canvas that take their own clicks and drags opt out of panning.
+    if ((e.target as HTMLElement).closest("[data-canvas-nopan]")) return
     drag.current = { px: e.clientX, py: e.clientY, vx: viewRef.current.x, vy: viewRef.current.y }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
   }
@@ -160,6 +196,24 @@ export function CanvasStage({
   }
   const resetZoom = () => zoomBy(1 / viewRef.current.zoom)
 
+  useEffect(() => {
+    if (!shortcuts) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
+      if (e.key === "+" || e.key === "=") zoomBy(1.25)
+      else if (e.key === "-") zoomBy(1 / 1.25)
+      else if (e.key === "0") resetZoom()
+      else if (e.key === "1" && e.shiftKey) centre()
+      else if (e.key === "!" ) centre()
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shortcuts, centre])
+
   const undo = () => {
     const h = history.current
     if (h.index <= 0) return
@@ -184,6 +238,15 @@ export function CanvasStage({
         "relative overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing bg-surface-secondary",
         className,
       )}
+      style={
+        grid
+          ? {
+              backgroundImage: `radial-gradient(circle, ${gridColor} 1px, transparent 1.4px)`,
+              backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
+              backgroundPosition: `${view.x}px ${view.y}px`,
+            }
+          : undefined
+      }
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

@@ -35,3 +35,6 @@ vite-cache
 
 # Vercel project link
 .vercel
+
+# Local comments store for the dev server (the deployed site uses Redis)
+.comments-dev.json

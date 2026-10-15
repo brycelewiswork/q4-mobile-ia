@@ -18,12 +18,16 @@ export type Platform = "ios" | "android"
 /** The screen it's shown on: a phone or a tablet, held upright or on its side. */
 export type Device = "phone" | "tablet"
 export type Orientation = "portrait" | "landscape"
+/** The page shows the interactive prototype, or the sitemap of it (before and after). */
+export type View = "prototype" | "sitemap"
 
 type State = {
   detail: Detail
   platform: Platform
   device: Device
   orientation: Orientation
+  view: View
+  setView: (v: View) => void
   /** Show the notes beside the phone. */
   notes: boolean
   setNotes: (n: boolean) => void
@@ -33,17 +37,19 @@ type State = {
   setOrientation: (o: Orientation) => void
 }
 
-const fromUrl = (): Partial<Pick<State, "detail" | "platform" | "device" | "orientation">> => {
+const fromUrl = (): Partial<Pick<State, "detail" | "platform" | "device" | "orientation" | "view">> => {
   const q = new URLSearchParams(window.location.search)
-  const out: Partial<Pick<State, "detail" | "platform" | "device" | "orientation">> = {}
+  const out: Partial<Pick<State, "detail" | "platform" | "device" | "orientation" | "view">> = {}
   const d = q.get("detail")
   const p = q.get("platform")
   const v = q.get("device")
   const o = q.get("orientation")
+  const w = q.get("view")
   if (d === "full" || d === "structure") out.detail = d
   if (p === "ios" || p === "android") out.platform = p
   if (v === "phone" || v === "tablet") out.device = v
   if (o === "portrait" || o === "landscape") out.orientation = o
+  if (w === "prototype" || w === "sitemap") out.view = w
   return out
 }
 
@@ -54,6 +60,8 @@ export const useViewStore = create<State>()(
       platform: "ios",
       device: "phone",
       orientation: "portrait",
+      view: "prototype",
+      setView: (view) => set({ view }),
       notes: true,
       setNotes: (notes) => set({ notes }),
       setDetail: (detail) => set({ detail: FULL_ENABLED ? detail : "structure" }),

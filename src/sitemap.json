@@ -1,0 +1,1145 @@
+{
+  "before": [
+    {
+      "id": "root",
+      "title": "Homebase mobile",
+      "parent": null,
+      "kind": "root",
+      "note": "iOS and Android share this structure. Tablets add a sidebar (iOS) or rail (Android) in place of the bottom bar."
+    },
+    {
+      "id": "home",
+      "title": "Home",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Different for employees, owners / managers (OAM) and multi-location users."
+    },
+    {
+      "id": "home-time-clock",
+      "title": "Time clock",
+      "parent": "home",
+      "kind": "action",
+      "note": "Clock widget in the sidebar / rail on tablets."
+    },
+    {
+      "id": "home-time-clock-time-clock-page",
+      "title": "Time clock page",
+      "parent": "home-time-clock",
+      "kind": "screen"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-clock-in",
+      "title": "Clock in",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-break-meal",
+      "title": "Break / meal",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-clock-out",
+      "title": "Clock out",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action",
+      "note": "Two taps to confirm."
+    },
+    {
+      "id": "money",
+      "title": "Money",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Employees only."
+    },
+    {
+      "id": "money-this-pay-period",
+      "title": "This pay period",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "money-today",
+      "title": "Today",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "money-recent-pay-stubs",
+      "title": "Recent pay stubs",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "shifts",
+      "title": "Shifts",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Tablet landscape: schedule on the left, shift detail on the right."
+    },
+    {
+      "id": "shifts-calendar",
+      "title": "Calendar",
+      "parent": "shifts",
+      "kind": "section",
+      "note": "Week strip on phones, whole month on tablets."
+    },
+    {
+      "id": "shifts-shift-list",
+      "title": "Shift list",
+      "parent": "shifts",
+      "kind": "section"
+    },
+    {
+      "id": "shifts-shift-list-shift-detail",
+      "title": "Shift detail",
+      "parent": "shifts-shift-list",
+      "kind": "screen"
+    },
+    {
+      "id": "shifts-filter",
+      "title": "Filter",
+      "parent": "shifts",
+      "kind": "action",
+      "note": "All shifts, My shifts, Open shifts."
+    },
+    {
+      "id": "shifts-add",
+      "title": "Add (+)",
+      "parent": "shifts",
+      "kind": "action"
+    },
+    {
+      "id": "shifts-add-add-shift",
+      "title": "Add shift",
+      "parent": "shifts-add",
+      "kind": "sheet"
+    },
+    {
+      "id": "shifts-add-add-event",
+      "title": "Add event",
+      "parent": "shifts-add",
+      "kind": "sheet"
+    },
+    {
+      "id": "time",
+      "title": "Time",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Owners / managers."
+    },
+    {
+      "id": "time-needs-review",
+      "title": "Needs review",
+      "parent": "time",
+      "kind": "section",
+      "note": "Tablet landscape: day on the left, pay period on the right."
+    },
+    {
+      "id": "time-pay-period",
+      "title": "Pay period",
+      "parent": "time",
+      "kind": "section"
+    },
+    {
+      "id": "time-filters",
+      "title": "Filters",
+      "parent": "time",
+      "kind": "action"
+    },
+    {
+      "id": "time-filters-team-members",
+      "title": "Team Members",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-filters-issues",
+      "title": "Issues",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-filters-roles",
+      "title": "Roles",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-add-time-card",
+      "title": "Add time card",
+      "parent": "time",
+      "kind": "action"
+    },
+    {
+      "id": "time-add-time-card-time-card",
+      "title": "Time card",
+      "parent": "time-add-time-card",
+      "kind": "sheet"
+    },
+    {
+      "id": "messages",
+      "title": "Messages",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Split view on tablets: list left, conversation right."
+    },
+    {
+      "id": "messages-conversation-list",
+      "title": "Conversation list",
+      "parent": "messages",
+      "kind": "section"
+    },
+    {
+      "id": "messages-conversation-list-conversation",
+      "title": "Conversation",
+      "parent": "messages-conversation-list",
+      "kind": "screen"
+    },
+    {
+      "id": "messages-new-message",
+      "title": "New message",
+      "parent": "messages",
+      "kind": "action"
+    },
+    {
+      "id": "messages-search-messages",
+      "title": "Search messages",
+      "parent": "messages",
+      "kind": "action"
+    },
+    {
+      "id": "n-t4f555",
+      "title": "More",
+      "parent": "root",
+      "kind": "screen",
+      "note": "Overflow menu that lives in main navigation\n"
+    },
+    {
+      "id": "settings-account",
+      "title": "Profile",
+      "parent": "n-t4f555",
+      "kind": "screen",
+      "note": "Where you work is view only."
+    },
+    {
+      "id": "n-2c3ofh",
+      "title": "Profile",
+      "parent": "settings-account",
+      "kind": "tab"
+    },
+    {
+      "id": "settings-account-availability",
+      "title": "Availability",
+      "parent": "n-2c3ofh",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-your-information-personal-information",
+      "title": "Personal Information",
+      "parent": "n-2c3ofh",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-your-information-shared-name",
+      "title": "Shared Name",
+      "parent": "n-2c3ofh",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-resume-experience",
+      "title": "Experience",
+      "parent": "n-2c3ofh",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-certifications",
+      "title": "Certifications",
+      "parent": "n-2c3ofh",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-education",
+      "title": "Education",
+      "parent": "n-2c3ofh",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-export-to-pdf",
+      "title": "Export to PDF",
+      "parent": "n-2c3ofh",
+      "kind": "action"
+    },
+    {
+      "id": "settings-account-where-you-work",
+      "title": "Locations",
+      "parent": "n-2c3ofh",
+      "kind": "section",
+      "note": "Role, pay rate and PIN for each location."
+    },
+    {
+      "id": "settings-profile-cards-stats",
+      "title": "Stats",
+      "parent": "n-2c3ofh",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-stats-stats-page",
+      "title": "Stats page",
+      "parent": "settings-profile-cards-stats",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-profile-cards-shoutouts",
+      "title": "Shoutouts",
+      "parent": "n-2c3ofh",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-shoutouts-shoutouts-page",
+      "title": "Shoutouts page",
+      "parent": "settings-profile-cards-shoutouts",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-profile-cards-achievements",
+      "title": "Achievements",
+      "parent": "n-2c3ofh",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-achievements-achievements-page",
+      "title": "Achievements page",
+      "parent": "settings-profile-cards-achievements",
+      "kind": "screen"
+    },
+    {
+      "id": "n-l0zgru",
+      "title": "Tax & Bank info",
+      "parent": "settings-account",
+      "kind": "tab"
+    },
+    {
+      "id": "settings-account-your-information-tax-information",
+      "title": "Tax Information",
+      "parent": "n-l0zgru",
+      "kind": "card"
+    },
+    {
+      "id": "settings-account-your-information-bank-information",
+      "title": "Bank Information",
+      "parent": "n-l0zgru",
+      "kind": "card"
+    },
+    {
+      "id": "settings-earnings-card",
+      "title": "Earnings card",
+      "parent": "n-t4f555",
+      "kind": "card"
+    },
+    {
+      "id": "settings-earnings-card-earnings-page",
+      "title": "Earnings page",
+      "parent": "settings-earnings-card",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-work-payroll",
+      "title": "Payroll",
+      "parent": "n-t4f555",
+      "kind": "screen"
+    },
+    {
+      "id": "home-requests-bell",
+      "title": "Requests (bell)",
+      "parent": "n-t4f555",
+      "kind": "action"
+    },
+    {
+      "id": "home-requests-bell-requests",
+      "title": "Requests",
+      "parent": "home-requests-bell",
+      "kind": "sheet",
+      "note": "Filters: active location, Mine, All locations (if allowed), Archive."
+    },
+    {
+      "id": "home-requests-bell-requests-active-location",
+      "title": "Active location",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-mine",
+      "title": "Mine",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-all-locations",
+      "title": "All locations",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-archive",
+      "title": "Archive",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "settings-time-off-balance",
+      "title": "Time off balance",
+      "parent": "n-t4f555",
+      "kind": "card"
+    },
+    {
+      "id": "settings-time-off-balance-time-off-page",
+      "title": "Time off page",
+      "parent": "settings-time-off-balance",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-work-team",
+      "title": "Team",
+      "parent": "n-t4f555",
+      "kind": "screen"
+    },
+    {
+      "id": "home-task-manager",
+      "title": "Task Manager",
+      "parent": "n-t4f555",
+      "kind": "section",
+      "note": "Moved here from Settings."
+    },
+    {
+      "id": "home-task-manager-task-manager-page",
+      "title": "Task Manager page",
+      "parent": "home-task-manager",
+      "kind": "screen"
+    },
+    {
+      "id": "home-manager-log",
+      "title": "Manager Log",
+      "parent": "n-t4f555",
+      "kind": "section"
+    },
+    {
+      "id": "home-manager-log-manager-log-page",
+      "title": "Manager Log page",
+      "parent": "home-manager-log",
+      "kind": "screen"
+    },
+    {
+      "id": "settings",
+      "title": "Settings",
+      "parent": "n-t4f555",
+      "kind": "screen",
+      "note": "Opened from the avatar. Full page on Android phones; beside the nav on tablets."
+    },
+    {
+      "id": "settings-locations",
+      "title": "Locations",
+      "parent": "settings",
+      "kind": "screen",
+      "note": "Settings per location: PIN, mobile clock-in, geofence."
+    },
+    {
+      "id": "settings-calendar-sync",
+      "title": "Calendar Sync",
+      "parent": "settings",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-notifications-alerts",
+      "title": "Notifications & Alerts",
+      "parent": "settings",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-password-security",
+      "title": "Password & Security",
+      "parent": "settings",
+      "kind": "screen",
+      "note": "Moved back here from Account."
+    },
+    {
+      "id": "settings-account-sign-out",
+      "title": "Sign out",
+      "parent": "settings",
+      "kind": "action"
+    },
+    {
+      "id": "settings-health-insurance",
+      "title": "Health Insurance",
+      "parent": "n-t4f555",
+      "kind": "action"
+    },
+    {
+      "id": "settings-refer-a-friend",
+      "title": "Refer a friend",
+      "parent": "n-t4f555",
+      "kind": "action"
+    },
+    {
+      "id": "settings-support",
+      "title": "Support",
+      "parent": "n-t4f555",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-terms-privacy",
+      "title": "Terms & privacy",
+      "parent": "settings-support",
+      "kind": "action"
+    },
+    {
+      "id": "settings-profile-cards-pin",
+      "title": "PIN",
+      "parent": "n-t4f555",
+      "kind": "card"
+    },
+    {
+      "id": "n-yjb6nd",
+      "title": "Store",
+      "parent": "home",
+      "kind": "tab",
+      "note": "Specific information related to one or more stores"
+    },
+    {
+      "id": "home-all-locations",
+      "title": "All Locations",
+      "parent": "n-yjb6nd",
+      "kind": "section",
+      "note": "Multi-location only: combined chart and a row per location."
+    },
+    {
+      "id": "home-all-locations-business-overview",
+      "title": "Business overview",
+      "parent": "home-all-locations",
+      "kind": "screen",
+      "note": "Grows out of the row you tap."
+    },
+    {
+      "id": "n-yl1xy1",
+      "title": "Dashboard",
+      "parent": "home",
+      "kind": "tab",
+      "note": "Other Home-related Content"
+    },
+    {
+      "id": "home-status",
+      "title": "Status",
+      "parent": "n-yl1xy1",
+      "kind": "section"
+    },
+    {
+      "id": "home-earnings",
+      "title": "Earnings",
+      "parent": "n-yl1xy1",
+      "kind": "section",
+      "note": "Employees."
+    },
+    {
+      "id": "home-earnings-money-page",
+      "title": "Money page",
+      "parent": "home-earnings",
+      "kind": "screen"
+    },
+    {
+      "id": "home-my-week-shifts",
+      "title": "My Week (Shifts)",
+      "parent": "n-yl1xy1",
+      "kind": "section"
+    }
+  ],
+  "after": [
+    {
+      "id": "root",
+      "title": "Homebase mobile",
+      "parent": null,
+      "kind": "root",
+      "note": "iOS and Android share this structure. Tablets add a sidebar (iOS) or rail (Android) in place of the bottom bar."
+    },
+    {
+      "id": "home",
+      "title": "Home",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Different for employees, owners / managers (OAM) and multi-location users."
+    },
+    {
+      "id": "home-all-locations",
+      "title": "All Locations",
+      "parent": "home",
+      "kind": "section",
+      "note": "Multi-location only: combined chart and a row per location."
+    },
+    {
+      "id": "home-all-locations-business-overview",
+      "title": "Business overview",
+      "parent": "home-all-locations",
+      "kind": "screen",
+      "note": "Grows out of the row you tap."
+    },
+    {
+      "id": "home-status",
+      "title": "Status",
+      "parent": "home",
+      "kind": "section"
+    },
+    {
+      "id": "home-needs-review",
+      "title": "Needs Review",
+      "parent": "home",
+      "kind": "section"
+    },
+    {
+      "id": "home-task-manager",
+      "title": "Task Manager",
+      "parent": "home",
+      "kind": "section",
+      "note": "Moved here from Settings."
+    },
+    {
+      "id": "home-task-manager-task-manager-page",
+      "title": "Task Manager page",
+      "parent": "home-task-manager",
+      "kind": "screen"
+    },
+    {
+      "id": "home-manager-log",
+      "title": "Manager Log",
+      "parent": "home",
+      "kind": "section"
+    },
+    {
+      "id": "home-manager-log-manager-log-page",
+      "title": "Manager Log page",
+      "parent": "home-manager-log",
+      "kind": "screen"
+    },
+    {
+      "id": "home-my-week-shifts",
+      "title": "My Week (Shifts)",
+      "parent": "home",
+      "kind": "section"
+    },
+    {
+      "id": "home-events",
+      "title": "Events",
+      "parent": "home",
+      "kind": "section"
+    },
+    {
+      "id": "home-earnings",
+      "title": "Earnings",
+      "parent": "home",
+      "kind": "section",
+      "note": "Employees."
+    },
+    {
+      "id": "home-earnings-money-page",
+      "title": "Money page",
+      "parent": "home-earnings",
+      "kind": "screen"
+    },
+    {
+      "id": "home-shiftmates",
+      "title": "Shiftmates",
+      "parent": "home",
+      "kind": "section",
+      "note": "Employees."
+    },
+    {
+      "id": "home-shiftmates-shiftmates-page",
+      "title": "Shiftmates page",
+      "parent": "home-shiftmates",
+      "kind": "screen"
+    },
+    {
+      "id": "home-requests-bell",
+      "title": "Requests (bell)",
+      "parent": "home",
+      "kind": "action"
+    },
+    {
+      "id": "home-requests-bell-requests",
+      "title": "Requests",
+      "parent": "home-requests-bell",
+      "kind": "sheet",
+      "note": "Filters: active location, Mine, All locations (if allowed), Archive."
+    },
+    {
+      "id": "home-requests-bell-requests-active-location",
+      "title": "Active location",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-mine",
+      "title": "Mine",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-all-locations",
+      "title": "All locations",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-requests-bell-requests-archive",
+      "title": "Archive",
+      "parent": "home-requests-bell-requests",
+      "kind": "filter"
+    },
+    {
+      "id": "home-time-clock",
+      "title": "Time clock",
+      "parent": "home",
+      "kind": "action",
+      "note": "Clock widget in the sidebar / rail on tablets."
+    },
+    {
+      "id": "home-time-clock-time-clock-page",
+      "title": "Time clock page",
+      "parent": "home-time-clock",
+      "kind": "screen"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-clock-in",
+      "title": "Clock in",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-break-meal",
+      "title": "Break / meal",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-clock-out",
+      "title": "Clock out",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "action",
+      "note": "Two taps to confirm."
+    },
+    {
+      "id": "money",
+      "title": "Money",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Employees only."
+    },
+    {
+      "id": "money-this-pay-period",
+      "title": "This pay period",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "money-today",
+      "title": "Today",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "money-recent-pay-stubs",
+      "title": "Recent pay stubs",
+      "parent": "money",
+      "kind": "section"
+    },
+    {
+      "id": "shifts",
+      "title": "Shifts",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Tablet landscape: schedule on the left, shift detail on the right."
+    },
+    {
+      "id": "shifts-calendar",
+      "title": "Calendar",
+      "parent": "shifts",
+      "kind": "section",
+      "note": "Week strip on phones, whole month on tablets."
+    },
+    {
+      "id": "shifts-shift-list",
+      "title": "Shift list",
+      "parent": "shifts",
+      "kind": "section"
+    },
+    {
+      "id": "shifts-shift-list-shift-detail",
+      "title": "Shift detail",
+      "parent": "shifts-shift-list",
+      "kind": "screen"
+    },
+    {
+      "id": "shifts-filter",
+      "title": "Filter",
+      "parent": "shifts",
+      "kind": "action",
+      "note": "All shifts, My shifts, Open shifts."
+    },
+    {
+      "id": "shifts-add",
+      "title": "Add (+)",
+      "parent": "shifts",
+      "kind": "action"
+    },
+    {
+      "id": "shifts-add-add-shift",
+      "title": "Add shift",
+      "parent": "shifts-add",
+      "kind": "sheet"
+    },
+    {
+      "id": "shifts-add-add-event",
+      "title": "Add event",
+      "parent": "shifts-add",
+      "kind": "sheet"
+    },
+    {
+      "id": "time",
+      "title": "Time",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Owners / managers."
+    },
+    {
+      "id": "time-needs-review",
+      "title": "Needs review",
+      "parent": "time",
+      "kind": "section",
+      "note": "Tablet landscape: day on the left, pay period on the right."
+    },
+    {
+      "id": "time-pay-period",
+      "title": "Pay period",
+      "parent": "time",
+      "kind": "section"
+    },
+    {
+      "id": "time-filters",
+      "title": "Filters",
+      "parent": "time",
+      "kind": "action"
+    },
+    {
+      "id": "time-filters-team-members",
+      "title": "Team Members",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-filters-issues",
+      "title": "Issues",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-filters-roles",
+      "title": "Roles",
+      "parent": "time-filters",
+      "kind": "sheet"
+    },
+    {
+      "id": "time-add-time-card",
+      "title": "Add time card",
+      "parent": "time",
+      "kind": "action"
+    },
+    {
+      "id": "time-add-time-card-time-card",
+      "title": "Time card",
+      "parent": "time-add-time-card",
+      "kind": "sheet"
+    },
+    {
+      "id": "messages",
+      "title": "Messages",
+      "parent": "root",
+      "kind": "tab",
+      "note": "Split view on tablets: list left, conversation right."
+    },
+    {
+      "id": "messages-conversation-list",
+      "title": "Conversation list",
+      "parent": "messages",
+      "kind": "section"
+    },
+    {
+      "id": "messages-conversation-list-conversation",
+      "title": "Conversation",
+      "parent": "messages-conversation-list",
+      "kind": "screen"
+    },
+    {
+      "id": "messages-new-message",
+      "title": "New message",
+      "parent": "messages",
+      "kind": "action"
+    },
+    {
+      "id": "messages-search-messages",
+      "title": "Search messages",
+      "parent": "messages",
+      "kind": "action"
+    },
+    {
+      "id": "assistant",
+      "title": "Assistant",
+      "parent": "root",
+      "kind": "action",
+      "note": "Owners / managers."
+    },
+    {
+      "id": "assistant-assistant-sheet",
+      "title": "Assistant sheet",
+      "parent": "assistant",
+      "kind": "sheet"
+    },
+    {
+      "id": "settings",
+      "title": "Settings",
+      "parent": "root",
+      "kind": "screen",
+      "note": "Opened from the avatar. Full page on Android phones; beside the nav on tablets."
+    },
+    {
+      "id": "settings-profile-cards",
+      "title": "Profile cards",
+      "parent": "settings",
+      "kind": "section"
+    },
+    {
+      "id": "settings-profile-cards-pin",
+      "title": "PIN",
+      "parent": "settings-profile-cards",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-shoutouts",
+      "title": "Shoutouts",
+      "parent": "settings-profile-cards",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-shoutouts-shoutouts-page",
+      "title": "Shoutouts page",
+      "parent": "settings-profile-cards-shoutouts",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-profile-cards-stats",
+      "title": "Stats",
+      "parent": "settings-profile-cards",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-stats-stats-page",
+      "title": "Stats page",
+      "parent": "settings-profile-cards-stats",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-profile-cards-achievements",
+      "title": "Achievements",
+      "parent": "settings-profile-cards",
+      "kind": "card"
+    },
+    {
+      "id": "settings-profile-cards-achievements-achievements-page",
+      "title": "Achievements page",
+      "parent": "settings-profile-cards-achievements",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-earnings-card",
+      "title": "Earnings card",
+      "parent": "settings",
+      "kind": "card"
+    },
+    {
+      "id": "settings-earnings-card-earnings-page",
+      "title": "Earnings page",
+      "parent": "settings-earnings-card",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-time-off-balance",
+      "title": "Time off balance",
+      "parent": "settings",
+      "kind": "card"
+    },
+    {
+      "id": "settings-time-off-balance-time-off-page",
+      "title": "Time off page",
+      "parent": "settings-time-off-balance",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-work",
+      "title": "Work",
+      "parent": "settings",
+      "kind": "section"
+    },
+    {
+      "id": "settings-work-team",
+      "title": "Team",
+      "parent": "settings-work",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-work-payroll",
+      "title": "Payroll",
+      "parent": "settings-work",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-locations",
+      "title": "Locations",
+      "parent": "settings",
+      "kind": "screen",
+      "note": "Settings per location: PIN, mobile clock-in, geofence."
+    },
+    {
+      "id": "settings-calendar-sync",
+      "title": "Calendar Sync",
+      "parent": "settings",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-notifications-alerts",
+      "title": "Notifications & Alerts",
+      "parent": "settings",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-password-security",
+      "title": "Password & Security",
+      "parent": "settings",
+      "kind": "screen",
+      "note": "Moved back here from Account."
+    },
+    {
+      "id": "settings-support",
+      "title": "Support",
+      "parent": "settings",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-health-insurance",
+      "title": "Health Insurance",
+      "parent": "settings",
+      "kind": "action"
+    },
+    {
+      "id": "settings-refer-a-friend",
+      "title": "Refer a friend",
+      "parent": "settings",
+      "kind": "action"
+    },
+    {
+      "id": "settings-cash-out",
+      "title": "Cash out",
+      "parent": "settings",
+      "kind": "action"
+    },
+    {
+      "id": "settings-terms-privacy",
+      "title": "Terms & privacy",
+      "parent": "settings",
+      "kind": "action"
+    },
+    {
+      "id": "settings-account",
+      "title": "Account",
+      "parent": "settings",
+      "kind": "screen",
+      "note": "Where you work is view only."
+    },
+    {
+      "id": "settings-account-availability",
+      "title": "Availability",
+      "parent": "settings-account",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-your-information",
+      "title": "Your information",
+      "parent": "settings-account",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-your-information-personal-information",
+      "title": "Personal Information",
+      "parent": "settings-account-your-information",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-your-information-shared-name",
+      "title": "Shared Name",
+      "parent": "settings-account-your-information",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-your-information-tax-information",
+      "title": "Tax Information",
+      "parent": "settings-account-your-information",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-your-information-bank-information",
+      "title": "Bank Information",
+      "parent": "settings-account-your-information",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-where-you-work",
+      "title": "Where you work",
+      "parent": "settings-account",
+      "kind": "section",
+      "note": "Role, pay rate and PIN for each location."
+    },
+    {
+      "id": "settings-account-resume",
+      "title": "Resume",
+      "parent": "settings-account",
+      "kind": "section"
+    },
+    {
+      "id": "settings-account-resume-experience",
+      "title": "Experience",
+      "parent": "settings-account-resume",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-education",
+      "title": "Education",
+      "parent": "settings-account-resume",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-certifications",
+      "title": "Certifications",
+      "parent": "settings-account-resume",
+      "kind": "screen"
+    },
+    {
+      "id": "settings-account-resume-export-to-pdf",
+      "title": "Export to PDF",
+      "parent": "settings-account-resume",
+      "kind": "action"
+    },
+    {
+      "id": "settings-account-sign-out",
+      "title": "Sign out",
+      "parent": "settings-account",
+      "kind": "action"
+    }
+  ]
+}

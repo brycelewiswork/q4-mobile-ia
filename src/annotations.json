@@ -189,5 +189,12 @@
     "body": "On tablet, we dock this to the bottom left for easy access and quick status check. Tapping still opens a dedicated view. ",
     "side": "left",
     "device": "tablet"
+  },
+  {
+    "id": "b7c42810-3d94-4882-bafa-0988ed1d32e3",
+    "selector": "[aria-label=\"Assistant\"]",
+    "title": "Introduction of the Assistant",
+    "body": "We're clearing space and intention for users to have first class access to the assistant",
+    "side": "right"
   }
 ]

@@ -17,6 +17,9 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import { IosFrame } from "@/components/ios/IosFrame"
+import { SitemapView } from "@/components/sitemap/SitemapView"
+import { ViewSwitch } from "@/components/sitemap/ViewSwitch"
+import { CommentsLayer } from "@/components/comments/CommentsLayer"
 import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
@@ -920,10 +923,23 @@ function EmployeeDashboard({ loc, split, onScroll, onOpenPage }: { loc: Location
 
 export function Home() {
   const platform = useViewStore((s) => s.platform)
+  const view = useViewStore((s) => s.view)
+  // The same page, two views: the sitemap of the mobile platform, or the prototype itself.
+  if (view === "sitemap") {
+    return (
+      <>
+        <SitemapView />
+        <ViewSwitch />
+        <CommentsLayer />
+      </>
+    )
+  }
   return (
     <>
       {platform === "android" ? <AndroidApp /> : <IosHome />}
       <Annotations />
+      <ViewSwitch />
+      <CommentsLayer />
     </>
   )
 }

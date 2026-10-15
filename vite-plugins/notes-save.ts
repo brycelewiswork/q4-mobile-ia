@@ -20,6 +20,30 @@ export function notesSavePlugin(): Plugin {
     name: "notes-save",
     apply: "serve",
     configureServer(server) {
+      // The sitemap editor's Save: the same idea, writing src/sitemap.json ({ before, after }, each a list of nodes).
+      server.middlewares.use("/__sitemap/save", (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405
+          return res.end()
+        }
+        let body = ""
+        req.on("data", (c) => (body += c))
+        req.on("end", async () => {
+          try {
+            const data = JSON.parse(body)
+            const ok = (list: unknown) =>
+              Array.isArray(list) &&
+              list.every((n) => n && typeof n === "object" && typeof (n as Record<string, unknown>).id === "string" && typeof (n as Record<string, unknown>).title === "string" && "parent" in (n as object))
+            if (!ok(data?.before) || !ok(data?.after)) throw new Error("not a sitemap")
+            await writeFile(path.resolve(server.config.root, "src/sitemap.json"), JSON.stringify(data, null, 2) + "\n")
+            res.statusCode = 200
+            res.end("ok")
+          } catch (e) {
+            res.statusCode = 400
+            res.end(String(e))
+          }
+        })
+      })
       server.middlewares.use("/__notes/save", (req, res) => {
         if (req.method !== "POST") {
           res.statusCode = 405
