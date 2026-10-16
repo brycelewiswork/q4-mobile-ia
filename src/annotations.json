@@ -1,14 +1,5 @@
 [
   {
-    "id": "profile",
-    "selector": "[data-anno=\"profile\"]",
-    "title": "Settings moves to the left",
-    "body": "Android typically launches a settings menu from the top left instead of iOS' top right position.",
-    "side": "left",
-    "platform": "android",
-    "device": "phone"
-  },
-  {
     "id": "earnings",
     "selector": "[data-anno=\"earnings\"]",
     "side": "left",

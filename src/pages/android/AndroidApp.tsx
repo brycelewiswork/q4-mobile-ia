@@ -99,13 +99,7 @@ function TopBar({ title: titleOverride, loc, tab, canSwitch, scrolled, pending, 
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
-      {/* The avatar opens the navigation drawer (with a rail, the avatar lives in the rail instead). */}
-      {!rail && (
-        <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
-          <Avatar size={32} />
-        </button>
-      )}
-      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 flex-1 items-center gap-1 text-left", rail && "pl-2")}>
+      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className="text-m-on-surface flex min-w-0 flex-1 items-center gap-1 pl-2 text-left">
         <span className="line-clamp-2 min-w-0 text-[18px] font-medium leading-6">{title}</span>
         {canSwitch && <IconChevronDown size={20} stroke={2} className="text-m-variant shrink-0" />}
       </button>
@@ -137,6 +131,12 @@ function TopBar({ title: titleOverride, loc, tab, canSwitch, scrolled, pending, 
             {pending > 0 && <span className="bg-[var(--m-error)] absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none text-white">{pending}</span>}
           </span>
         </AIconButton>
+      )}
+      {/* The avatar opens Settings, at the top right like iOS (with a rail, the avatar lives in the rail instead). */}
+      {!rail && (
+        <button onClick={onProfile} aria-label="Open settings" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
+          <Avatar size={32} />
+        </button>
       )}
     </div>
   )
