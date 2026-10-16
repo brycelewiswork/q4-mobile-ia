@@ -681,7 +681,7 @@ function EmployeeDashboard({ loc, split, onScroll, onOpenPage }: { loc: Location
   const mates = all ? { photos: Array.from(new Set(scope.flatMap((l) => l.employee.shiftmates.photos))).slice(0, 4), extra: scope.reduce((n, l) => n + l.employee.shiftmates.extra + l.employee.shiftmates.photos.length, 0) - Math.min(4, new Set(scope.flatMap((l) => l.employee.shiftmates.photos)).size) } : e.shiftmates
   const hero = (
     <>
-      {wire ? <Card className="p-3"><div className="mx-auto w-[338px] max-w-full"><WeekChart loc={loc} /></div></Card> : <WeekChart loc={loc} />}
+      <div className="mx-auto w-[338px] max-w-full"><WeekChart loc={loc} /></div>
 
       {wire ? (
         <BarLines />

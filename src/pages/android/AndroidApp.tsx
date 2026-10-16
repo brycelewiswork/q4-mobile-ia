@@ -634,7 +634,7 @@ function WeekSkeleton({ card }: { card?: boolean }) {
 function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
   const hero = (
     <>
-      <WeekSkeleton card />
+      <WeekSkeleton />
       <ALines />
     </>
   )
