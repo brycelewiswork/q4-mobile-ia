@@ -1,12 +1,5 @@
 [
   {
-    "id": "location-switcher",
-    "selector": "[data-anno=\"location-title\"]",
-    "side": "left",
-    "title": "One switcher drives every screen",
-    "body": "Location can be changed from any page that links to the same switcher. Data for all locations shows as a widget on the home page."
-  },
-  {
     "id": "profile",
     "selector": "[data-anno=\"profile\"]",
     "title": "Settings moves to the left",
@@ -71,27 +64,10 @@
     "body": "Tabs sit together on the left and the assistant stands alone on the right. Employees have no assistant, so their tabs spread evenly across the bottom"
   },
   {
-    "id": "c80ad548-e0c0-41ae-b368-77c08b4c7b9c",
-    "selector": "div:nth-of-type(1) > div > div:nth-of-type(1)",
-    "title": "All Locations",
-    "body": "Multiple locations sees a single card that combines data across all locations, similar to the top section that exists for multi-location users today. ",
-    "side": "right",
-    "users": [
-      "multi"
-    ]
-  },
-  {
     "id": "ffe6a838-a190-4e42-8f74-04768ee267de",
     "selector": "[data-anno=\"profile\"] > span:nth-child(1)",
     "title": "Settings",
     "body": "Remove the More tab bar option. Combine Profile, options, and settings into a single area with better information hierarchy. ",
-    "side": "right"
-  },
-  {
-    "id": "41576b66-5dcb-4f20-a0ec-932b2df09d85",
-    "selector": "[data-anno=\"all-locations\"] > div:nth-child(1) > div:nth-child(1)",
-    "title": "All locations widget",
-    "body": "Users who run multiple locations get an overview and a list they can tap into each store for more detail. ",
     "side": "right"
   },
   {

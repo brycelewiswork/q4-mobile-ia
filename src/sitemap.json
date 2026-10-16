@@ -514,6 +514,13 @@
       "note": "Multi-location only: combined chart and a row per location."
     },
     {
+      "id": "home-store-sort-by-location",
+      "title": "Sort by location",
+      "parent": "n-yjb6nd",
+      "kind": "action",
+      "note": "The Store tab's content could be sorted by location."
+    },
+    {
       "id": "home-all-locations-business-overview",
       "title": "Business overview",
       "parent": "home-all-locations",
@@ -570,17 +577,17 @@
     },
     {
       "id": "home-all-locations",
-      "title": "All Locations",
+      "title": "Locations",
       "parent": "home",
       "kind": "section",
-      "note": "Multi-location only: combined chart and a row per location."
+      "note": "Multi-location only: the biggest few locations by sales under the hero number, each a tap into that location. Location headers further down open it too."
     },
     {
       "id": "home-all-locations-business-overview",
-      "title": "Business overview",
+      "title": "Location view",
       "parent": "home-all-locations",
       "kind": "screen",
-      "note": "Grows out of the row you tap."
+      "note": "One location's own page. Grows out of the row or header you tap; the X shrinks it back. On iPad the sidebar's Locations list opens it too."
     },
     {
       "id": "home-status",
@@ -589,10 +596,23 @@
       "kind": "section"
     },
     {
+      "id": "home-my-week-shifts",
+      "title": "My Week",
+      "parent": "home",
+      "kind": "section",
+      "note": "A Monday to Sunday chart of when you work, combined across locations."
+    },
+    {
       "id": "home-needs-review",
       "title": "Needs Review",
       "parent": "home",
       "kind": "section"
+    },
+    {
+      "id": "home-task-manager-task-manager-page",
+      "title": "Task Manager page",
+      "parent": "home-task-manager",
+      "kind": "screen"
     },
     {
       "id": "home-task-manager",
@@ -602,26 +622,14 @@
       "note": "Moved here from Settings."
     },
     {
-      "id": "home-task-manager-task-manager-page",
-      "title": "Task Manager page",
-      "parent": "home-task-manager",
-      "kind": "screen"
-    },
-    {
-      "id": "home-manager-log",
-      "title": "Manager Log",
-      "parent": "home",
-      "kind": "section"
-    },
-    {
       "id": "home-manager-log-manager-log-page",
       "title": "Manager Log page",
       "parent": "home-manager-log",
       "kind": "screen"
     },
     {
-      "id": "home-my-week-shifts",
-      "title": "My Week (Shifts)",
+      "id": "home-manager-log",
+      "title": "Manager Log",
       "parent": "home",
       "kind": "section"
     },
@@ -916,14 +924,8 @@
       "kind": "section"
     },
     {
-      "id": "settings-profile-cards-pin",
-      "title": "PIN",
-      "parent": "settings-profile-cards",
-      "kind": "card"
-    },
-    {
-      "id": "settings-profile-cards-shoutouts",
-      "title": "Shoutouts",
+      "id": "settings-profile-cards-stats",
+      "title": "Stats",
       "parent": "settings-profile-cards",
       "kind": "card"
     },
@@ -934,8 +936,8 @@
       "kind": "screen"
     },
     {
-      "id": "settings-profile-cards-stats",
-      "title": "Stats",
+      "id": "settings-profile-cards-achievements",
+      "title": "Achievements",
       "parent": "settings-profile-cards",
       "kind": "card"
     },
@@ -946,8 +948,8 @@
       "kind": "screen"
     },
     {
-      "id": "settings-profile-cards-achievements",
-      "title": "Achievements",
+      "id": "settings-profile-cards-shoutouts",
+      "title": "Shoutouts",
       "parent": "settings-profile-cards",
       "kind": "card"
     },
@@ -1140,6 +1142,34 @@
       "title": "Sign out",
       "parent": "settings-account",
       "kind": "action"
+    },
+    {
+      "id": "home-time-clock-time-clock-page-pin",
+      "title": "PIN",
+      "parent": "home-time-clock-time-clock-page",
+      "kind": "section",
+      "note": "The location PIN, shown where you clock in (it used to be a card in Settings)."
+    },
+    {
+      "id": "shifts-location-switcher",
+      "title": "Location switcher",
+      "parent": "shifts",
+      "kind": "action",
+      "note": "The title on Shifts, Time, Messages and Money (not Home). All Locations, saved groups, then locations under their companies. Employees see their next shift and unread counts; managers see labor, sales and a chart."
+    },
+    {
+      "id": "shifts-location-switcher-new-group",
+      "title": "New group",
+      "parent": "shifts-location-switcher",
+      "kind": "sheet",
+      "note": "Plus Group, as one sheet with two steps: choose two or more locations, then name the group. It then shows in the switcher under Groups."
+    },
+    {
+      "id": "shifts-location-switcher-add-location",
+      "title": "Add location",
+      "parent": "shifts-location-switcher",
+      "kind": "action",
+      "note": "Single-location owners and managers see this in place of other locations. Flow still to be designed."
     }
   ]
 }

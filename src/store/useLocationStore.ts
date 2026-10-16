@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react"
+import { createContext, useContext, type ReactNode } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { LOCATIONS, type Location } from "@/data/locations"
@@ -51,8 +51,9 @@ export function useScope(): Location[] {
   return override ?? (group ? locationsOf(group) : all ? LOCATIONS : [loc])
 }
 
-/** Opens one location's own view. Provided on the Home overview, where a location's header becomes a way in. */
-export const OpenLocationContext = createContext<((l: Location) => void) | null>(null)
+/** Opens one location's own view, growing out of the thing tapped. Provided on the Home overview, where a location's header and the breakdown rows are ways in. */
+/** `row` is the element tapped and `clone` its look, for the view to grow out of. */
+export const OpenLocationContext = createContext<((l: Location, row?: HTMLElement, clone?: ReactNode) => void) | null>(null)
 
 /** True in "all locations": lists and widgets group what they show under a header for each location. */
 export const useAllLocations = () => useLocationStore((s) => s.all)

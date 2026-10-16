@@ -99,7 +99,7 @@ export function useLocTitle(loc: { id: string; name: string }) {
   const name = useLocName()
   const all = useLocationStore((s) => s.all)
   const group = useActiveGroup()
-  return group ? group.name : all ? `${LOCATIONS.length} Locations` : name(loc)
+  return group ? group.name : all ? "All Locations" : name(loc)
 }
 
 /** The user, anonymized for the structure cut. */

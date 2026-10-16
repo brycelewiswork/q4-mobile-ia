@@ -57,6 +57,15 @@ function StatsCard({ title, stats, vs }: { title: string; stats: TreeStats; vs?:
     { label: "Needless nesting", value: String(stats.wrappers), delta: vs ? stats.wrappers - vs.wrappers : undefined, lower: true, hint: "Boxes that only wrap one box of their own type, or a tab or screen wrapping a single section. A section that previews and opens its page is fine and isn't counted." },
     { label: "Largest branch", value: `${Math.round(stats.largestBranch * 100)}%`, delta: vs ? Math.round((stats.largestBranch - vs.largestBranch) * 100) : undefined, lower: true, fmt: (d) => `${d}%`, hint: "Share of the map held by the biggest top-level branch. Lower means the weight is spread more evenly." },
   ]
+  // Home on its own: a whole-map average hides a change to one tab, so it gets its own readout.
+  const home = stats.home
+  const homeRows: typeof rows = home
+    ? [
+        { label: "Tabs on Home", value: String(home.tabs), delta: vs?.home ? home.tabs - vs.home.tabs : undefined, lower: true, hint: "Tabs inside Home. Each one is a choice to make before you see anything." },
+        { label: "Choices first", value: String(home.controls), delta: vs?.home ? home.controls - vs.home.controls : undefined, lower: true, hint: "Choices before content: controls to work through before Home's content: its tabs, plus the actions inside them (a sort, a switcher)." },
+        { label: "Avg taps to a page", value: home.avgTaps.toFixed(1), delta: vs?.home ? home.avgTaps - vs.home.avgTaps : undefined, lower: true, fmt: (d) => d.toFixed(1), hint: `How many pages you go through to reach a page inside Home, over its ${home.pages} pages.` },
+      ]
+    : []
   return (
     <div className="pointer-events-auto min-w-0 rounded-[16px] border border-black/10 bg-white/90 px-4 py-3 shadow-[0_2px_8px_rgba(20,20,40,0.06)] backdrop-blur dark:border-white/10 dark:bg-neutral-800/90">
       <div className="flex items-baseline justify-between gap-3">
@@ -90,6 +99,28 @@ function StatsCard({ title, stats, vs }: { title: string; stats: TreeStats; vs?:
               </div>
             )
           })}
+        </div>
+      )}
+      {!empty && homeRows.length > 0 && (
+        <div className="mt-2 border-t border-black/[0.08] pt-2 dark:border-white/10">
+          <p className="pb-1 text-[11px] font-[590] leading-4 text-[#5a5666] dark:text-neutral-400">Home</p>
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            {homeRows.map((r) => {
+              const d = r.delta
+              const better = d === undefined || d === 0 ? null : r.lower ? d < 0 : d > 0
+              return (
+                <div key={r.label} title={r.hint} className="min-w-0">
+                  <p className="truncate text-[11px] leading-4 text-[#7f7f7f]">{r.label}</p>
+                  <p className="truncate text-[13px] font-[590] leading-[18px]">
+                    {r.value}
+                    {d !== undefined && vs && vs.boxes > 1 && d !== 0 && (
+                      <span className={cn("ml-1 text-[11px]", better ? "text-[#1f9d55]" : "text-[#d0161f]")}>{d > 0 ? "+" : "−"}{(r.fmt ?? String)(Math.abs(d))}</span>
+                    )}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

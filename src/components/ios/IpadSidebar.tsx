@@ -4,8 +4,8 @@ import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { Initials } from "@/components/ios/list"
 import { TABS, type TabId } from "@/components/ios/TabBar"
 import { SPRING_FAST } from "@/lib/motion"
-import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, unreadAt, type Location } from "@/data/locations"
-import { UnreadPill } from "@/components/ios/LocationMenu"
+import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
+import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
@@ -47,40 +47,29 @@ export function SidebarLocationBody({ l }: { l: Location }) {
   const wire = useStructure()
   const locName = useLocName()
   const employee = useUserTypeStore((s) => s.type) === "employee"
-  // An employee sees when they next work here and what's unread, not the location's numbers.
-  if (employee) {
-    const next = nextShiftAt(l.id)
-    return (
-      <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
-          {wire ? <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" /> : <span className="truncate text-[13px] leading-4 text-[#7f7f7f]">{next ? `Next ${next}` : "No shifts this week"}</span>}
-        </span>
-        {wire ? <span aria-hidden className="block size-[18px] shrink-0 rounded-full bg-[#dedde4]" /> : <UnreadPill n={unreadAt(l)} />}
-      </span>
-    )
-  }
-  if (wire) {
-    return (
-      <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
-        <span className="flex min-w-0 flex-1 flex-col gap-[6px]">
-          <span className="truncate text-[17px] leading-[22px] text-black">{locName(l)}</span>
-          <span aria-hidden className="block h-[8px] w-[45%] rounded-full bg-[#dedde4]" />
-        </span>
-        <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" />
-      </span>
-    )
-  }
+  const counts = useCounts([l])
+  // The second line says something about the location, with what is waiting there at its end: unread messages and requests.
+  const next = nextShiftAt(l.id)
+  const sub = wire ? (
+    <span aria-hidden className="block h-2 w-[45%] rounded-full bg-[#dedde4]" />
+  ) : employee ? (
+    <span className="truncate">{next ? `Next ${next}` : "No shifts this week"}</span>
+  ) : (
+    <span className="flex items-center gap-[6px]">
+      <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
+      {l.laborPct}% labor
+    </span>
+  )
   return (
     <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[17px] leading-[22px] text-black">{shortLocationName(l)}</span>
-        <span className="flex items-center gap-[6px] text-[13px] leading-[16px] text-[#7f7f7f]">
-          <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
-          {l.laborPct}% labor
+        <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
+        <span className="flex items-center justify-between gap-2 text-[13px] leading-[16px] text-[#7f7f7f]">
+          {sub}
+          <LocationBadges {...counts} />
         </span>
       </span>
-      <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(l.sales)}</span>
+      {wire ? <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" /> : !employee && <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(l.sales)}</span>}
     </span>
   )
 }
@@ -155,6 +144,7 @@ export function IpadSidebar({
 }) {
   const wire = useStructure()
   const employeeUser = useUserTypeStore((s) => s.type) === "employee"
+  const allCounts = useCounts()
   const shown = tabs.map((id) => TABS.find((t) => t.id === id)!)
   return (
     <motion.aside
@@ -211,9 +201,11 @@ export function IpadSidebar({
                 <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-[17px] font-[590] leading-[22px] text-black">{wire ? "All locations" : "All Locations"}</span>
-                    <span className="text-[13px] leading-4 text-[#7f7f7f]">{LOCATIONS.length} locations</span>
+                    <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
+                      {LOCATIONS.length} locations
+                      <LocationBadges {...allCounts} />
+                    </span>
                   </span>
-                  {!wire && employeeUser && <UnreadPill n={LOCATIONS.reduce((n, l) => n + unreadAt(l), 0)} />}
                   {!wire && !employeeUser && <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(LOCATIONS.reduce((n, l) => n + l.sales, 0))}</span>}
                 </span>
               </button>

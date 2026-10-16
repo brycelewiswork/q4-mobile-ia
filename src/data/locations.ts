@@ -174,9 +174,7 @@ export const LOCATIONS: Location[] = [
     requests: [
       { id: "m-r1", scope: "team", initials: "JS", who: "Jan Sundar", title: "Unpaid Time Off, 32 hrs", detail: "Thu, Oct 8 - Sun, Oct 11", time: "5:12 PM" },
       { id: "m-r2", scope: "team", initials: "JM", who: "Justin Mason", title: "Availability Request", detail: "Starting Oct 6th", time: "Yesterday" },
-      { id: "m-r3", scope: "team", initials: "KM", who: "Kelli Moore", title: "Shift Swap", detail: "Fri, Oct 9 · 2p – 8p", time: "Mon" },
       { id: "m-r4", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Paid Time Off, 8 hrs", detail: "Mon, Oct 19", time: "Pending" },
-      { id: "m-r5", scope: "business", initials: "RA", who: "Rosie Atkins", title: "Overtime Approval, 3 hrs", detail: "Wed, Oct 14", time: "Tue" },
     ],
     profile: {
       business: "Crunch Fitness",
@@ -233,9 +231,9 @@ export const LOCATIONS: Location[] = [
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Jason: Reminder — quarterly meeting Thursday at 4", time: "9:30 am", unread: true },
       { id: "m2", kind: "team", title: "Team", preview: "Kelli: Front desk is covered until 3", time: "7:30 am", unread: true },
-      { id: "m3", kind: "group", title: "Front desk", preview: "Imani: Can someone take my Saturday opener?", time: "9:19 am", unread: true },
+      { id: "m3", kind: "group", title: "Front desk", preview: "Imani: Can someone take my Saturday opener?", time: "9:19 am", unread: false },
       { id: "m4", kind: "dm", title: "Rosie Atkins", preview: "Thanks for sorting the locker schedule", time: "8:25 am", unread: false, photo: 0 },
-      { id: "m5", kind: "dm", title: "Devon Park", preview: "Pool pump is fixed — all clear", time: "7:08 am", unread: true, photo: 1 },
+      { id: "m5", kind: "dm", title: "Devon Park", preview: "Pool pump is fixed — all clear", time: "7:08 am", unread: false, photo: 1 },
       { id: "m6", kind: "dm", title: "Jason Reyes", preview: "Can I swap Friday with Kelli?", time: "Yesterday", unread: false },
       { id: "m7", kind: "dm", title: "Imani Brooks", preview: "Thanks — I'll take the Saturday opener", time: "Yesterday", unread: false },
       { id: "m8", kind: "dm", title: "Kelli Moore", preview: "Locker room towels are restocked", time: "Yesterday", unread: false },
@@ -309,10 +307,7 @@ export const LOCATIONS: Location[] = [
     requests: [
       { id: "h-r1", scope: "team", initials: "AR", who: "Alex Rivera", title: "Unpaid Time Off, 16 hrs", detail: "Mon, Oct 12 - Tue, Oct 13", time: "9:30 AM" },
       { id: "h-r2", scope: "team", initials: "SW", who: "Sam Wu", title: "Missed Clock-out", detail: "Mon, Oct 5 · set to 4:00p", time: "Yesterday" },
-      { id: "h-r3", scope: "team", initials: "JP", who: "Jordan Pierce", title: "Shift Cover", detail: "Thu, Oct 8 · 11a – 7p", time: "Tue" },
       { id: "h-r4", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Shift Swap", detail: "Fri, Oct 16 · 8a – 4p", time: "Pending" },
-      { id: "h-r5", scope: "business", initials: "NC", who: "Nia Cole", title: "Overtime Approval, 5 hrs", detail: "Sat, Oct 10", time: "Mon" },
-      { id: "h-r6", scope: "business", initials: "TG", who: "Theo Grant", title: "Equipment Purchase, $240", detail: "Pool pump seals", time: "Mon" },
     ],
     profile: {
       business: "Crunch Fitness",
@@ -374,9 +369,9 @@ export const LOCATIONS: Location[] = [
     ],
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Alex: Fire drill Friday at 10 — please be on site", time: "9:30 am", unread: true },
-      { id: "m2", kind: "team", title: "Team", preview: "Sam: Front desk line is out the door", time: "8:40 am", unread: true },
+      { id: "m2", kind: "team", title: "Team", preview: "Sam: Front desk line is out the door", time: "8:40 am", unread: false },
       { id: "m3", kind: "group", title: "Floor leads", preview: "Nia: Closing checklist is updated", time: "9:19 am", unread: false },
-      { id: "m4", kind: "dm", title: "Jordan Pierce", preview: "Can we move the 11:00 training?", time: "8:25 am", unread: true, photo: 1 },
+      { id: "m4", kind: "dm", title: "Jordan Pierce", preview: "Can we move the 11:00 training?", time: "8:25 am", unread: false, photo: 1 },
       { id: "m5", kind: "dm", title: "Alex Rivera", preview: "Great job covering the no-call today", time: "7:08 am", unread: false, photo: 0 },
       { id: "m6", kind: "dm", title: "Mina Sato", preview: "Swapping Saturday with Theo?", time: "Yesterday", unread: false },
       { id: "m7", kind: "dm", title: "Theo Ramos", preview: "Yes, I can swap Saturday", time: "Yesterday", unread: false },
@@ -450,7 +445,6 @@ export const LOCATIONS: Location[] = [
     unread: 0,
     requests: [
       { id: "e-r1", scope: "team", initials: "PN", who: "Priya Nair", title: "Timesheet Edit", detail: "Tue, Oct 6 · clock-out 2:10p", time: "8:04 AM" },
-      { id: "e-r2", scope: "team", initials: "MT", who: "Marcus Tran", title: "Shift Swap", detail: "Sat, Oct 10 · 6a – 2p", time: "Yesterday" },
       { id: "e-r3", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Availability Request", detail: "Starting Oct 12th", time: "Pending" },
     ],
     profile: {
@@ -504,11 +498,11 @@ export const LOCATIONS: Location[] = [
       { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today", seen: "2d", phone: true },
     ],
     messages: [
-      { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
-      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: true },
+      { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: false },
+      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: false },
       { id: "m3", kind: "group", title: "Baristas", preview: "Luis: We are low on oat milk — reordering", time: "Yesterday", unread: false },
       { id: "m4", kind: "dm", title: "Dana Kim", preview: "Counter is covered until 3 — heading out", time: "8:25 am", unread: false },
-      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: true, photo: 2 },
+      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: false, photo: 2 },
       { id: "m6", kind: "dm", title: "Priya Nair", preview: "Thanks for sorting the delivery window", time: "Mon", unread: false, photo: 3 },
       { id: "m7", kind: "dm", title: "Luis Ortega", preview: "Oat milk is on the truck for tomorrow", time: "Mon", unread: false },
       { id: "m8", kind: "dm", title: "Dana Kim", preview: "Can I swap Thursday with Marcus?", time: "Mon", unread: false },
@@ -577,8 +571,6 @@ export const LOCATIONS: Location[] = [
     name: "Downtown Bakery - Elm Street",
     unread: 2,
     requests: [
-      { id: "m-r1", scope: "team", initials: "PN", who: "Priya Nair", title: "Timesheet Edit", detail: "Tue, Oct 6 · clock-out 2:10p", time: "8:04 AM" },
-      { id: "m-r2", scope: "team", initials: "MT", who: "Marcus Tran", title: "Shift Swap", detail: "Sat, Oct 10 · 6a – 2p", time: "Yesterday" },
       { id: "m-r3", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Availability Request", detail: "Starting Oct 12th", time: "Pending" },
     ],
     profile: {
@@ -633,10 +625,10 @@ export const LOCATIONS: Location[] = [
     ],
     messages: [
       { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
-      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: true },
+      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: false },
       { id: "m3", kind: "group", title: "Baristas", preview: "Luis: We are low on oat milk — reordering", time: "Yesterday", unread: false },
       { id: "m4", kind: "dm", title: "Dana Kim", preview: "Counter is covered until 3 — heading out", time: "8:25 am", unread: false },
-      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: true, photo: 2 },
+      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: false, photo: 2 },
       { id: "m6", kind: "dm", title: "Priya Nair", preview: "Thanks for sorting the delivery window", time: "Mon", unread: false, photo: 3 },
       { id: "m7", kind: "dm", title: "Luis Ortega", preview: "Oat milk is on the truck for tomorrow", time: "Mon", unread: false },
       { id: "m8", kind: "dm", title: "Dana Kim", preview: "Can I swap Thursday with Marcus?", time: "Mon", unread: false },

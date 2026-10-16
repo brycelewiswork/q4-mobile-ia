@@ -13,7 +13,7 @@ export function LocationHeader({ loc, className }: { loc: Location; className?: 
   if (open) {
     return (
       <h3 className={cls}>
-        <button onClick={() => open(loc)} className="flex items-center gap-[2px] text-left active:opacity-60">
+        <button onClick={(e) => open(loc, e.currentTarget, <span className="flex items-center gap-[2px] px-4 text-[13px] font-[590] leading-[18px] text-[#7f7f7f]">{name(loc)}</span>)} className="flex items-center gap-[2px] text-left active:opacity-60">
           {name(loc)}
           <IconChevronRight size={13} stroke={2.5} className="shrink-0" />
         </button>

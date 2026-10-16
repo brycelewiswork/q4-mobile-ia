@@ -4,8 +4,9 @@ import { AnimatePresence, motion } from "motion/react"
 import { IconCheck, IconPlus } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
-import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, unreadAt, type Location } from "@/data/locations"
+import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
 import { WireBars, shortMoney } from "@/components/WireBars"
+import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { useStructure } from "@/store/useViewStore"
 import { useLocationStore } from "@/store/useLocationStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
@@ -13,18 +14,13 @@ import { useUserTypeStore } from "@/store/useUserTypeStore"
 
 const sum = (pick: (l: Location) => number[]) => LOCATIONS[0].weekSales.map((_, i) => LOCATIONS.reduce((n, l) => n + pick(l)[i], 0))
 
-/** The unread count on a location, as a small red pill. */
-export function UnreadPill({ n, className }: { n: number; className?: string }) {
-  if (!n) return null
-  return <span aria-label={`${n} unread`} className={`flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#ff3b30] px-[5px] text-[12px] font-[590] leading-none text-white ${className ?? ""}`}>{n}</span>
-}
-
 /** A location's row in the menu: name over labor share, a wireframe sales-and-labor chart, and today's sales. Also what its overview grows out of. */
 export function LocationMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
   const locName = useLocName()
   const employee = useUserTypeStore((s) => s.type) === "employee"
-  // An employee sees their own side of each location, not its numbers: when they next work there, and anything unread.
+  const counts = useCounts([l])
+  // An employee sees their own side of each location, not its numbers: when they next work there, and anything waiting.
   if (employee) {
     const next = nextShiftAt(l.id)
     return (
@@ -33,7 +29,7 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
           <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
           {wire ? <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" /> : <span className="truncate text-[13px] leading-4 text-[#7f7f7f]">{next ? `Next shift ${next}` : "No shifts this week"}</span>}
         </span>
-        {wire ? <span aria-hidden className="block size-[18px] shrink-0 rounded-full bg-[#dedde4]" /> : <UnreadPill n={unreadAt(l)} />}
+        <LocationBadges {...counts} />
       </span>
     )
   }
@@ -41,14 +37,17 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
     <span className="flex w-full items-center gap-3 text-left tracking-[-0.43px]">
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
-        {wire ? (
-          <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" />
-        ) : (
-          <span className="flex items-center gap-[6px] text-[13px] leading-4 text-[#7f7f7f]">
-            <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
-            {l.laborPct}% labor
-          </span>
-        )}
+        <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
+          {wire ? (
+            <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" />
+          ) : (
+            <span className="flex items-center gap-[6px]">
+              <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
+              {l.laborPct}% labor
+            </span>
+          )}
+          <LocationBadges {...counts} />
+        </span>
       </span>
       <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />
       {wire ? <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" /> : <span className="w-[46px] shrink-0 text-right text-[17px] font-[590] leading-[22px] text-black">{shortMoney(l.sales)}</span>}
@@ -73,6 +72,7 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
   const groups = useGroupsStore((s) => s.groups)
   const employee = useUserTypeStore((s) => s.type) === "employee"
   const single = useUserTypeStore((s) => s.type) === "oam"
+  const allCounts = useCounts()
 
   useEffect(() => {
     if (!open) return
@@ -94,7 +94,7 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
             exit={{ scale: 0.8, transition: { duration: 0.12 } }}
             transition={SPRING_FAST.snappy}
             style={{ transformOrigin: "top left", top: "calc(var(--safe-top) + 51px)" }}
-            className="absolute left-4 w-[340px] max-w-[calc(100%-32px)]"
+            className="absolute left-4 w-[calc(100%-32px)] max-w-[420px]"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <LiquidGlass mode="medium" radius={34} className="py-[10px]">
@@ -123,11 +123,12 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
                   <span className="flex w-[18px] shrink-0 justify-center">{all && <IconCheck size={20} stroke={2.5} />}</span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-[17px] font-[590] leading-[22px]">{wire ? "All locations" : "All Locations"}</span>
-                    <span className="text-[13px] leading-4 text-[#7f7f7f]">{LOCATIONS.length} locations</span>
+                    <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
+                      {LOCATIONS.length} locations
+                      <LocationBadges {...allCounts} />
+                    </span>
                   </span>
-                  {employee ? (
-                    wire ? <span aria-hidden className="block size-[18px] shrink-0 rounded-full bg-[#dedde4]" /> : <UnreadPill n={LOCATIONS.reduce((n, l) => n + unreadAt(l), 0)} />
-                  ) : (
+                  {!employee && (
                     <>
                       <WireBars sales={sum((l) => l.weekSales)} labor={sum((l) => l.weekLabor)} forecast={sum((l) => l.weekForecast)} />
                       <span className="w-[46px] shrink-0" />

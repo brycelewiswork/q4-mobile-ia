@@ -90,6 +90,17 @@ export function diffAgainst(mine: SitemapNode[], other: SitemapNode[], side: "be
   return out
 }
 
+/** What it takes to get to Home's content and around it. */
+export type HomeStats = {
+  /** Tabs inside Home: each is a choice before you see anything. */
+  tabs: number
+  /** Controls to work through before Home's content: its tabs, plus the actions inside them (a sort, a switcher). */
+  controls: number
+  /** Taps to reach a page inside Home, on average (a tab counts as 1, from the app's root). */
+  avgTaps: number
+  pages: number
+}
+
 export type TreeStats = {
   boxes: number
   maxDepth: number
@@ -102,6 +113,8 @@ export type TreeStats = {
   wrappers: number
   /** Share of all boxes held by the biggest top-level branch. */
   largestBranch: number
+  /** The Home tab on its own, since a whole-map average hides changes to one tab: null when there is no Home. */
+  home: HomeStats | null
   /** 0 to 100, from the five above (see `scoreParts`). */
   score: number
   scoreParts: { label: string; value: number }[]
@@ -173,5 +186,22 @@ export function treeStats(nodes: SitemapNode[]): TreeStats {
     { label: "Needless nesting", value: clamp01(1 - wrappers / Math.max(1, rest.length * 0.1)) },
   ]
   const score = rest.length ? Math.round((scoreParts.reduce((a, p) => a + p.value, 0) / scoreParts.length) * 100) : 0
-  return { boxes: nodes.length, maxDepth, avgDepth, widest, grouped: groupedShare, wrappers, largestBranch, score, scoreParts }
+  // Home on its own.
+  const homeNode = nodes.find((n) => n.id === "home") ?? nodes.find((n) => n.parent === root?.id && n.kind === "tab" && n.title.toLowerCase() === "home")
+  let home: HomeStats | null = null
+  if (homeNode) {
+    const tabs = (kids.get(homeNode.id) ?? []).filter((c) => c.kind === "tab")
+    const controls = tabs.length + tabs.reduce((n, t) => n + (kids.get(t.id) ?? []).filter((c) => c.kind === "action").length, 0)
+    const inside: SitemapNode[] = []
+    const collect = (id: string) => {
+      for (const c of kids.get(id) ?? []) {
+        inside.push(c)
+        collect(c.id)
+      }
+    }
+    collect(homeNode.id)
+    const homePages = inside.filter((n) => PAGE.includes(n.kind)).map((n) => tapsTo.get(n.id) ?? 1)
+    home = { tabs: tabs.length, controls, avgTaps: homePages.length ? homePages.reduce((a, b) => a + b, 0) / homePages.length : 0, pages: homePages.length }
+  }
+  return { boxes: nodes.length, maxDepth, avgDepth, widest, grouped: groupedShare, wrappers, largestBranch, home, score, scoreParts }
 }

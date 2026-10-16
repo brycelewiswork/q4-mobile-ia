@@ -11,7 +11,7 @@ import {
   IconCash,
   IconCheck,
   IconChevronDown,
-  IconArrowLeft,
+  IconX,
   IconChevronRight,
   IconClock,
   IconGift,
@@ -33,9 +33,11 @@ import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
 import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ACheckRow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
 import { WireBars, shortMoney } from "@/components/WireBars"
-import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, unreadAt, type Location } from "@/data/locations"
+import { LocationBadges, LocationBadgesFor, LocationDot, useCounts } from "@/components/LocationBadges"
+import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
+import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
@@ -91,19 +93,14 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ title: titleOverride, back, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; /** Back out of one location's view to the overview (phones; replaces the avatar). */ back?: () => void; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ title: titleOverride, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
       {/* The avatar opens the navigation drawer (with a rail, the avatar lives in the rail instead). */}
-      {!rail && back && (
-        <button onClick={back} aria-label="Back to all locations" className="text-m-on-surface flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
-          <IconArrowLeft size={24} stroke={1.75} />
-        </button>
-      )}
-      {!rail && !back && (
+      {!rail && (
         <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
           <Avatar size={32} />
         </button>
@@ -287,15 +284,18 @@ function RailLocations({ open, activeId, onOpen, onAll, allActive }: { open: boo
               <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} className={cn("text-m-on-surface flex h-14 w-full items-center gap-2 rounded-full pl-4 pr-4 text-left active:bg-black/10", on && "bg-m-secondary-container")}>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-[14px] font-medium leading-5">{wire ? locName(l) : shortLocationName(l)}</span>
-                  {!wire && <span className="text-m-variant truncate text-[12px] leading-4">{employee ? (nextShiftAt(l.id) ? `Next ${nextShiftAt(l.id)}` : "No shifts this week") : `${l.laborPct}% labor`}</span>}
+                  <span className="text-m-variant flex items-center justify-between gap-2 text-[12px] leading-4">
+                    {wire ? <span /> : <span className="truncate">{employee ? (nextShiftAt(l.id) ? `Next ${nextShiftAt(l.id)}` : "No shifts this week") : `${l.laborPct}% labor`}</span>}
+                    <LocationBadgesFor loc={l} android />
+                  </span>
                 </span>
-                {!wire && (employee ? <AUnread n={unreadAt(l)} /> : <span className="shrink-0 text-[14px] font-medium leading-5">{railMoney(l.sales)}</span>)}
+                {!wire && !employee && <span className="shrink-0 text-[14px] font-medium leading-5">{railMoney(l.sales)}</span>}
               </button>
             ) : (
               <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} aria-label={wire ? locName(l) : `${shortLocationName(l)}, ${railMoney(l.sales)}`} className="text-m-on-surface flex flex-col items-center gap-[2px]">
                 <span className={cn("relative flex size-10 items-center justify-center rounded-full text-[13px] font-medium", on ? "bg-m-secondary-container" : "bg-m-high")}>
                   {chip(l)}
-                  {employee && !wire && unreadAt(l) > 0 && <span aria-hidden className="bg-[var(--m-badge)] absolute right-0 top-0 size-[10px] rounded-full" />}
+                  <LocationDot loc={l} className="absolute right-0 top-0" />
                 </span>
               </button>
             )
@@ -335,12 +335,6 @@ function RailClock({ open, title, status, onOpen }: { open: boolean; title: stri
       </button>
     </div>
   )
-}
-
-/** The unread count on a location, as a small badge. */
-function AUnread({ n }: { n: number }) {
-  if (!n) return null
-  return <span aria-label={`${n} unread`} className="bg-[var(--m-badge)] flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white">{n}</span>
 }
 
 /** Plus Group: pick the locations to combine (two or more), then name the group. It shows in the switcher and is selected. */
@@ -402,32 +396,31 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
   const locName = useLocName()
   const employee = useUserTypeStore((s) => s.type) === "employee"
-  // An employee sees when they next work here and what's unread, not the location's numbers.
-  if (employee) {
-    const next = nextShiftAt(l.id)
-    return (
-      <span className="flex w-full items-center gap-3 text-left">
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-[16px] leading-6">{wire ? locName(l) : shortLocationName(l)}</span>
-          {wire ? <ABar w="45%" h={8} /> : <span className="text-m-variant truncate text-[12px] leading-4">{next ? `Next shift ${next}` : "No shifts this week"}</span>}
-        </span>
-        {wire ? <span aria-hidden className="bg-m-skeleton block size-4 shrink-0 rounded-full" /> : <AUnread n={unreadAt(l)} />}
-      </span>
-    )
-  }
+  const counts = useCounts([l])
+  // The second line says something about the location, with what is waiting there at its end: unread messages and requests.
+  // An employee sees when they next work here, a manager the labor share. Never the other's numbers.
+  const next = nextShiftAt(l.id)
+  const sub = wire ? (
+    <ABar w="45%" h={8} />
+  ) : employee ? (
+    <span className="truncate">{next ? `Next shift ${next}` : "No shifts this week"}</span>
+  ) : (
+    <span className="flex items-center gap-[6px]">
+      <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
+      {l.laborPct}% labor
+    </span>
+  )
   return (
     <span className="flex w-full items-center gap-3 text-left">
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[16px] leading-6">{wire ? locName(l) : shortLocationName(l)}</span>
-        {wire ? <ABar w="45%" h={8} /> : (
-          <span className="text-m-variant flex items-center gap-[6px] text-[12px] leading-4">
-            <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
-            {l.laborPct}% labor
-          </span>
-        )}
+        <span className="text-m-variant flex items-center justify-between gap-2 text-[12px] leading-4">
+          {sub}
+          <LocationBadges android {...counts} />
+        </span>
       </span>
-      <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />
-      {wire ? <ABar w={36} h={12} /> : <span className="w-[46px] shrink-0 text-right text-[14px] font-medium leading-5">{shortMoney(l.sales)}</span>}
+      {!employee && <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />}
+      {!employee && (wire ? <ABar w={36} h={12} /> : <span className="w-[46px] shrink-0 text-right text-[14px] font-medium leading-5">{shortMoney(l.sales)}</span>)}
     </span>
   )
 }
@@ -442,6 +435,7 @@ function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { ope
   const groups = useGroupsStore((s) => s.groups)
   const employee = useUserTypeStore((s) => s.type) === "employee"
   const single = useUserTypeStore((s) => s.type) === "oam"
+  const allCounts = useCounts()
   return (
     <AnimatePresence>
       {open && (
@@ -474,11 +468,12 @@ function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { ope
               <button role="menuitemradio" aria-checked={all} onClick={() => { onAll(); onClose() }} className="border-m-outline/30 flex w-full items-center gap-3 border-b px-4 py-2 text-left active:bg-black/10">
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-[16px] font-medium leading-6">All Locations</span>
-                  <span className="text-m-variant text-[12px] leading-4">{LOCATIONS.length} locations</span>
+                  <span className="text-m-variant flex items-center justify-between gap-2 text-[12px] leading-4">
+                    {LOCATIONS.length} locations
+                    <LocationBadges android {...allCounts} />
+                  </span>
                 </span>
-                {employee ? (
-                  wire ? <span aria-hidden className="bg-m-skeleton block size-4 shrink-0 rounded-full" /> : <AUnread n={LOCATIONS.reduce((n, l) => n + unreadAt(l), 0)} />
-                ) : (
+                {!employee && (
                   <>
                     <WireBars sales={sumWeek((l) => l.weekSales)} labor={sumWeek((l) => l.weekLabor)} forecast={sumWeek((l) => l.weekForecast)} />
                     <span className="w-[46px] shrink-0" />
@@ -569,7 +564,7 @@ function AByLocation({ children }: { children: (l: Location, grouped: boolean, i
           <p className="text-m-variant px-4 pb-1 pt-3 text-[13px] font-medium leading-5">
             {/* On the Home overview a caption is also the way into that location's own view. */}
             {openLocation ? (
-              <button onClick={() => openLocation(l)} className="flex items-center gap-[2px] text-left active:opacity-60">
+              <button onClick={(e) => openLocation(l, e.currentTarget, <span className="text-m-variant px-4 text-[13px] font-medium leading-5">{locName(l)}</span>)} className="flex items-center gap-[2px] text-left active:opacity-60">
                 {locName(l)}
                 <IconChevronRight size={14} stroke={2} className="shrink-0" />
               </button>
@@ -658,6 +653,72 @@ function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec
   )
 }
 
+/**
+ * One location's own view, opened from the overview: the same home, for just that location. It grows out of the row or
+ * caption that was tapped (a container transform) and the X shrinks it back into it.
+ */
+function AndroidLocationView({ loc, from, clone, employee, onClosed }: { loc: Location; from: Box; clone: ReactNode; employee: boolean; onClosed: () => void }) {
+  const locName = useLocName()
+  const noop = () => {}
+  return (
+    <ExpandSurface
+      from={from}
+      clone={clone}
+      cardClass="bg-m-container"
+      pageClass="bg-m-surface"
+      onClosed={onClosed}
+      z={31}
+      button={(close) => (
+        <button onClick={close} aria-label="Close" className="text-m-on-surface flex size-12 items-center justify-center rounded-full active:bg-black/10">
+          <IconX size={24} stroke={1.75} />
+        </button>
+      )}
+    >
+      <ScopeContext.Provider value={[loc]}>
+        <OpenLocationContext.Provider value={null}>
+          <div className="mx-auto flex w-full max-w-[640px] flex-col gap-3 px-4" style={{ paddingTop: "calc(var(--safe-top) + 64px)", paddingBottom: 40 }}>
+            <h1 className="text-m-on-surface text-[28px] leading-9">{locName(loc)}</h1>
+            {employee ? <HomeEmployee onOpen={noop} /> : <HomeManager onOpen={noop} />}
+          </div>
+        </OpenLocationContext.Provider>
+      </ScopeContext.Provider>
+    </ExpandSurface>
+  )
+}
+
+/** The overview's breakdown of the hero number: the biggest few locations, each a tap into that location. Only on the overview of several locations. */
+function LocationBreakdown() {
+  const open = useContext(OpenLocationContext)
+  const scope = useScope()
+  const locName = useLocName()
+  if (!open || scope.length < 2) return null
+  const top = [...scope].sort((a, b) => b.sales - a.sales).slice(0, 4)
+  return (
+    <Section title="Locations">
+      <div data-anno="location-breakdown" className="bg-m-container overflow-hidden rounded-[16px]">
+        {top.map((l, i) => {
+          // What the row shows: also what its location's view grows out of.
+          const body = (
+            <span className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left">
+              <span className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                <span className="truncate text-[16px] leading-6">{locName(l)}</span>
+                <ABar w="45%" h={8} />
+              </span>
+              <ABar w={44} h={12} />
+              <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
+            </span>
+          )
+          return (
+            <button key={l.id} onClick={(e) => open(l, e.currentTarget, body)} className={cn("block w-full active:bg-black/5", i > 0 && "border-m-divider border-t")}>
+              {body}
+            </button>
+          )
+        })}
+      </div>
+    </Section>
+  )
+}
+
 function HomeManager({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
   const hero = (
     <>
@@ -666,12 +727,13 @@ function HomeManager({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec)
         <p className="text-m-variant pt-1 text-[16px] leading-6">Total sales</p>
       </div>
       <ALines />
+      <LocationBreakdown />
       <StatusSkeleton />
     </>
   )
   const rest = (
     <>
-      <Section title="My Week (Shifts)"><WeekSkeleton card /></Section>
+      <Section title="My Week"><WeekSkeleton card /></Section>
       <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
@@ -1567,16 +1629,22 @@ export function AndroidApp() {
   const [stack, setStack] = useState<PageSpec[]>([])
   // Home is a fixed overview of every location the person has. One location's own view opens from a caption on it
   // (or, on a tablet, from the rail), in the same place, and back returns to the overview.
-  const [locView, setLocView] = useState<Location | null>(null)
-  const locNameOf = useLocName()
+  const [locOpen, setLocOpen] = useState<{ loc: Location; from: Box; clone: ReactNode } | null>(null)
+  const locView = locOpen?.loc ?? null
   const homeScope = multi ? LOCATIONS : [loc]
-  const viewScope = locView ? [locView] : homeScope
-  const openLocation = (l: Location) => { setLocation(l.id); setLocView(l); setStack([]); setTab("home") }
-  const goTab = (t: TabId) => { setStack([]); setLocView(null); setTab(t) }
+  const openLocation = (l: Location, row?: HTMLElement, clone?: ReactNode) => {
+    setLocation(l.id)
+    setStack([])
+    setTab("home")
+    const from = row ? boxOf(row) : null
+    // The view fills the content pane, so measure from the pane's edge (the rail's), not the screen's.
+    if (from) setLocOpen({ loc: l, from: { ...from, left: from.left - railW }, clone: clone ?? <AndroidMenuRowBody l={l} /> })
+  }
+  const goTab = (t: TabId) => { setStack([]); setLocOpen(null); setTab(t) }
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
   const pop = () => setStack((s) => s.slice(0, -1))
 
-  useEffect(() => { setTab("home"); setStack([]); setLocView(null) }, [userType])
+  useEffect(() => { setTab("home"); setStack([]); setLocOpen(null) }, [userType])
   useEffect(() => { if (!multi) setLocation(LOCATIONS[0].id) }, [multi, setLocation])
   useEffect(() => { setScrolled(false); setFabMenu(false) }, [tab])
   // Phone-first prototype: the page itself never scrolls, only the screen does.
@@ -1634,19 +1702,19 @@ export function AndroidApp() {
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocView(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
+      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
       {tab === "chat" && rail && <MessagesSplit key={loc.id} />}
       {split && tab !== "chat" && tab !== "money" && (
-        <motion.div key={`${tab}:${locView ? locView.id : tab === "home" && multi ? "overview" : loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
-          {tab === "home" && <ScopeContext.Provider value={viewScope}><OpenLocationContext.Provider value={multi && !locView ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <HomeManager split onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
+        <motion.div key={`${tab}:${tab === "home" && multi ? "overview" : loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+          {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <HomeManager split onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
           {tab === "shifts" && <ShiftsTab split />}
           {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
       )}
       {!(tab === "chat" && rail) && !(split && tab !== "money") && <motion.div
-        key={`${tab}:${locView ? locView.id : tab === "home" && multi ? "overview" : loc.id}`}
+        key={`${tab}:${tab === "home" && multi ? "overview" : loc.id}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.18 }}
@@ -1654,7 +1722,7 @@ export function AndroidApp() {
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: rail ? 120 : 200 }}
       >
-        {tab === "home" && <ScopeContext.Provider value={viewScope}><OpenLocationContext.Provider value={multi && !locView ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <HomeManager onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
+        {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <HomeManager onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab filters={timeFilters} onFilter={setFilterSheet} />}
         {tab === "money" && <MoneyTab />}
@@ -1665,8 +1733,7 @@ export function AndroidApp() {
         loc={loc}
         tab={tab}
         // The overview has no title: it is the page you land on, and a title would only name the scope.
-        title={tab === "home" ? (locView ? locNameOf(locView) : "") : undefined}
-        back={tab === "home" && locView ? () => setLocView(null) : undefined}
+        title={tab === "home" ? "" : undefined}
         // Home is a fixed overview, so only the other tabs have a switcher.
         canSwitch={tab !== "home"}
         scrolled={scrolled}
@@ -1690,6 +1757,7 @@ export function AndroidApp() {
       )}
       {!rail && <div className="absolute inset-x-0 top-0 z-30">{addMenu("right-3 top-[calc(var(--safe-top)+56px)]", "top right")}</div>}
       <LocationMenu open={menu} onClose={() => setMenu(false)} onAll={multi ? () => setAll(true) : undefined} onNewGroup={multi ? () => setGroupOpen(true) : undefined} onAddLocation={multi ? undefined : () => {}} />
+      {locOpen && <AndroidLocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={employee} onClosed={() => setLocOpen(null)} />}
 
 
       <AnimatePresence>
@@ -1713,7 +1781,7 @@ export function AndroidApp() {
             }
             action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
           >
-            <ScopeContext.Provider value={viewScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
+            <ScopeContext.Provider value={homeScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
           </APage>
         ))}
       </AnimatePresence>
