@@ -7,7 +7,8 @@ import { Sheet } from "@/components/ios/Sheet"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
-import type { Location, RequestItem } from "@/data/locations"
+import { shortLocationName, type Location, type RequestItem } from "@/data/locations"
+import { useLocationStore } from "@/store/useLocationStore"
 import { requestsFor, useRequestsStore } from "@/store/useRequestsStore"
 import { LOCATIONS } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
@@ -67,11 +68,11 @@ function Filters({ filters, value, onChange, counts }: { filters: FilterDef[]; v
             transition={{ type: "spring", ...SPRING_FAST.snappy }}
             className={cn(
               "flex h-9 items-center justify-center gap-[5px] rounded-full py-2 tracking-[-0.43px]",
-              active ? "flex-1 bg-[#8f55e5] px-4 text-white" : "w-[60px] shrink-0 bg-[rgba(120,120,128,0.16)] px-[18px]",
+              active ? "min-w-0 flex-1 bg-[#8f55e5] px-4 text-white" : "w-[60px] shrink-0 bg-[rgba(120,120,128,0.16)] px-[18px]",
             )}
           >
             <Icon src={icon} size={20} color={active ? "#ffffff" : "#747182"} />
-            {active && <span className="text-[17px] font-[510] leading-5">{label}</span>}
+            {active && <span className="min-w-0 truncate whitespace-nowrap text-[17px] font-[510] leading-5">{label}</span>}
           </motion.button>
         )
       })}
@@ -163,7 +164,9 @@ const initialsOf = (name: string) => name.split(" ").map((w) => w[0]).slice(0, 2
  */
 export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
   const locName = useLocName()
-  const [filter, setFilter] = useState<FilterId>("location")
+  const wire = useStructure()
+  // In "all locations" the sheet opens on every location's requests.
+  const [filter, setFilter] = useState<FilterId>(() => (useLocationStore.getState().all ? "all" : "location"))
   const canAll = useUserTypeStore((s) => canSwitchLocation(s.type))
   const decided = useRequestsStore((s) => s.decided)
   const decide = useRequestsStore((s) => s.decide)
@@ -194,12 +197,11 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
   const counts = { location: lists.location.length, mine: lists.mine.length, archive: lists.archive.length, all: lists.all.length }
   const items = lists[filter]
   const filters: FilterDef[] = [
-    { id: "location", label: locName(loc) },
+    { id: "location", label: wire ? locName(loc) : shortLocationName(loc) },
     { id: "mine", label: "Mine" },
     ...(canAll ? [{ id: "all" as const, label: "All locations" }] : []),
     { id: "archive", label: "Archive" },
   ]
-  const wire = useStructure()
 
   return (
     <Sheet

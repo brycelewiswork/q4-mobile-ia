@@ -1,5 +1,5 @@
 import { Bar, BarLines } from "@/components/wire/Wire"
-import { ANON, useLocName, useStructure } from "@/store/useViewStore"
+import { ANON, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
 import { IconCheck, IconPencil, IconUsers } from "@tabler/icons-react"
@@ -23,39 +23,6 @@ const PLUS_JAKARTA = '"Plus Jakarta Sans", -apple-system, system-ui, sans-serif'
 // ---------------------------------------------------------------------------
 // Carousel pages
 // ---------------------------------------------------------------------------
-
-function PinCard({ loc }: { loc: Location }) {
-  const locName = useLocName()
-  const wire = useStructure()
-  const p = loc.profile
-  return (
-    <div
-      className="relative flex h-[228px] flex-col justify-between overflow-hidden rounded-[10px] p-4 tracking-[-0.43px]"
-      style={{ boxShadow: "0 4px 6px rgba(0,0,0,0.08), 0 24px 30px -16px rgba(0,0,0,0.15)" }}
-    >
-      <div aria-hidden className="absolute inset-0">
-        {wire ? <div className="absolute inset-0 bg-[#8f55e5]" /> : <img src="/phone/pin-bg.jpg" alt="" className="absolute left-1/2 top-[calc(50%-23.5px)] h-[627px] w-[518px] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover" />}
-        {!wire && <div className="absolute inset-0 bg-[#8f55e5] mix-blend-hue" />}
-        <div
-          className="absolute inset-0"
-          style={{ backgroundImage: "linear-gradient(162.7deg, rgba(143,85,229,0.65) 38.5%, rgba(79,47,127,0.65) 70.9%)" }}
-        />
-      </div>
-      <div className="relative flex items-center gap-3">
-        <img src="/phone/pin-logo.svg" alt="" className="h-8 w-[22.229px]" />
-        <div className="min-w-0">
-          <p className="truncate text-[17px] font-[590] leading-5 text-white">{locName(loc)}</p>
-          {!wire && <p className="truncate text-[15px] leading-[17px] text-[#dadada]">{p.address}</p>}
-        </div>
-      </div>
-      <div className="relative font-bold" style={{ fontFamily: PLUS_JAKARTA }}>
-        <p className="text-[16px] leading-6 text-[#dadada]">PIN</p>
-        {wire ? <span aria-hidden className="mt-1 block h-[14px] w-24 rounded-full bg-white/40" /> : <p className="text-[24px] leading-7 tracking-[0.24px] text-white">{p.pin}</p>}
-      </div>
-      <img src="/phone/pin-chip.svg" alt="" className="absolute left-[274px] top-[111px] h-[49.259px] w-14" />
-    </div>
-  )
-}
 
 /** Shoutouts: the card is the quote. A label, the words large and dark, who said it in the brand purple, and giant faint quotation marks framing it. */
 function ShoutoutCard({ loc, onOpen }: { loc: Location; onOpen: () => void }) {
@@ -186,7 +153,7 @@ function Carousel({ pages }: { pages: { key: string; label: string; node: ReactN
           if (e.key === "ArrowRight") go(page + 1)
           if (e.key === "ArrowLeft") go(page - 1)
         }}
-        // Clip sideways so neighbours don't peek in; leave the bottom open for the PIN card's shadow.
+        // Clip sideways so neighbours don't peek in; leave the bottom open for the cards' shadows.
         className="[overflow-x:clip] pb-8 -mb-8 outline-none"
       >
         <motion.div
@@ -304,10 +271,9 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
   const p = loc.profile
 
   const pages = [
-    { key: "pin", label: "PIN card", node: <PinCard loc={loc} /> },
-    { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} onOpen={() => onOpen("shoutouts")} /> },
     { key: "stats", label: "Stats", node: <StatsCard loc={loc} onOpen={() => onOpen("stats")} /> },
     { key: "achievements", label: "Achievements", node: <AchievementsCard onOpen={() => onOpen("achievements")} /> },
+    { key: "shoutouts", label: "Shoutouts", node: <ShoutoutCard loc={loc} onOpen={() => onOpen("shoutouts")} /> },
   ]
 
   return (

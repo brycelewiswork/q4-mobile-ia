@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useActiveGroup, useLocationStore } from "@/store/useLocationStore"
 import { LOCATIONS } from "@/data/locations"
 
 /**
@@ -91,6 +92,14 @@ export const useStructure = () => useViewStore((s) => s.detail === "structure" |
 export function useLocName() {
   const wire = useStructure()
   return (l: { id: string; name: string }) => (wire ? `Location ${LOCATIONS.findIndex((x) => x.id === l.id) + 1}` : l.name)
+}
+
+/** The title in the toolbar: the selected location's name, or the number of locations in "all locations". */
+export function useLocTitle(loc: { id: string; name: string }) {
+  const name = useLocName()
+  const all = useLocationStore((s) => s.all)
+  const group = useActiveGroup()
+  return group ? group.name : all ? `${LOCATIONS.length} Locations` : name(loc)
 }
 
 /** The user, anonymized for the structure cut. */

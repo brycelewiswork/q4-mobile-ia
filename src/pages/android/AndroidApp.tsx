@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { useContext, useEffect, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import {
   IconAlertHexagon,
@@ -11,6 +11,7 @@ import {
   IconCash,
   IconCheck,
   IconChevronDown,
+  IconArrowLeft,
   IconChevronRight,
   IconClock,
   IconGift,
@@ -24,19 +25,19 @@ import {
   IconSearch,
   IconSend,
   IconUsers,
-  IconX,
 } from "@tabler/icons-react"
 import { AchievementBadge } from "@/components/AchievementBadge"
-import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { LinearBlur } from "@/components/ui/progressive-blur"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
 import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ACheckRow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
-import { LOCATIONS, USER_SCHEDULE, type Location } from "@/data/locations"
+import { WireBars, shortMoney } from "@/components/WireBars"
+import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, unreadAt, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
-import { useLocation, useLocationStore } from "@/store/useLocationStore"
-import { ANON, useLocName, useViewStore } from "@/store/useViewStore"
+import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
+import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
+import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
 import { NOW_MIN, accessoryFor, scheduledToday, shiftRange, useClock, useTimeClockStore } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
@@ -90,19 +91,25 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
-  const locName = useLocName()
+function TopBar({ title: titleOverride, back, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; /** Back out of one location's view to the overview (phones; replaces the avatar). */ back?: () => void; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+  const storeTitle = useLocTitle(loc)
+  const title = titleOverride ?? storeTitle
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
       {/* The avatar opens the navigation drawer (with a rail, the avatar lives in the rail instead). */}
-      {!rail && (
+      {!rail && back && (
+        <button onClick={back} aria-label="Back to all locations" className="text-m-on-surface flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
+          <IconArrowLeft size={24} stroke={1.75} />
+        </button>
+      )}
+      {!rail && !back && (
         <button onClick={onProfile} aria-label="Open navigation drawer" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
           <Avatar size={32} />
         </button>
       )}
       <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 flex-1 items-center gap-1 text-left", rail && "pl-2")}>
-        <span className="line-clamp-2 min-w-0 text-[18px] font-medium leading-6">{locName(loc)}</span>
+        <span className="line-clamp-2 min-w-0 text-[18px] font-medium leading-6">{title}</span>
         {canSwitch && <IconChevronDown size={20} stroke={2} className="text-m-variant shrink-0" />}
       </button>
       {showClock && (
@@ -190,7 +197,7 @@ const RAIL_EASE = { duration: 0.3, ease: [0.2, 0, 0, 1] } as const
  * destinations. Collapsed it is 96dp wide with labels under the icons; expanded the labels sit beside them.
  * The app's content slides right as it grows (see AndroidApp).
  */
-function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssistant, clock }: { clock?: { title: string; status: "out" | "in" | "break"; onOpen: () => void }; tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; open: boolean; onToggle: () => void; onProfile: () => void; onAssistant?: () => void }) {
+function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssistant, clock, locations }: { /** Multi-location users: the locations below the tabs; tapping one opens its overview in the main area. */ locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once. */ onAll?: () => void; allActive?: boolean }; clock?: { title: string; status: "out" | "in" | "break"; onOpen: () => void }; tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; open: boolean; onToggle: () => void; onProfile: () => void; onAssistant?: () => void }) {
   const pill = (on: boolean) => cn("flex items-center transition-colors", open ? "h-14 w-full gap-3 rounded-full pl-4 pr-6" : "h-8 w-14 justify-center rounded-full", on && "bg-m-secondary-container")
   const label = (text: string, strong?: boolean) => (open ? <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.15 }} className={cn("whitespace-nowrap text-[14px] leading-5", strong ? "font-bold" : "font-medium")}>{text}</motion.span> : null)
   return (
@@ -240,8 +247,62 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
           )
         })}
       </div>
+      {locations && <RailLocations open={open} {...locations} />}
       {clock && <RailClock open={open} {...clock} />}
     </motion.nav>
+  )
+}
+
+const railMoney = (n: number) => `$${Math.round(n / 1000)}K`
+
+/**
+ * The locations under the tabs. Collapsed: a round chip with the location's initials. Expanded:
+ * the name over its labor share, with sales at the end, under a small heading for each company.
+ */
+function RailLocations({ open, activeId, onOpen, onAll, allActive }: { open: boolean; activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; onAll?: () => void; allActive?: boolean }) {
+  const wire = useStructure()
+  const locName = useLocName()
+  const employee = useUserTypeStore((s) => s.type) === "employee"
+  const chip = (l: Location) => (wire ? `L${LOCATIONS.findIndex((x) => x.id === l.id) + 1}` : shortLocationName(l).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase())
+  return (
+    <div data-anno="rail-locations" role="group" aria-label="Locations" className={cn("border-m-divider mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto border-t pt-2 [scrollbar-width:none]", open ? "gap-0 px-3" : "items-center")}>
+      {onAll && (open ? (
+        <button onClick={onAll} aria-current={allActive ? "page" : undefined} className={cn("text-m-on-surface flex h-14 w-full items-center gap-2 rounded-full pl-4 pr-4 text-left active:bg-black/10", allActive && "bg-m-secondary-container")}>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[14px] font-medium leading-5">All Locations</span>
+            <span className="text-m-variant text-[12px] leading-4">{LOCATIONS.length} locations</span>
+          </span>
+        </button>
+      ) : (
+        <button onClick={onAll} aria-current={allActive ? "page" : undefined} aria-label="All locations" className="text-m-on-surface flex flex-col items-center gap-[2px] py-1">
+          <span className={cn("flex size-10 items-center justify-center rounded-full text-[13px] font-medium", allActive ? "bg-m-secondary-container" : "bg-m-high")}>All</span>
+        </button>
+      ))}
+      {COMPANIES.map((c, ci) => (
+        <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name} className={cn("flex flex-col", open ? "" : "items-center gap-2 py-1", !open && ci > 0 && "border-m-divider mt-1 border-t pt-2")}>
+          {open && <p className="text-m-variant px-3 pb-1 pt-2 text-[12px] font-medium leading-4">{wire ? `Company ${ci + 1}` : c.name}</p>}
+          {c.locations.map((l) => {
+            const on = activeId === l.id
+            return open ? (
+              <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} className={cn("text-m-on-surface flex h-14 w-full items-center gap-2 rounded-full pl-4 pr-4 text-left active:bg-black/10", on && "bg-m-secondary-container")}>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-[14px] font-medium leading-5">{wire ? locName(l) : shortLocationName(l)}</span>
+                  {!wire && <span className="text-m-variant truncate text-[12px] leading-4">{employee ? (nextShiftAt(l.id) ? `Next ${nextShiftAt(l.id)}` : "No shifts this week") : `${l.laborPct}% labor`}</span>}
+                </span>
+                {!wire && (employee ? <AUnread n={unreadAt(l)} /> : <span className="shrink-0 text-[14px] font-medium leading-5">{railMoney(l.sales)}</span>)}
+              </button>
+            ) : (
+              <button key={l.id} onClick={(e) => onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} aria-label={wire ? locName(l) : `${shortLocationName(l)}, ${railMoney(l.sales)}`} className="text-m-on-surface flex flex-col items-center gap-[2px]">
+                <span className={cn("relative flex size-10 items-center justify-center rounded-full text-[13px] font-medium", on ? "bg-m-secondary-container" : "bg-m-high")}>
+                  {chip(l)}
+                  {employee && !wire && unreadAt(l) > 0 && <span aria-hidden className="bg-[var(--m-badge)] absolute right-0 top-0 size-[10px] rounded-full" />}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -276,10 +337,111 @@ function RailClock({ open, title, status, onOpen }: { open: boolean; title: stri
   )
 }
 
-function LocationMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** The unread count on a location, as a small badge. */
+function AUnread({ n }: { n: number }) {
+  if (!n) return null
+  return <span aria-label={`${n} unread`} className="bg-[var(--m-badge)] flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white">{n}</span>
+}
+
+/** Plus Group: pick the locations to combine (two or more), then name the group. It shows in the switcher and is selected. */
+function AGroupSheet({ onClose }: { onClose: () => void }) {
+  const wire = useStructure()
   const locName = useLocName()
+  const add = useGroupsStore((s) => s.add)
+  const setGroup = useLocationStore((s) => s.setGroup)
+  const [step, setStep] = useState<"pick" | "name">("pick")
+  const [picked, setPicked] = useState<string[]>([])
+  const [name, setName] = useState("")
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  const create = () => { if (name.trim()) { setGroup(add(name, picked)); onClose() } }
+  return (
+    <ASheet
+      title={step === "pick" ? "Combine locations" : "Name group"}
+      onClose={onClose}
+      full
+      footer={
+        <div className="flex gap-3 pb-2">
+          {step === "name" && <button onClick={() => setStep("pick")} className="border-m-outline text-m-primary h-12 flex-1 rounded-full border text-[15px] font-medium active:bg-black/5">Back</button>}
+          {step === "pick" ? (
+            <button disabled={picked.length < 2} onClick={() => setStep("name")} className="bg-m-primary text-m-on-primary h-12 flex-1 rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85 disabled:opacity-40">
+              {picked.length < 2 ? "Choose two or more" : `Next · ${picked.length} locations`}
+            </button>
+          ) : (
+            <button disabled={!name.trim()} onClick={create} className="bg-m-primary text-m-on-primary h-12 flex-1 rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85 disabled:opacity-40">Create group</button>
+          )}
+        </div>
+      }
+    >
+      {step === "pick" ? (
+        COMPANIES.map((c, ci) => (
+          <div key={c.name}>
+            <p className="text-m-variant px-1 pb-1 pt-3 text-[14px] font-medium leading-5">{wire ? `Company ${ci + 1}` : c.name}</p>
+            {c.locations.map((l) => (
+              <ACheckRow key={l.id} checked={picked.includes(l.id)} onChange={() => toggle(l.id)}>{wire ? locName(l) : shortLocationName(l)}</ACheckRow>
+            ))}
+          </div>
+        ))
+      ) : (
+        <div className="pt-2">
+          <label className="border-m-outline focus-within:border-m-primary flex h-14 items-center rounded-[4px] border px-4">
+            <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} maxLength={40} placeholder="Group name" aria-label="Group name" className="text-m-on-surface placeholder:text-m-variant min-w-0 flex-1 bg-transparent text-[16px] outline-none" />
+          </label>
+          <p className="text-m-variant px-1 pt-3 text-[14px] leading-5">
+            {picked.map((id) => LOCATIONS.find((l) => l.id === id)).map((l) => (l ? (wire ? locName(l) : shortLocationName(l)) : "")).join(", ")}
+          </p>
+        </div>
+      )}
+    </ASheet>
+  )
+}
+
+const sumWeek = (pick: (l: Location) => number[]) => LOCATIONS[0].weekSales.map((_, i) => LOCATIONS.reduce((n, l) => n + pick(l)[i], 0))
+
+/** A location's row in the menu: name over labor share, a wireframe sales-and-labor chart, and today's sales. Also what its overview grows out of. */
+function AndroidMenuRowBody({ l }: { l: Location }) {
+  const wire = useStructure()
+  const locName = useLocName()
+  const employee = useUserTypeStore((s) => s.type) === "employee"
+  // An employee sees when they next work here and what's unread, not the location's numbers.
+  if (employee) {
+    const next = nextShiftAt(l.id)
+    return (
+      <span className="flex w-full items-center gap-3 text-left">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[16px] leading-6">{wire ? locName(l) : shortLocationName(l)}</span>
+          {wire ? <ABar w="45%" h={8} /> : <span className="text-m-variant truncate text-[12px] leading-4">{next ? `Next shift ${next}` : "No shifts this week"}</span>}
+        </span>
+        {wire ? <span aria-hidden className="bg-m-skeleton block size-4 shrink-0 rounded-full" /> : <AUnread n={unreadAt(l)} />}
+      </span>
+    )
+  }
+  return (
+    <span className="flex w-full items-center gap-3 text-left">
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[16px] leading-6">{wire ? locName(l) : shortLocationName(l)}</span>
+        {wire ? <ABar w="45%" h={8} /> : (
+          <span className="text-m-variant flex items-center gap-[6px] text-[12px] leading-4">
+            <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
+            {l.laborPct}% labor
+          </span>
+        )}
+      </span>
+      <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />
+      {wire ? <ABar w={36} h={12} /> : <span className="w-[46px] shrink-0 text-right text-[14px] font-medium leading-5">{shortMoney(l.sales)}</span>}
+    </span>
+  )
+}
+
+function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { open: boolean; onClose: () => void; /** Show every location at once. */ onAll?: () => void; /** Plus Group: start combining locations into a named group. */ onNewGroup?: () => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
+  const wire = useStructure()
   const id = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
+  const all = useLocationStore((s) => s.all)
+  const groupId = useLocationStore((s) => s.groupId)
+  const setGroup = useLocationStore((s) => s.setGroup)
+  const groups = useGroupsStore((s) => s.groups)
+  const employee = useUserTypeStore((s) => s.type) === "employee"
+  const single = useUserTypeStore((s) => s.type) === "oam"
   return (
     <AnimatePresence>
       {open && (
@@ -292,14 +454,70 @@ function LocationMenu({ open, onClose }: { open: boolean; onClose: () => void })
             transition={{ duration: 0.15 }}
             onPointerDown={(e) => e.stopPropagation()}
             style={{ top: "calc(var(--safe-top) + 56px)", transformOrigin: "top left" }}
-            className="bg-m-high text-m-on-surface absolute left-4 w-[280px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+            className="bg-m-high text-m-on-surface absolute left-4 w-[340px] max-w-[calc(100%-32px)] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
           >
-            {LOCATIONS.map((l) => (
-              <button key={l.id} role="menuitem" onClick={() => { setLocation(l.id); onClose() }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
-                <span className="flex-1 truncate">{locName(l)}</span>
-                {l.id === id && <IconCheck size={20} stroke={2} className="text-m-primary" />}
+            {single && (
+              <>
+                <div className="flex min-h-14 items-center gap-3 px-4 py-1 text-[16px] leading-6">
+                  <span className="min-w-0 flex-1 truncate">{wire ? "Location 1" : LOCATIONS[0].name}</span>
+                  <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />
+                </div>
+                {onAddLocation && (
+                  <button onClick={() => { onAddLocation(); onClose() }} className="border-m-outline/30 text-m-primary mt-1 flex h-12 w-full items-center gap-3 border-t px-4 text-left text-[16px] font-medium active:bg-black/10">
+                    <IconPlus size={20} stroke={2} />
+                    Add location
+                  </button>
+                )}
+              </>
+            )}
+            {!single && onAll && (
+              <button role="menuitemradio" aria-checked={all} onClick={() => { onAll(); onClose() }} className="border-m-outline/30 flex w-full items-center gap-3 border-b px-4 py-2 text-left active:bg-black/10">
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[16px] font-medium leading-6">All Locations</span>
+                  <span className="text-m-variant text-[12px] leading-4">{LOCATIONS.length} locations</span>
+                </span>
+                {employee ? (
+                  wire ? <span aria-hidden className="bg-m-skeleton block size-4 shrink-0 rounded-full" /> : <AUnread n={LOCATIONS.reduce((n, l) => n + unreadAt(l), 0)} />
+                ) : (
+                  <>
+                    <WireBars sales={sumWeek((l) => l.weekSales)} labor={sumWeek((l) => l.weekLabor)} forecast={sumWeek((l) => l.weekForecast)} />
+                    <span className="w-[46px] shrink-0" />
+                  </>
+                )}
+                {all && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
               </button>
+            )}
+            {!single && groups.length > 0 && (
+              <div role="group" aria-label="Groups" className="border-m-outline/30 border-b pb-1">
+                <div className="text-m-variant px-4 pb-1 pt-2 text-[14px] font-medium leading-5">Groups</div>
+                {groups.map((g) => (
+                  <button key={g.id} role="menuitemradio" aria-checked={groupId === g.id} onClick={() => { setGroup(g.id); onClose() }} className="flex min-h-14 w-full items-center gap-3 px-4 py-1 text-left active:bg-black/10">
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[16px] leading-6">{g.name}</span>
+                      <span className="text-m-variant text-[12px] leading-4">{locationsOf(g).length} locations</span>
+                    </span>
+                    {groupId === g.id && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!single && COMPANIES.map((c, ci) => (
+              <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name} className={ci > 0 ? "border-m-outline/30 mt-1 border-t pt-1" : undefined}>
+                <div className="text-m-variant px-4 pb-1 pt-2 text-[14px] font-medium leading-5">{wire ? `Company ${ci + 1}` : c.name}</div>
+                {c.locations.map((l) => (
+                  <button key={l.id} role="menuitem" onClick={() => { setLocation(l.id); onClose() }} className="flex min-h-14 w-full items-center gap-3 px-4 py-1 text-left active:bg-black/10">
+                    <AndroidMenuRowBody l={l} />
+                    {!all && !groupId && l.id === id && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
+                  </button>
+                ))}
+              </div>
             ))}
+            {onNewGroup && (
+              <button onClick={() => { onNewGroup(); onClose() }} className="border-m-outline/30 text-m-primary mt-1 flex h-12 w-full items-center gap-3 border-t px-4 text-left text-[16px] font-medium active:bg-black/10">
+                <IconPlus size={20} stroke={2} />
+                Group
+              </button>
+            )}
           </motion.div>
         </div>
       )}
@@ -338,10 +556,85 @@ function DetailCards({ cards }: { cards: [string, number][] }) {
   )
 }
 
+/** Wherever data from several locations could sit side by side ("all locations"), each location's share gets its own caption. */
+function AByLocation({ children }: { children: (l: Location, grouped: boolean, index: number) => ReactNode }) {
+  const scope = useScope()
+  const locName = useLocName()
+  const openLocation = useContext(OpenLocationContext)
+  if (scope.length === 1) return <>{children(scope[0], false, 0)}</>
+  return (
+    <>
+      {scope.map((l, i) => (
+        <div key={l.id}>
+          <p className="text-m-variant px-4 pb-1 pt-3 text-[13px] font-medium leading-5">
+            {/* On the Home overview a caption is also the way into that location's own view. */}
+            {openLocation ? (
+              <button onClick={() => openLocation(l)} className="flex items-center gap-[2px] text-left active:opacity-60">
+                {locName(l)}
+                <IconChevronRight size={14} stroke={2} className="shrink-0" />
+              </button>
+            ) : locName(l)}
+          </p>
+          {children(l, true, i)}
+        </div>
+      ))}
+    </>
+  )
+}
+
+/** The Status card's shape without its content: the title, the three-way switch, and a row of hours each with a figure over a plan. */
+function StatusSkeleton() {
+  return (
+    <ACard dataAnno="status" h={150}>
+      <div className="flex items-end justify-between">
+        <div>
+          <span className="text-[16px] font-medium leading-6">Status</span>
+          <ABar w={64} h={10} className="mt-1" />
+        </div>
+        <span aria-hidden className="bg-m-skeleton/60 flex h-8 w-[120px] items-center justify-around rounded-full px-2">
+          {[0, 1, 2].map((i) => <span key={i} className={cn("size-4 rounded-full", i === 0 ? "bg-m-outline/50" : "bg-m-skeleton")} />)}
+        </span>
+      </div>
+      <div aria-hidden className="mt-4 flex gap-2 overflow-hidden">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="flex w-12 shrink-0 flex-col items-center gap-3">
+            <ABar w={i === 0 ? 30 : 22} h={14} />
+            <div className="flex flex-col items-center gap-[6px]">
+              <ABar w={26} h={14} />
+              <ABar w={20} h={10} className="opacity-60" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </ACard>
+  )
+}
+
+/** The week chart's shape: seven days, a bar for when each is worked (one dashed: free), a day marker under each, and the hours down the side. */
+function WeekSkeleton({ card }: { card?: boolean }) {
+  const bars: ([number, number] | "free" | null)[] = [[34, 110], [14, 86], [58, 100], "free", [28, 96], null, [44, 70]]
+  const chart = (
+    <div aria-hidden className="relative mx-auto flex h-[216px] w-full max-w-[338px] items-start justify-between">
+      {[7, 59, 111, 163].map((y) => <span key={y} className="border-m-divider absolute left-0 right-[30px] border-t border-dashed" style={{ top: y }} />)}
+      {bars.map((b, i) => (
+        <span key={i} className="relative h-[216px] w-8">
+          {b === "free" && <span className="border-m-outline/60 absolute left-[6px] w-4 rounded-[4px] border border-dashed" style={{ top: 44, height: 92 }} />}
+          {Array.isArray(b) && <span className={cn("absolute left-[6px] w-4 rounded-[4px]", i === 2 ? "bg-m-outline/50" : "bg-m-skeleton")} style={{ top: b[0], height: b[1] }} />}
+          <span className={cn("absolute left-0 top-[184px] size-7 rounded-full", i === 2 ? "bg-m-outline/50" : "bg-m-skeleton")} />
+        </span>
+      ))}
+      <span className="flex h-[170px] w-[21px] flex-col items-end justify-between">
+        {[0, 1, 2, 3].map((i) => <ABar key={i} w={18} h={8} />)}
+      </span>
+    </div>
+  )
+  return card ? <div className="bg-m-container rounded-[16px] p-3">{chart}</div> : chart
+}
+
 function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
   const hero = (
     <>
-      <ACard title="My week" h={216} />
+      <WeekSkeleton card />
       <ALines />
     </>
   )
@@ -365,88 +658,23 @@ function HomeEmployee({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec
   )
 }
 
-/** A location row in the all-locations card, and what the business overview grows out of. */
-function AndroidLocRow({ name }: { name: string }) {
-  // Enough going on to read as a real, tappable row: the business name over a line, a figure and a chip, and a chevron.
-  return (
-    <span className="flex min-h-[68px] w-full items-center gap-3 py-3">
-      <span className="flex min-w-0 flex-1 flex-col gap-[8px]">
-        <span className="text-m-on-surface truncate text-[16px] leading-6">{name}</span>
-        <ABar w="45%" h={10} />
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-[6px]">
-        <ABar w={46} h={12} />
-        <span aria-hidden className="bg-m-skeleton block h-[18px] w-10 rounded-[6px]" />
-      </span>
-      <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
-    </span>
-  )
-}
-
-/** One business's overview: a hero graph and sub-cards, empty. It grows out of the tapped row; the X shrinks it back. */
-function BusinessPage({ loc, from, onClosed }: { loc: Location; from: Box; onClosed: () => void }) {
-  const locName = useLocName()
-  return (
-    <ExpandSurface
-      from={from}
-      clone={<AndroidLocRow name={locName(loc)} />}
-      cardClass="bg-m-container"
-      pageClass="bg-m-surface"
-      onClosed={onClosed}
-      z={31}
-      button={(close) => (
-        <button onClick={close} aria-label="Close" className="text-m-on-surface flex size-12 items-center justify-center rounded-full active:bg-black/10">
-          <IconX size={24} stroke={1.75} />
-        </button>
-      )}
-    >
-      <div className="flex flex-col gap-3 px-4" style={{ paddingTop: "calc(var(--safe-top) + 64px)", paddingBottom: 40 }}>
-        <h1 className="text-m-on-surface text-[28px] leading-9">{locName(loc)}</h1>
-        <ACard title="Sales and labor" h={260} />
-        <div className="flex gap-3">
-          <ACard title="Labor" h={96} className="flex-1" />
-          <ACard title="Team" h={96} className="flex-1" />
-        </div>
-        <ACard title="Status" h={150} />
-        <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
-        <Section title="Manager Log"><AList rows={2} avatar={false} /></Section>
-        <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
-      </div>
-    </ExpandSurface>
-  )
-}
-
-function HomeManager({ multi, split, onOpen, onOpenBiz }: { multi: boolean; split?: boolean; onOpen: (p: PageSpec) => void; onOpenBiz: (l: Location, row: HTMLElement) => void }) {
-  const locName = useLocName()
+function HomeManager({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
   const hero = (
     <>
-      {multi ? (
-        <ACard title="All Locations" h={200} dataAnno="all-locations">
-          <span aria-hidden className="bg-m-skeleton mt-3 block h-24 rounded-[12px]" />
-          <div className="mt-3">
-            {LOCATIONS.map((l, i) => (
-              <button key={l.id} onClick={(e) => onOpenBiz(l, e.currentTarget)} aria-label={locName(l)} className={cn("block w-full text-left active:bg-black/5", i > 0 && "border-m-divider border-t")}>
-                <AndroidLocRow name={locName(l)} />
-              </button>
-            ))}
-          </div>
-        </ACard>
-      ) : (
-        <div className="flex flex-col gap-1 py-2">
-          <ABar w={150} h={34} />
-          <p className="text-m-variant pt-1 text-[16px] leading-6">Total sales</p>
-        </div>
-      )}
+      <div className="flex flex-col gap-1 py-2">
+        <ABar w={150} h={34} />
+        <p className="text-m-variant pt-1 text-[16px] leading-6">Total sales</p>
+      </div>
       <ALines />
-      <ACard title="Status" h={150} />
+      <StatusSkeleton />
     </>
   )
   const rest = (
     <>
+      <Section title="My Week (Shifts)"><WeekSkeleton card /></Section>
       <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section>
       <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
-      <Section title="My Week (Shifts)"><AList rows={3} avatar={false} trailing /></Section>
       <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
     </>
   )
@@ -507,7 +735,12 @@ function ShiftsTab({ split }: { split?: boolean }) {
           )}
         </AnimatePresence>
       </div>
-      <AList rows={split ? 14 : 6} trailing selected={split ? sel : undefined} onPick={split ? setSel : undefined} />
+      <AByLocation>
+        {(_, g, gi) => {
+          const n = g ? (split ? 4 : 3) : split ? 14 : 6
+          return <AList rows={n} trailing selected={split ? sel - gi * n : undefined} onPick={split ? (i) => setSel(i + gi * n) : undefined} />
+        }}
+      </AByLocation>
     </div>
   )
   if (!split) return main
@@ -519,9 +752,15 @@ function PayPeriodPane() {
   return (
     <div className="flex flex-col gap-1 pt-2">
       <ASection>Pay period</ASection>
-      <ABar w={150} h={34} />
-      <p className="text-m-variant pb-2 pt-1 text-[16px] leading-6">Total paid</p>
-      <AList rows={9} trailing />
+      <AByLocation>
+        {(_, g) => (
+          <>
+            <ABar w={150} h={34} />
+            <p className="text-m-variant pb-2 pt-1 text-[16px] leading-6">Total paid</p>
+            <AList rows={g ? 4 : 9} trailing />
+          </>
+        )}
+      </AByLocation>
     </div>
   )
 }
@@ -550,14 +789,18 @@ function TimeTab({ split, filters, onFilter }: { split?: boolean; filters: TimeF
       {view === "day" ? (
         <>
           <ASection>Needs review</ASection>
-          <div className="flex flex-col gap-3 pt-1">
-            {Array.from({ length: split ? 6 : 4 }, (_, i) => <ACard key={i} h={150} />)}
-          </div>
+          <AByLocation>
+            {(_, g) => (
+              <div className="flex flex-col gap-3 pt-1">
+                {Array.from({ length: g ? 2 : split ? 6 : 4 }, (_, i) => <ACard key={i} h={150} />)}
+              </div>
+            )}
+          </AByLocation>
         </>
       ) : (
         <>
           <ASection>Pay period</ASection>
-          <AList rows={4} avatar={false} trailing />
+          <AByLocation>{(_, g) => <AList rows={g ? 3 : 4} avatar={false} trailing />}</AByLocation>
         </>
       )}
     </div>
@@ -571,7 +814,7 @@ function MoneyTab() {
     <div className="flex flex-col gap-1 pt-2">
       <ACard title="This pay period" h={110} />
       <Section title="Today"><AList rows={2} avatar={false} trailing /></Section>
-      <Section title="Recent pay stubs"><AList rows={3} avatar={false} trailing /></Section>
+      <Section title="Recent pay stubs"><AByLocation>{(_, g) => <AList rows={g ? 2 : 3} avatar={false} trailing />}</AByLocation></Section>
     </div>
   )
 }
@@ -585,7 +828,12 @@ function MessagesTab({ selected, onPick }: { /** Split view (tablet landscape): 
         <AChip selected={filter === "unread"} onClick={() => toggle("unread")}>Unread</AChip>
         <AChip selected={filter === "threads"} onClick={() => toggle("threads")}>Threads</AChip>
       </AChips>
-      <AList rows={onPick ? 14 : 7} selected={selected} onPick={onPick} />
+      <AByLocation>
+        {(_, g, gi) => {
+          const n = g ? (onPick ? 4 : 3) : onPick ? 14 : 7
+          return <AList rows={n} selected={selected === undefined ? undefined : selected - gi * n} onPick={onPick ? (i) => onPick(i + gi * n) : undefined} />
+        }}
+      </AByLocation>
     </div>
   )
 }
@@ -677,7 +925,8 @@ function TimeFilterSheet({ kind, loc, side, value, onApply, onClose }: { kind: F
 function RequestsSheet({ loc, multi, side, onClose }: { loc: Location; multi: boolean; /** A side sheet instead of a bottom sheet (wide screens). */ side?: boolean; onClose: () => void }) {
   const Shell = side ? ASideSheet : ASheet
   const locName = useLocName()
-  const filters = [locName(loc), "Mine", ...(multi ? ["All locations"] : []), "Archive"]
+  const wire = useStructure()
+  const filters = [wire ? locName(loc) : shortLocationName(loc), "Mine", ...(multi ? ["All locations"] : []), "Archive"]
   const [f, setF] = useState(filters[0])
   return (
     <Shell title="Requests" onClose={onClose} {...(side ? {} : { full: true })}>
@@ -789,6 +1038,8 @@ function ClockPage({ loc, onClose }: { loc: Location; onClose: () => void }) {
             ["Location", <span key="l">{locName(loc)}</span>],
             [today ? "Shift" : "Next shift", <ABar key="s" w={90} h={12} />],
             ["Role", <span key="r">{role}</span>],
+            // The location PIN lives here, where someone needs it to clock in, not on a card in the drawer.
+            ["PIN", <ABar key="p" w={56} h={12} />],
           ].map(([label, value], i) => (
             <div key={label as string} className={cn("flex min-h-[52px] items-center justify-between gap-4 px-4 text-[16px] leading-6", i > 0 && "border-m-divider border-t")}>
               <span>{label}</span>
@@ -992,19 +1243,16 @@ function SearchField() {
 }
 
 /**
- * The profile cards: the location PIN, shoutouts, stats. One card at a time, switched from a tab row. Not a swipe
+ * The profile cards: shoutouts, stats, badges. One card at a time, switched from a tab row. Not a swipe
  * carousel: inside a drawer, sideways swipes close it and vertical ones scroll it.
  */
 function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
-  const loc = useLocation()
-  const locName = useLocName()
-  const [page, setPage] = useState<"pin" | "shoutouts" | "stats" | "achievements">("pin")
+  const [page, setPage] = useState<"shoutouts" | "stats" | "achievements">("stats")
   const stats = ["On-time rate", "Shifts worked", "Hours/week", "Avg shift rating", "Missed clock-outs", "No-shows"]
   const tabs = [
-    ["pin", "PIN"],
-    ["shoutouts", "Shoutouts"],
     ["stats", "Stats"],
     ["achievements", "Badges"],
+    ["shoutouts", "Shoutouts"],
   ] as const
   return (
     <div data-anno="drawer-carousel" className="flex flex-col gap-3 pb-1 pt-1">
@@ -1015,18 +1263,6 @@ function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
           </button>
         ))}
       </div>
-      {page === "pin" && (
-        <div aria-label="PIN card" data-anno="pin-card" className="flex h-[168px] flex-col justify-between rounded-[20px] bg-[#8f55e5] p-4 text-white">
-          <div className="flex items-center gap-3">
-            <img src="/phone/pin-logo.svg" alt="" className="h-8 w-[22px]" />
-            <span className="truncate text-[16px] font-medium leading-5">{locName(loc)}</span>
-          </div>
-          <div>
-            <p className="text-[14px] leading-5 text-white/75">PIN</p>
-            <span aria-hidden className="mt-1 block h-[14px] w-24 rounded-full bg-white/40" />
-          </div>
-        </div>
-      )}
       {page === "shoutouts" && (
         <ACard title="Shoutouts" h={168} onClick={() => onOpen({ id: "shoutouts", kind: "shoutouts", title: "Shoutouts" })}>
           <ALines lines={3} className="pt-3" />
@@ -1306,6 +1542,10 @@ export function AndroidApp() {
   const tabs: TabId[] = employee ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const setLocation = useLocationStore((s) => s.setLocation)
+  const setAll = useLocationStore((s) => s.setAll)
+  const allLoc = useLocationStore((s) => s.all)
+  const groupId = useLocationStore((s) => s.groupId)
+  const [groupOpen, setGroupOpen] = useState(false)
   const [tab, setTab] = useState<TabId>("home")
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -1318,8 +1558,6 @@ export function AndroidApp() {
   const split = rail && landscape
   const [railOpen, setRailOpen] = useState(false)
   const railW = rail ? (railOpen ? RAIL_OPEN_W : RAIL_W) : 0
-  // A business overview grows out of the row tapped in the all-locations card.
-  const [biz, setBiz] = useState<{ loc: Location; from: Box } | null>(null)
   // Shifts' plus offers two things, like the iOS menu: add a shift or an event.
   const [fabMenu, setFabMenu] = useState(false)
   const [sheet, setSheet] = useState<null | "requests" | "shift" | "event">(null)
@@ -1327,11 +1565,18 @@ export function AndroidApp() {
   const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null)
   const [timeFilters, setTimeFilters] = useState<TimeFilters>({ team: [], issues: [], roles: [] })
   const [stack, setStack] = useState<PageSpec[]>([])
-  const goTab = (t: TabId) => { setStack([]); setTab(t) }
+  // Home is a fixed overview of every location the person has. One location's own view opens from a caption on it
+  // (or, on a tablet, from the rail), in the same place, and back returns to the overview.
+  const [locView, setLocView] = useState<Location | null>(null)
+  const locNameOf = useLocName()
+  const homeScope = multi ? LOCATIONS : [loc]
+  const viewScope = locView ? [locView] : homeScope
+  const openLocation = (l: Location) => { setLocation(l.id); setLocView(l); setStack([]); setTab("home") }
+  const goTab = (t: TabId) => { setStack([]); setLocView(null); setTab(t) }
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
   const pop = () => setStack((s) => s.slice(0, -1))
 
-  useEffect(() => { setTab("home"); setStack([]) }, [userType])
+  useEffect(() => { setTab("home"); setStack([]); setLocView(null) }, [userType])
   useEffect(() => { if (!multi) setLocation(LOCATIONS[0].id) }, [multi, setLocation])
   useEffect(() => { setScrolled(false); setFabMenu(false) }, [tab])
   // Phone-first prototype: the page itself never scrolls, only the screen does.
@@ -1343,7 +1588,8 @@ export function AndroidApp() {
 
   const decided = useRequestsStore((s) => s.decided)
   const added = useRequestsStore((s) => s.added)
-  const pending = pendingFor(loc, decided, added).length
+  const scope = useScope()
+  const pending = scope.reduce((n, l) => n + pendingFor(l, decided, added).length, 0)
   const clock = useClock(loc)
   const timeClock = useTimeClockStore()
   const { title: clockTitle } = accessoryFor(loc, clock)
@@ -1384,23 +1630,23 @@ export function AndroidApp() {
   )
 
   const assistant = employee ? undefined : () => open({ id: "assistant", kind: "assistant", title: "Assistant" })
-  const unread = loc.messages.filter((m) => m.unread).length
+  const unread = scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0)
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} />}
+      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocView(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
       {tab === "chat" && rail && <MessagesSplit key={loc.id} />}
       {split && tab !== "chat" && tab !== "money" && (
-        <motion.div key={`${tab}:${loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
-          {tab === "home" && (employee ? <HomeEmployee split onOpen={open} /> : <HomeManager multi={userType === "multi"} split onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
+        <motion.div key={`${tab}:${locView ? locView.id : tab === "home" && multi ? "overview" : loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
+          {tab === "home" && <ScopeContext.Provider value={viewScope}><OpenLocationContext.Provider value={multi && !locView ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <HomeManager split onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
           {tab === "shifts" && <ShiftsTab split />}
           {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
       )}
       {!(tab === "chat" && rail) && !(split && tab !== "money") && <motion.div
-        key={`${tab}:${loc.id}`}
+        key={`${tab}:${locView ? locView.id : tab === "home" && multi ? "overview" : loc.id}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.18 }}
@@ -1408,7 +1654,7 @@ export function AndroidApp() {
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: rail ? 120 : 200 }}
       >
-        {tab === "home" && (employee ? <HomeEmployee onOpen={open} /> : <HomeManager multi={userType === "multi"} onOpen={open} onOpenBiz={(l, row) => { const from = boxOf(row); if (from) setBiz({ loc: l, from: { ...from, left: from.left - railW } }) }} />)}
+        {tab === "home" && <ScopeContext.Provider value={viewScope}><OpenLocationContext.Provider value={multi && !locView ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <HomeManager onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab filters={timeFilters} onFilter={setFilterSheet} />}
         {tab === "money" && <MoneyTab />}
@@ -1418,7 +1664,11 @@ export function AndroidApp() {
       <TopBar
         loc={loc}
         tab={tab}
-        canSwitch={multi}
+        // The overview has no title: it is the page you land on, and a title would only name the scope.
+        title={tab === "home" ? (locView ? locNameOf(locView) : "") : undefined}
+        back={tab === "home" && locView ? () => setLocView(null) : undefined}
+        // Home is a fixed overview, so only the other tabs have a switcher.
+        canSwitch={tab !== "home"}
         scrolled={scrolled}
         pending={pending}
         showClock={!employee && tab === "home" && !rail}
@@ -1439,10 +1689,8 @@ export function AndroidApp() {
         </div>
       )}
       {!rail && <div className="absolute inset-x-0 top-0 z-30">{addMenu("right-3 top-[calc(var(--safe-top)+56px)]", "top right")}</div>}
-      <LocationMenu open={menu} onClose={() => setMenu(false)} />
+      <LocationMenu open={menu} onClose={() => setMenu(false)} onAll={multi ? () => setAll(true) : undefined} onNewGroup={multi ? () => setGroupOpen(true) : undefined} onAddLocation={multi ? undefined : () => {}} />
 
-      {/* Pages and overviews fill the pane, so with a rail they open beside it, not over it. */}
-      {biz && <BusinessPage key={biz.loc.id} loc={biz.loc} from={biz.from} onClosed={() => setBiz(null)} />}
 
       <AnimatePresence>
         {stack.map((p, i) => (
@@ -1465,7 +1713,7 @@ export function AndroidApp() {
             }
             action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
           >
-            <PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} />
+            <ScopeContext.Provider value={viewScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
           </APage>
         ))}
       </AnimatePresence>
@@ -1477,6 +1725,7 @@ export function AndroidApp() {
         {sheet === "requests" && <RequestsSheet key="requests" loc={loc} multi={multi} side={rail} onClose={() => setSheet(null)} />}
         {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
         {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
+        {groupOpen && <AGroupSheet key="group" onClose={() => setGroupOpen(false)} />}
       </AnimatePresence>
 
           </AndroidFrame>

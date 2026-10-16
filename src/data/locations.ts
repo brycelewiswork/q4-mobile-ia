@@ -44,6 +44,8 @@ export type Availability = { kind: "all-day" } | { kind: "available" } | { kind:
 export type Location = {
   id: string
   name: string
+  /** The business this location belongs to; the location menu groups under it. */
+  company: string
   /** Unread notifications — drives the bell badge. */
   unread: number
 
@@ -154,7 +156,7 @@ export const USER_SCHEDULE: ({ loc: string; start: number; end: number } | null)
   null, // Mon — available, not scheduled
   { loc: "east44", start: 12, end: 20 }, // Tue
   { loc: "montgomery", start: 8.5, end: 14 }, // Wed — today
-  null, // Thu
+  { loc: "elm", start: 7, end: 15 }, // Thu
   { loc: "montgomery", start: 14, end: 20 }, // Fri
   { loc: "harbor", start: 8, end: 16 }, // Sat
   null, // Sun
@@ -166,6 +168,7 @@ const weekAt = (locId: string): Location["employee"]["week"] =>
 export const LOCATIONS: Location[] = [
   {
     id: "montgomery",
+    company: "Crunch Fitness",
     name: "Crunch Fitness - Montgomery",
     unread: 3,
     requests: [
@@ -299,134 +302,8 @@ export const LOCATIONS: Location[] = [
     },
   },
   {
-    id: "east44",
-    name: "East 44th St.",
-    unread: 0,
-    requests: [
-      { id: "e-r1", scope: "team", initials: "PN", who: "Priya Nair", title: "Timesheet Edit", detail: "Tue, Oct 6 · clock-out 2:10p", time: "8:04 AM" },
-      { id: "e-r2", scope: "team", initials: "MT", who: "Marcus Tran", title: "Shift Swap", detail: "Sat, Oct 10 · 6a – 2p", time: "Yesterday" },
-      { id: "e-r3", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Availability Request", detail: "Starting Oct 12th", time: "Pending" },
-    ],
-    profile: {
-      business: "Downtown Bakery",
-      address: "E 44th St.",
-      pin: "804217",
-      shoutout: {
-        quote: "“The morning rush was wild and Bryce kept the line moving the whole time. Every customer left with a smile and a warm croissant. We’re lucky to have him on the team.”",
-        author: "Dana Kim",
-      },
-      moreShoutouts: [
-        { quote: "Remembered a regular's order before she even reached the counter. That's the kind of thing people talk about.", author: "Jonah Pike", when: "Last week" },
-        { quote: "Taught the new hire the espresso machine in one shift. Patient, clear, and funny.", author: "Mina Ortiz", when: "3 weeks ago" },
-      ],
-      stats: { onTime: "94%", shifts: 31, hours: 28, rating: "4.8", missedClockOuts: 0, noShows: 0 },
-      timeOff: { balance: "64 hr", plan: "Part-time hourly", accrual: "Accrues 1 hr for every 30 worked", upcoming: [{ range: "Nov 3", status: "Approved" }] },
-      availability: [
-        { kind: "all-day" },
-        { kind: "all-day" },
-        { kind: "available" },
-        { kind: "blocked", range: "5:00 - 9:00 PM" },
-        { kind: "all-day" },
-        { kind: "blocked", range: "All day" },
-        { kind: "blocked", range: "All day" },
-      ],
-    },
-    sales: 86250,
-    laborPct: 16.5,
-    weekSales: [88400, 76900, 86250, 0, 0, 0, 0],
-    weekLabor: [14350, 12480, 14231, 0, 0, 0, 0],
-    weekForecast: [0, 0, 0, 81200, 99800, 112400, 90100],
-    managerMessage: "Good morning! Everyone is clocked in. Sales are running 6% behind forecast, so lunch coverage is worth a look.",
-    status: {
-      people: { actual: [4, 4, 5, 5, 5, 6, 6, 4], planned: [4, 5, 5, 5, 6, 6, 6, 4] },
-      sales: { actual: [820, 940, 1010, 1150, 1260, 1480, 1520, 1100], planned: [900, 1050, 1100, 1200, 1350, 1560, 1600, 1200] },
-      traffic: { actual: [22, 27, 31, 29, 36, 48, 52, 33], planned: [25, 30, 33, 32, 40, 50, 55, 38] },
-    },
-    review: [
-      { title: "Timesheet edit", detail: "Priya N. · Tue" },
-      { title: "Shift swap request", detail: "Marcus T. ↔ Dana K." },
-    ],
-    myWeek: [
-      { day: "Tue", time: "7a – 3p", role: "Opening manager" },
-      { day: "Thu", time: "7a – 3p", role: "Opening manager" },
-    ],
-    events: [{ title: "Fire inspection", when: "Wed · 10a" }],
-    team: [
-      { name: "Priya Nair", role: "Baker", status: "on", detail: "Since 5:00a", seen: "1w", phone: true },
-      { name: "Marcus Tran", role: "Counter", status: "on", detail: "Since 6:30a", seen: "4h", phone: true },
-      { name: "Dana Kim", role: "Shift lead", status: "scheduled", detail: "Starts 12:00p", seen: "6d", phone: false },
-      { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today", seen: "2d", phone: true },
-    ],
-    messages: [
-      { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
-      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: true },
-      { id: "m3", kind: "group", title: "Baristas", preview: "Luis: We are low on oat milk — reordering", time: "Yesterday", unread: false },
-      { id: "m4", kind: "dm", title: "Dana Kim", preview: "Counter is covered until 3 — heading out", time: "8:25 am", unread: false },
-      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: true, photo: 2 },
-      { id: "m6", kind: "dm", title: "Priya Nair", preview: "Thanks for sorting the delivery window", time: "Mon", unread: false, photo: 3 },
-      { id: "m7", kind: "dm", title: "Luis Ortega", preview: "Oat milk is on the truck for tomorrow", time: "Mon", unread: false },
-      { id: "m8", kind: "dm", title: "Dana Kim", preview: "Can I swap Thursday with Marcus?", time: "Mon", unread: false },
-      { id: "m9", kind: "group", title: "Bakers", preview: "Priya: Croissant batch came out great", time: "Sun", unread: false },
-      { id: "m10", kind: "dm", title: "Hana Park", preview: "Register 2 is jammed again", time: "Sun", unread: false },
-      { id: "m11", kind: "dm", title: "Theo Rao", preview: "I can close on Saturday", time: "Sat", unread: false },
-      { id: "m12", kind: "dm", title: "Nia Cole", preview: "Thanks for the tip on the espresso dial", time: "Sat", unread: false },
-      { id: "m13", kind: "dm", title: "Eli Moss", preview: "Out sick tomorrow, sorry", time: "Fri", unread: false },
-      { id: "m14", kind: "dm", title: "Sam Ono", preview: "Delivery window moved to 7", time: "Fri", unread: false },
-    ],
-    timesheets: [
-      { id: "t1", name: "Marcus Tran", role: "Counter", dept: "Front of house", start: "6:30 am", end: "2:12 pm", total: "7 hrs 42 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Missing unpaid break"] },
-      { id: "t2", name: "Priya Nair", role: "Baker", dept: "Back of house", start: "5:00 am", end: "1:05 pm", total: "8 hrs 5 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
-      { id: "t3", name: "Luis Ortega", role: "Barista", dept: "Front of house", start: "10:53 am", end: "5:06 pm", total: "6 hrs 13 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break"] },
-      { id: "t4", name: "Dana Kim", role: "Counter", dept: "Front of house", start: "7:00 am", end: "2:30 pm", total: "7 hrs 30 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
-      { id: "t5", name: "Hana Park", role: "Barista", dept: "Front of house", start: "9:10 am", end: "5:15 pm", total: "8 hrs 5 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Late clock-in"] },
-      { id: "t6", name: "Theo Rao", role: "Baker", dept: "Back of house", start: "4:30 am", end: "12:40 pm", total: "8 hrs 10 min", rest: "Meal (30 min)", issues: ["Missing paid break"] },
-      { id: "t7", name: "Eli Moss", role: "Counter", dept: "Front of house", start: "11:00 am", end: "6:45 pm", total: "7 hrs 45 min", rest: "Rest (10 min)", issues: ["Missing unpaid break", "Early clock-out"] },
-    ],
-    assistant: [
-      "Which shifts are short-staffed this week?",
-      "How does labor cost compare to sales since Monday?",
-      "Draft an announcement about the new seasonal menu.",
-    ],
-    conversations: [
-      { id: "c1", title: "Hire new dishwasher", time: "12m", pinned: true },
-      { id: "c2", title: "Cost of beef averages", time: "1h", pinned: true },
-      { id: "c3", title: "Marcus clocked in late again", time: "3h", pinned: true },
-      { id: "c4", title: "Seasonal menu announcement", time: "Yesterday" },
-      { id: "c5", title: "Oat milk reorder", time: "Yesterday" },
-      { id: "c6", title: "Labor vs. sales since Monday", time: "Mon" },
-      { id: "c7", title: "Holiday hours", time: "Oct 5" },
-    ],
-    tasks: [
-      { id: "e1", title: "Proof tomorrow’s dough", due: "Today · 4p", done: false },
-      { id: "e2", title: "Order flour and butter", due: "Today · 5p", done: false },
-      { id: "e3", title: "Fire inspection prep", due: "Wed", done: false },
-    ],
-    managerLog: [
-      { when: "Today · 6:10a", author: "Priya N.", note: "Oven 2 running 15° hot. Adjusted bake times." },
-      { when: "Yesterday", author: "Marcus T.", note: "Sold out of croissants by 9a. Bumping the morning batch." },
-    ],
-    payroll: {
-      nextPayday: "Wed, Oct 16",
-      period: "Sep 29 – Oct 12",
-      hours: "58 hrs",
-      gross: "$1,160.00",
-      stubs: [
-        { period: "Sep 15 – Sep 28", net: "$924.80" },
-        { period: "Sep 1 – Sep 14", net: "$951.12" },
-      ],
-    },
-    employee: {
-      greeting: "Good morning! You’re not scheduled at East 44th St. today. Your next shift is Tuesday at 12pm.",
-      week: weekAt("east44"),
-      todayIndex: 2,
-      shiftmates: { photos: [1, 3], extra: 0 },
-      accessory: { title: "Not clocked in", subtitle: "Shift starts at 12pm" },
-      timeClock: { shift: "12:00 PM – 8:00 PM", role: "Counter", roles: ["Counter", "Baker", "Barista"] },
-      rate: "$17.25 / hr",
-    },
-  },
-  {
     id: "harbor",
+    company: "Crunch Fitness",
     name: "Crunch Fitness - Harbor Point",
     unread: 12,
     requests: [
@@ -565,6 +442,344 @@ export const LOCATIONS: Location[] = [
       accessory: { title: "On the clock", subtitle: "Lunch at 12:30pm" },
       timeClock: { shift: "8:00 AM – 4:00 PM", role: "Floor lead", roles: ["Floor lead", "Front desk", "Trainer"] },
       rate: "$19.00 / hr",
+    },  },
+  {
+    id: "east44",
+    company: "Downtown Bakery",
+    name: "Downtown Bakery - East 44th St.",
+    unread: 0,
+    requests: [
+      { id: "e-r1", scope: "team", initials: "PN", who: "Priya Nair", title: "Timesheet Edit", detail: "Tue, Oct 6 · clock-out 2:10p", time: "8:04 AM" },
+      { id: "e-r2", scope: "team", initials: "MT", who: "Marcus Tran", title: "Shift Swap", detail: "Sat, Oct 10 · 6a – 2p", time: "Yesterday" },
+      { id: "e-r3", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Availability Request", detail: "Starting Oct 12th", time: "Pending" },
+    ],
+    profile: {
+      business: "Downtown Bakery",
+      address: "E 44th St.",
+      pin: "804217",
+      shoutout: {
+        quote: "“The morning rush was wild and Bryce kept the line moving the whole time. Every customer left with a smile and a warm croissant. We’re lucky to have him on the team.”",
+        author: "Dana Kim",
+      },
+      moreShoutouts: [
+        { quote: "Remembered a regular's order before she even reached the counter. That's the kind of thing people talk about.", author: "Jonah Pike", when: "Last week" },
+        { quote: "Taught the new hire the espresso machine in one shift. Patient, clear, and funny.", author: "Mina Ortiz", when: "3 weeks ago" },
+      ],
+      stats: { onTime: "94%", shifts: 31, hours: 28, rating: "4.8", missedClockOuts: 0, noShows: 0 },
+      timeOff: { balance: "64 hr", plan: "Part-time hourly", accrual: "Accrues 1 hr for every 30 worked", upcoming: [{ range: "Nov 3", status: "Approved" }] },
+      availability: [
+        { kind: "all-day" },
+        { kind: "all-day" },
+        { kind: "available" },
+        { kind: "blocked", range: "5:00 - 9:00 PM" },
+        { kind: "all-day" },
+        { kind: "blocked", range: "All day" },
+        { kind: "blocked", range: "All day" },
+      ],
+    },
+    sales: 86250,
+    laborPct: 16.5,
+    weekSales: [88400, 76900, 86250, 0, 0, 0, 0],
+    weekLabor: [14350, 12480, 14231, 0, 0, 0, 0],
+    weekForecast: [0, 0, 0, 81200, 99800, 112400, 90100],
+    managerMessage: "Good morning! Everyone is clocked in. Sales are running 6% behind forecast, so lunch coverage is worth a look.",
+    status: {
+      people: { actual: [4, 4, 5, 5, 5, 6, 6, 4], planned: [4, 5, 5, 5, 6, 6, 6, 4] },
+      sales: { actual: [820, 940, 1010, 1150, 1260, 1480, 1520, 1100], planned: [900, 1050, 1100, 1200, 1350, 1560, 1600, 1200] },
+      traffic: { actual: [22, 27, 31, 29, 36, 48, 52, 33], planned: [25, 30, 33, 32, 40, 50, 55, 38] },
+    },
+    review: [
+      { title: "Timesheet edit", detail: "Priya N. · Tue" },
+      { title: "Shift swap request", detail: "Marcus T. ↔ Dana K." },
+    ],
+    myWeek: [
+      { day: "Tue", time: "7a – 3p", role: "Opening manager" },
+      { day: "Thu", time: "7a – 3p", role: "Opening manager" },
+    ],
+    events: [{ title: "Fire inspection", when: "Wed · 10a" }],
+    team: [
+      { name: "Priya Nair", role: "Baker", status: "on", detail: "Since 5:00a", seen: "1w", phone: true },
+      { name: "Marcus Tran", role: "Counter", status: "on", detail: "Since 6:30a", seen: "4h", phone: true },
+      { name: "Dana Kim", role: "Shift lead", status: "scheduled", detail: "Starts 12:00p", seen: "6d", phone: false },
+      { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today", seen: "2d", phone: true },
+    ],
+    messages: [
+      { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
+      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: true },
+      { id: "m3", kind: "group", title: "Baristas", preview: "Luis: We are low on oat milk — reordering", time: "Yesterday", unread: false },
+      { id: "m4", kind: "dm", title: "Dana Kim", preview: "Counter is covered until 3 — heading out", time: "8:25 am", unread: false },
+      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: true, photo: 2 },
+      { id: "m6", kind: "dm", title: "Priya Nair", preview: "Thanks for sorting the delivery window", time: "Mon", unread: false, photo: 3 },
+      { id: "m7", kind: "dm", title: "Luis Ortega", preview: "Oat milk is on the truck for tomorrow", time: "Mon", unread: false },
+      { id: "m8", kind: "dm", title: "Dana Kim", preview: "Can I swap Thursday with Marcus?", time: "Mon", unread: false },
+      { id: "m9", kind: "group", title: "Bakers", preview: "Priya: Croissant batch came out great", time: "Sun", unread: false },
+      { id: "m10", kind: "dm", title: "Hana Park", preview: "Register 2 is jammed again", time: "Sun", unread: false },
+      { id: "m11", kind: "dm", title: "Theo Rao", preview: "I can close on Saturday", time: "Sat", unread: false },
+      { id: "m12", kind: "dm", title: "Nia Cole", preview: "Thanks for the tip on the espresso dial", time: "Sat", unread: false },
+      { id: "m13", kind: "dm", title: "Eli Moss", preview: "Out sick tomorrow, sorry", time: "Fri", unread: false },
+      { id: "m14", kind: "dm", title: "Sam Ono", preview: "Delivery window moved to 7", time: "Fri", unread: false },
+    ],
+    timesheets: [
+      { id: "t1", name: "Marcus Tran", role: "Counter", dept: "Front of house", start: "6:30 am", end: "2:12 pm", total: "7 hrs 42 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Missing unpaid break"] },
+      { id: "t2", name: "Priya Nair", role: "Baker", dept: "Back of house", start: "5:00 am", end: "1:05 pm", total: "8 hrs 5 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
+      { id: "t3", name: "Luis Ortega", role: "Barista", dept: "Front of house", start: "10:53 am", end: "5:06 pm", total: "6 hrs 13 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break"] },
+      { id: "t4", name: "Dana Kim", role: "Counter", dept: "Front of house", start: "7:00 am", end: "2:30 pm", total: "7 hrs 30 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
+      { id: "t5", name: "Hana Park", role: "Barista", dept: "Front of house", start: "9:10 am", end: "5:15 pm", total: "8 hrs 5 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Late clock-in"] },
+      { id: "t6", name: "Theo Rao", role: "Baker", dept: "Back of house", start: "4:30 am", end: "12:40 pm", total: "8 hrs 10 min", rest: "Meal (30 min)", issues: ["Missing paid break"] },
+      { id: "t7", name: "Eli Moss", role: "Counter", dept: "Front of house", start: "11:00 am", end: "6:45 pm", total: "7 hrs 45 min", rest: "Rest (10 min)", issues: ["Missing unpaid break", "Early clock-out"] },
+    ],
+    assistant: [
+      "Which shifts are short-staffed this week?",
+      "How does labor cost compare to sales since Monday?",
+      "Draft an announcement about the new seasonal menu.",
+    ],
+    conversations: [
+      { id: "c1", title: "Hire new dishwasher", time: "12m", pinned: true },
+      { id: "c2", title: "Cost of beef averages", time: "1h", pinned: true },
+      { id: "c3", title: "Marcus clocked in late again", time: "3h", pinned: true },
+      { id: "c4", title: "Seasonal menu announcement", time: "Yesterday" },
+      { id: "c5", title: "Oat milk reorder", time: "Yesterday" },
+      { id: "c6", title: "Labor vs. sales since Monday", time: "Mon" },
+      { id: "c7", title: "Holiday hours", time: "Oct 5" },
+    ],
+    tasks: [
+      { id: "e1", title: "Proof tomorrow’s dough", due: "Today · 4p", done: false },
+      { id: "e2", title: "Order flour and butter", due: "Today · 5p", done: false },
+      { id: "e3", title: "Fire inspection prep", due: "Wed", done: false },
+    ],
+    managerLog: [
+      { when: "Today · 6:10a", author: "Priya N.", note: "Oven 2 running 15° hot. Adjusted bake times." },
+      { when: "Yesterday", author: "Marcus T.", note: "Sold out of croissants by 9a. Bumping the morning batch." },
+    ],
+    payroll: {
+      nextPayday: "Wed, Oct 16",
+      period: "Sep 29 – Oct 12",
+      hours: "58 hrs",
+      gross: "$1,160.00",
+      stubs: [
+        { period: "Sep 15 – Sep 28", net: "$924.80" },
+        { period: "Sep 1 – Sep 14", net: "$951.12" },
+      ],
+    },
+    employee: {
+      greeting: "Good morning! You’re not scheduled at East 44th St. today. Your next shift is Tuesday at 12pm.",
+      week: weekAt("east44"),
+      todayIndex: 2,
+      shiftmates: { photos: [1, 3], extra: 0 },
+      accessory: { title: "Not clocked in", subtitle: "Shift starts at 12pm" },
+      timeClock: { shift: "12:00 PM – 8:00 PM", role: "Counter", roles: ["Counter", "Baker", "Barista"] },
+      rate: "$17.25 / hr",
+    },
+  },
+  {
+    id: "elm",
+    company: "Downtown Bakery",
+    name: "Downtown Bakery - Elm Street",
+    unread: 2,
+    requests: [
+      { id: "m-r1", scope: "team", initials: "PN", who: "Priya Nair", title: "Timesheet Edit", detail: "Tue, Oct 6 · clock-out 2:10p", time: "8:04 AM" },
+      { id: "m-r2", scope: "team", initials: "MT", who: "Marcus Tran", title: "Shift Swap", detail: "Sat, Oct 10 · 6a – 2p", time: "Yesterday" },
+      { id: "m-r3", scope: "mine", initials: "BL", who: "Bryce Lewis", title: "Availability Request", detail: "Starting Oct 12th", time: "Pending" },
+    ],
+    profile: {
+      business: "Downtown Bakery",
+      address: "Elm St.",
+      pin: "615830",
+      shoutout: {
+        quote: "“The morning rush was wild and Bryce kept the line moving the whole time. Every customer left with a smile and a warm croissant. We’re lucky to have him on the team.”",
+        author: "Dana Kim",
+      },
+      moreShoutouts: [
+        { quote: "Remembered a regular's order before she even reached the counter. That's the kind of thing people talk about.", author: "Jonah Pike", when: "Last week" },
+        { quote: "Taught the new hire the espresso machine in one shift. Patient, clear, and funny.", author: "Mina Ortiz", when: "3 weeks ago" },
+      ],
+      stats: { onTime: "94%", shifts: 31, hours: 28, rating: "4.8", missedClockOuts: 0, noShows: 0 },
+      timeOff: { balance: "64 hr", plan: "Part-time hourly", accrual: "Accrues 1 hr for every 30 worked", upcoming: [{ range: "Nov 3", status: "Approved" }] },
+      availability: [
+        { kind: "all-day" },
+        { kind: "all-day" },
+        { kind: "available" },
+        { kind: "blocked", range: "5:00 - 9:00 PM" },
+        { kind: "all-day" },
+        { kind: "blocked", range: "All day" },
+        { kind: "blocked", range: "All day" },
+      ],
+    },
+    sales: 86250,
+    laborPct: 16.5,
+    weekSales: [88400, 76900, 86250, 0, 0, 0, 0],
+    weekLabor: [14350, 12480, 14231, 0, 0, 0, 0],
+    weekForecast: [0, 0, 0, 81200, 99800, 112400, 90100],
+    managerMessage: "Good morning! Everyone is clocked in. Sales are running 6% behind forecast, so lunch coverage is worth a look.",
+    status: {
+      people: { actual: [4, 4, 5, 5, 5, 6, 6, 4], planned: [4, 5, 5, 5, 6, 6, 6, 4] },
+      sales: { actual: [820, 940, 1010, 1150, 1260, 1480, 1520, 1100], planned: [900, 1050, 1100, 1200, 1350, 1560, 1600, 1200] },
+      traffic: { actual: [22, 27, 31, 29, 36, 48, 52, 33], planned: [25, 30, 33, 32, 40, 50, 55, 38] },
+    },
+    review: [
+      { title: "Timesheet edit", detail: "Priya N. · Tue" },
+      { title: "Shift swap request", detail: "Marcus T. ↔ Dana K." },
+    ],
+    myWeek: [
+      { day: "Tue", time: "7a – 3p", role: "Opening manager" },
+      { day: "Thu", time: "7a – 3p", role: "Opening manager" },
+    ],
+    events: [{ title: "Fire inspection", when: "Wed · 10a" }],
+    team: [
+      { name: "Priya Nair", role: "Baker", status: "on", detail: "Since 5:00a", seen: "1w", phone: true },
+      { name: "Marcus Tran", role: "Counter", status: "on", detail: "Since 6:30a", seen: "4h", phone: true },
+      { name: "Dana Kim", role: "Shift lead", status: "scheduled", detail: "Starts 12:00p", seen: "6d", phone: false },
+      { name: "Luis Ortega", role: "Barista", status: "off", detail: "Off today", seen: "2d", phone: true },
+    ],
+    messages: [
+      { id: "m1", kind: "announcement", title: "Announcements", preview: "Priya: New seasonal menu starts Monday", time: "9:05 am", unread: true },
+      { id: "m2", kind: "team", title: "Team", preview: "Marcus: Counter was non-stop this morning", time: "7:30 am", unread: true },
+      { id: "m3", kind: "group", title: "Baristas", preview: "Luis: We are low on oat milk — reordering", time: "Yesterday", unread: false },
+      { id: "m4", kind: "dm", title: "Dana Kim", preview: "Counter is covered until 3 — heading out", time: "8:25 am", unread: false },
+      { id: "m5", kind: "dm", title: "Marcus Tran", preview: "Grinder hopper is empty — refilling now", time: "7:08 am", unread: true, photo: 2 },
+      { id: "m6", kind: "dm", title: "Priya Nair", preview: "Thanks for sorting the delivery window", time: "Mon", unread: false, photo: 3 },
+      { id: "m7", kind: "dm", title: "Luis Ortega", preview: "Oat milk is on the truck for tomorrow", time: "Mon", unread: false },
+      { id: "m8", kind: "dm", title: "Dana Kim", preview: "Can I swap Thursday with Marcus?", time: "Mon", unread: false },
+      { id: "m9", kind: "group", title: "Bakers", preview: "Priya: Croissant batch came out great", time: "Sun", unread: false },
+      { id: "m10", kind: "dm", title: "Hana Park", preview: "Register 2 is jammed again", time: "Sun", unread: false },
+      { id: "m11", kind: "dm", title: "Theo Rao", preview: "I can close on Saturday", time: "Sat", unread: false },
+      { id: "m12", kind: "dm", title: "Nia Cole", preview: "Thanks for the tip on the espresso dial", time: "Sat", unread: false },
+      { id: "m13", kind: "dm", title: "Eli Moss", preview: "Out sick tomorrow, sorry", time: "Fri", unread: false },
+      { id: "m14", kind: "dm", title: "Sam Ono", preview: "Delivery window moved to 7", time: "Fri", unread: false },
+    ],
+    timesheets: [
+      { id: "t1", name: "Marcus Tran", role: "Counter", dept: "Front of house", start: "6:30 am", end: "2:12 pm", total: "7 hrs 42 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Missing unpaid break"] },
+      { id: "t2", name: "Priya Nair", role: "Baker", dept: "Back of house", start: "5:00 am", end: "1:05 pm", total: "8 hrs 5 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
+      { id: "t3", name: "Luis Ortega", role: "Barista", dept: "Front of house", start: "10:53 am", end: "5:06 pm", total: "6 hrs 13 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break"] },
+      { id: "t4", name: "Dana Kim", role: "Counter", dept: "Front of house", start: "7:00 am", end: "2:30 pm", total: "7 hrs 30 min", rest: "Rest (10 min)", issues: ["Missing unpaid break"] },
+      { id: "t5", name: "Hana Park", role: "Barista", dept: "Front of house", start: "9:10 am", end: "5:15 pm", total: "8 hrs 5 min", rest: "Rest (10 min) • Meal (30 min)", issues: ["Missing paid break", "Late clock-in"] },
+      { id: "t6", name: "Theo Rao", role: "Baker", dept: "Back of house", start: "4:30 am", end: "12:40 pm", total: "8 hrs 10 min", rest: "Meal (30 min)", issues: ["Missing paid break"] },
+      { id: "t7", name: "Eli Moss", role: "Counter", dept: "Front of house", start: "11:00 am", end: "6:45 pm", total: "7 hrs 45 min", rest: "Rest (10 min)", issues: ["Missing unpaid break", "Early clock-out"] },
+    ],
+    assistant: [
+      "Which shifts are short-staffed this week?",
+      "How does labor cost compare to sales since Monday?",
+      "Draft an announcement about the new seasonal menu.",
+    ],
+    conversations: [
+      { id: "c1", title: "Hire new dishwasher", time: "12m", pinned: true },
+      { id: "c2", title: "Cost of beef averages", time: "1h", pinned: true },
+      { id: "c3", title: "Marcus clocked in late again", time: "3h", pinned: true },
+      { id: "c4", title: "Seasonal menu announcement", time: "Yesterday" },
+      { id: "c5", title: "Oat milk reorder", time: "Yesterday" },
+      { id: "c6", title: "Labor vs. sales since Monday", time: "Mon" },
+      { id: "c7", title: "Holiday hours", time: "Oct 5" },
+    ],
+    tasks: [
+      { id: "e1", title: "Proof tomorrow’s dough", due: "Today · 4p", done: false },
+      { id: "e2", title: "Order flour and butter", due: "Today · 5p", done: false },
+      { id: "e3", title: "Fire inspection prep", due: "Wed", done: false },
+    ],
+    managerLog: [
+      { when: "Today · 6:10a", author: "Priya N.", note: "Oven 2 running 15° hot. Adjusted bake times." },
+      { when: "Yesterday", author: "Marcus T.", note: "Sold out of croissants by 9a. Bumping the morning batch." },
+    ],
+    payroll: {
+      nextPayday: "Wed, Oct 16",
+      period: "Sep 29 – Oct 12",
+      hours: "58 hrs",
+      gross: "$1,160.00",
+      stubs: [
+        { period: "Sep 15 – Sep 28", net: "$924.80" },
+        { period: "Sep 1 – Sep 14", net: "$951.12" },
+      ],
+    },
+    employee: {
+      greeting: "Good morning! You’re not scheduled at Elm Street today. Your next shift is Thursday at 7am.",
+      week: weekAt("elm"),
+      todayIndex: 2,
+      shiftmates: { photos: [1, 3], extra: 0 },
+      accessory: { title: "Not clocked in", subtitle: "Shift starts at 7am" },
+      timeClock: { shift: "7:00 AM – 3:00 PM", role: "Counter", roles: ["Counter", "Baker", "Barista"] },
+      rate: "$17.25 / hr",
     },
   },
 ]
+
+/** Locations in menu order, grouped under their company (LOCATIONS keeps each company's locations together). */
+export const COMPANIES: { name: string; locations: Location[] }[] = LOCATIONS.reduce<{ name: string; locations: Location[] }[]>((groups, l) => {
+  const g = groups.find((x) => x.name === l.company)
+  if (g) g.locations.push(l)
+  else groups.push({ name: l.company, locations: [l] })
+  return groups
+}, [])
+
+/** A location's name without its company prefix ("Montgomery"), for rows that sit under a company header. */
+export const shortLocationName = (l: Location) => l.name.replace(`${l.company} - `, "")
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const clockLabel = (h: number) => {
+  const hr = Math.floor(h)
+  const min = Math.round((h - hr) * 60)
+  return `${hr % 12 || 12}${min ? `:${String(min).padStart(2, "0")}` : ""}${hr >= 12 ? "p" : "a"}`
+}
+
+/** When the signed-in person next works at a location ("Today 8:30a", "Tomorrow 7a", "Fri 2p"), or null if they have no shift there this week. */
+export function nextShiftAt(locId: string): string | null {
+  for (let step = 0; step < 7; step++) {
+    const i = (TODAY_INDEX + step) % 7
+    const d = USER_SCHEDULE[i]
+    if (d && d.loc === locId) return `${step === 0 ? "Today" : step === 1 ? "Tomorrow" : DAY_NAMES[i]} ${clockLabel(d.start)}`
+  }
+  return null
+}
+
+/** Unread conversations at a location. */
+export const unreadAt = (l: Location) => l.messages.filter((m) => m.unread).length
+
+/** The person's next shift at any location: when, and where. */
+export function nextShiftAnywhere(): { when: string; loc: Location } | null {
+  for (let step = 0; step < 7; step++) {
+    const i = (TODAY_INDEX + step) % 7
+    const d = USER_SCHEDULE[i]
+    const loc = d && LOCATIONS.find((l) => l.id === d.loc)
+    if (d && loc) return { when: `${step === 0 ? "Today" : step === 1 ? "Tomorrow" : DAY_NAMES[i]} at ${clockLabel(d.start)}`, loc }
+  }
+  return null
+}
+
+/** How far off a "Fri · 5p" / "Today · 11a" / "Wed" is, in hours from the start of today (days counted forward, so a past day wraps to next week). */
+function whenRank(when: string) {
+  const [day, time] = when.split("·").map((x) => x.trim())
+  const m = /(\d+)\s*([ap])/.exec(time ?? "")
+  // A day with no time on it is due by the end of that day.
+  const hour = m ? (Number(m[1]) % 12) + (m[2] === "p" ? 12 : 0) : 23
+  const offset = day === "Today" ? 0 : day === "Tomorrow" ? 1 : (DAY_NAMES.indexOf(day) - TODAY_INDEX + 7) % 7
+  return offset * 24 + hour
+}
+
+/** Events from several locations, soonest first, each tagged with where it is. */
+export function upcomingEvents(scope: Location[], limit = 4) {
+  return scope
+    .flatMap((l) => l.events.map((e) => ({ ...e, loc: l })))
+    .sort((a, b) => whenRank(a.when) - whenRank(b.when))
+    .slice(0, limit)
+}
+
+/** Tasks from several locations, due soonest first, each tagged with where it is. */
+export function upcomingTasks(scope: Location[], limit = 4) {
+  return scope
+    .flatMap((l) => l.tasks.map((t) => ({ ...t, loc: l })))
+    .sort((a, b) => whenRank(a.due) - whenRank(b.due))
+    .slice(0, limit)
+}
+
+/** The newest manager-log notes across locations, each tagged with where it is. Times are "Today · 6:10a", "Yesterday", "Mon". */
+export function recentLog(scope: Location[], limit = 3) {
+  const ago = (when: string) => {
+    const [day, time] = when.split("·").map((x) => x.trim())
+    const m = /(\d+)(?::\d+)?\s*([ap])/.exec(time ?? "")
+    const hour = m ? (Number(m[1]) % 12) + (m[2] === "p" ? 12 : 0) : 12
+    const days = day === "Today" ? 0 : day === "Yesterday" ? 1 : (TODAY_INDEX - DAY_NAMES.indexOf(day) + 7) % 7 || 7
+    return days * 24 - hour
+  }
+  return scope
+    .flatMap((l) => l.managerLog.map((e) => ({ ...e, loc: l })))
+    .sort((a, b) => ago(a.when) - ago(b.when))
+    .slice(0, limit)
+}

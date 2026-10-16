@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { IconBriefcase, IconFilter, IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, IconCoffee, IconSearch, IconSpeakerphone, IconUsers, IconUsersGroup } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import type { FilterKind, TimeFilters } from "@/components/ios/TimeFilterSheet"
@@ -12,6 +12,8 @@ import { dayLabel, payPeriodOf, rangeLabel, weekdayIndex, weeksFromBase } from "
 import { useDateStore } from "@/store/useDateStore"
 import { shiftKey, useShiftsStore } from "@/store/useShiftsStore"
 import { useStructure } from "@/store/useViewStore"
+import { useScope } from "@/store/useLocationStore"
+import { ByLocation, LocationHeader } from "@/components/ios/LocationHeader"
 import { Bar, WireCard, WireList } from "@/components/wire/Wire"
 
 /** The big title each tab page opens with. */
@@ -70,24 +72,31 @@ const FILTERS: { id: Filter; label: string }[] = [
 ]
 
 /** Shifts: a week strip, filters, and the selected day's schedule at this location. */
-export function ShiftsPage({ loc, split }: { loc: Location; /** Two columns (iPad landscape): the schedule on the left, the chosen shift on the right. */ split?: boolean }) {
+export function ShiftsPage({ split }: { loc?: Location; /** Two columns (iPad landscape): the schedule on the left, the chosen shift on the right. */ split?: boolean }) {
   const [selKey, setSelKey] = useState<string | null>(null)
   const date = useDateStore((s) => s.date)
   const [filter, setFilter] = useState<Filter>("all")
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const day = weekdayIndex(date)
   // The data is a pattern, so different weeks reshuffle it a little.
-  const added = useShiftsStore((st) => st.added[shiftKey(loc.id, date)])
-  const all = [...dayRows(loc, (((day + weeksFromBase(date) * 3) % 7) + 7) % 7), ...(added ?? [])].sort((a, b) => a.start - b.start)
-  const rows = all.filter((r) => (filter === "mine" ? r.mine : filter === "open" ? r.open : true))
+  const scope = useScope()
+  const grouped = scope.length > 1
+  const addedMap = useShiftsStore((st) => st.added)
+  const groups = scope.map((l) => {
+    const added = addedMap[shiftKey(l.id, date)]
+    const every = [...dayRows(l, (((day + weeksFromBase(date) * 3) % 7) + 7) % 7), ...(added ?? [])].sort((a, b) => a.start - b.start)
+    return { l, every, rows: every.filter((r) => (filter === "mine" ? r.mine : filter === "open" ? r.open : true)).map((r) => ({ ...r, l })) }
+  })
+  const rows = groups.flatMap((g) => g.rows)
   // The day's summary ignores the filters: covered hours are the staffed shifts, open shifts are still to fill.
-  const staffed = all.filter((r) => !r.open)
+  const every = groups.flatMap((g) => g.every)
+  const staffed = every.filter((r) => !r.open)
   const hours = Math.round(staffed.reduce((n, r) => n + (r.end - r.start), 0))
-  const openCount = all.length - staffed.length
+  const openCount = every.length - staffed.length
   const wire = useStructure()
 
-  const keyOf = (r: Row, i: number) => `${r.who}-${i}`
-  const chosen = rows.find((r, i) => keyOf(r, i) === selKey) ?? rows[0]
+  const keyOf = (r: (typeof rows)[number]) => `${r.l.id}-${r.who}-${rows.indexOf(r)}`
+  const chosen = rows.find((r) => keyOf(r) === selKey) ?? rows[0]
 
   const main = (
     <>
@@ -124,16 +133,20 @@ export function ShiftsPage({ loc, split }: { loc: Location; /** Two columns (iPa
         onClose={() => setMenu(null)}
       />
 
-      {/* One container, a row per shift, hairline dividers between. */}
-      {wire ? <WireList rows={split ? 14 : 6} trailing /> : <Card className="overflow-hidden">
-        {rows.length === 0 ? (
+      {/* One container per location, a row per shift, hairline dividers between. */}
+      {wire ? <WireList rows={split ? 14 : grouped ? 3 : 6} trailing /> : groups.map(({ l, rows: group }) => (
+        grouped && group.length === 0 ? null : (
+        <div key={l.id} className={grouped ? "pb-2" : undefined}>
+        {grouped && <LocationHeader loc={l} className="px-0 pt-1" />}
+        <Card className="overflow-hidden">
+        {group.length === 0 ? (
           <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No shifts</p>
         ) : (
-          rows.map((r, i) => (
+          group.map((r, i) => (
             // The padding is on the outer row and the divider on the inner one, so dividers stop 16px short of both edges.
             <div
-              key={keyOf(r, i)}
-              onClick={split ? () => setSelKey(keyOf(r, i)) : undefined}
+              key={keyOf(r)}
+              onClick={split ? () => setSelKey(keyOf(r)) : undefined}
               role={split ? "button" : undefined}
               aria-current={split && chosen === r ? "true" : undefined}
               className={cn("px-4", split && "cursor-pointer", split && chosen === r && "bg-[#8f55e5]/[0.1]")}
@@ -166,7 +179,11 @@ export function ShiftsPage({ loc, split }: { loc: Location; /** Two columns (iPa
             </div>
           ))
         )}
-      </Card>}
+        </Card>
+        </div>
+        )
+      ))}
+      {grouped && !wire && rows.length === 0 && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No shifts</Card>}
     </>
   )
   if (!split) return main
@@ -177,7 +194,7 @@ export function ShiftsPage({ loc, split }: { loc: Location; /** Two columns (iPa
         {main}
       </div>
       <div className={cn(col, "min-w-0 flex-1 overflow-y-auto pl-2 pr-4")} style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
-        {chosen ? <ShiftDetail row={chosen} loc={loc} date={date} /> : <WireCard title="No shift selected" h={200} />}
+        {chosen ? <ShiftDetail row={chosen} loc={chosen.l} date={date} /> : <WireCard title="No shift selected" h={200} />}
       </div>
     </div>
   )
@@ -233,7 +250,7 @@ function ShiftDetail({ row: r, loc, date }: { row: Row; loc: Location; date: Dat
 }
 
 /** Time (formerly Timesheets): a Day / Pay period segmented control, filter chips, and the timesheets needing review. */
-export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilters; onFilter: (k: FilterKind) => void; loc: Location; /** Two columns (iPad landscape): the day's timesheets on the left, the pay period on the right. */ split?: boolean }) {
+export function TimePage({ split, filters, onFilter }: { filters: TimeFilters; onFilter: (k: FilterKind) => void; loc?: Location; /** Two columns (iPad landscape): the day's timesheets on the left, the pay period on the right. */ split?: boolean }) {
   const date = useDateStore((s) => s.date)
   const storedView = useDateStore((s) => s.timeView)
   // Split view shows both, so the Day / Pay period choice doesn't apply.
@@ -242,16 +259,22 @@ export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilte
   const [resolved, setResolved] = useState<Record<string, boolean>>({})
   const [open, setOpen] = useState(true)
   // Each filter narrows the list when it has anything chosen; an empty one lets everything through.
-  const pending = loc.timesheets.filter(
-    (t) =>
-      !resolved[t.id] &&
-      (!filters.roles.length || filters.roles.includes(t.role)) &&
-      (!filters.team.length || filters.team.includes(t.name)) &&
-      (!filters.issues.length || t.issues.some((i) => filters.issues.includes(i))),
+  // In "all locations" the timesheets from every location are listed together, each group under its location's header.
+  const scope = useScope()
+  const all = scope.length > 1
+  const pending = scope.flatMap((l) =>
+    l.timesheets
+      .filter(
+        (t) =>
+          !resolved[`${l.id}:${t.id}`] &&
+          (!filters.roles.length || filters.roles.includes(t.role)) &&
+          (!filters.team.length || filters.team.includes(t.name)) &&
+          (!filters.issues.length || t.issues.some((i) => filters.issues.includes(i))),
+      )
+      .map((t) => ({ ...t, l })),
   )
   const active = (k: FilterKind) => filters[k].length > 0
   const count = (k: FilterKind) => (filters[k].length ? ` ${filters[k].length}` : "")
-  const p = loc.payroll
   const wire = useStructure()
   const main = (
     <>
@@ -304,14 +327,25 @@ export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilte
 
           {open && wire && (
             <div className="flex flex-col gap-2">
-              {Array.from({ length: split ? 5 : 4 }, (_, i) => <WireCard key={i} h={150} />)}
+              {all ? (
+                scope.map((l) => (
+                  <div key={l.id}>
+                    <LocationHeader loc={l} className="px-0" />
+                    <WireCard h={150} />
+                  </div>
+                ))
+              ) : (
+                Array.from({ length: split ? 5 : 4 }, (_, i) => <WireCard key={i} h={150} />)
+              )}
             </div>
           )}
           {open && !wire && (
             <div className="flex flex-col gap-2">
               {pending.length === 0 && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">All caught up</Card>}
-              {pending.map((t) => (
-                <Card key={t.id} className="p-4 tracking-[-0.43px]">
+              {pending.map((t, idx) => (
+                <Fragment key={`${t.l.id}:${t.id}`}>
+                {all && (idx === 0 || pending[idx - 1].l.id !== t.l.id) && <LocationHeader loc={t.l} className="px-0" />}
+                <Card className="p-4 tracking-[-0.43px]">
                   <div className="flex items-center gap-3">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#ece6fb] text-[17px] font-[590] text-[#6b3fc4]">{initialsOf(t.name)}</span>
                     <span className="min-w-0">
@@ -339,13 +373,14 @@ export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilte
                   </div>
                   <div className="mt-3 border-t border-[#ebebeb] pt-3">
                     <button
-                      onClick={() => setResolved((r) => ({ ...r, [t.id]: true }))}
+                      onClick={() => setResolved((r) => ({ ...r, [`${t.l.id}:${t.id}`]: true }))}
                       className="h-12 w-full rounded-[14px] border-2 border-[#8f55e5] text-[17px] font-[590] text-[#8f55e5] active:bg-[#8f55e5]/10"
                     >
                       Resolve issues
                     </button>
                   </div>
                 </Card>
+                </Fragment>
               ))}
             </div>
           )}
@@ -353,16 +388,18 @@ export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilte
       ) : (
         <div className="pt-2">
           <SectionHeader>Pay period</SectionHeader>
-          {wire ? (
-            <WireList rows={4} avatar={false} trailing />
-          ) : (
-            <Card className="overflow-hidden">
-              <ListRow first title="Period" trailing={p.period} />
-              <ListRow title="Hours" trailing={p.hours} />
-              <ListRow title="Gross pay" trailing={p.gross} />
-              <ListRow title="Next payday" trailing={p.nextPayday} />
-            </Card>
-          )}
+          <ByLocation scope={scope}>
+            {(l) => wire ? (
+              <WireList rows={4} avatar={false} trailing />
+            ) : (
+              <Card className="overflow-hidden">
+                <ListRow first title="Period" trailing={l.payroll.period} />
+                <ListRow title="Hours" trailing={l.payroll.hours} />
+                <ListRow title="Gross pay" trailing={l.payroll.gross} />
+                <ListRow title="Next payday" trailing={l.payroll.nextPayday} />
+              </Card>
+            )}
+          </ByLocation>
         </div>
       )}
     </>
@@ -375,56 +412,61 @@ export function TimePage({ loc, split, filters, onFilter }: { filters: TimeFilte
         {main}
       </div>
       <div className={cn(col, "min-w-0 flex-1 overflow-y-auto pl-2 pr-4")} style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
-        <PayPeriod loc={loc} date={date} />
+        <PayPeriod scope={scope} date={date} />
       </div>
     </div>
   )
 }
 
 /** The pay period at a glance: the hours paid, the period's totals, and what each person was paid. */
-function PayPeriod({ loc, date }: { loc: Location; date: Date }) {
+function PayPeriod({ scope, date }: { scope: Location[]; date: Date }) {
   const wire = useStructure()
-  const p = loc.payroll
-  const issues = (name: string) => loc.timesheets.filter((t) => t.name === name).reduce((n, t) => n + t.issues.length, 0)
   const paid = (i: number) => (i % 4 === 3 ? 0 : 18 + ((i * 7) % 23))
   return (
     <div className="tracking-[-0.43px]">
       <p className="pb-2 text-[15px] font-[590] leading-5 text-[#8f55e5]">{`Pay period: ${rangeLabel(...payPeriodOf(date))}`}</p>
-      {wire ? (
-        <>
-          <Bar w={150} h={34} />
-          <div className="pb-4 pt-2"><Bar w={80} h={12} /></div>
-          <WireList rows={8} trailing />
-        </>
-      ) : (
-        <>
-          <p className="text-[41px] font-[590] leading-[normal] text-black">{p.hours}</p>
-          <p className="pb-4 text-[15px] font-[510] leading-5 text-[#939393]">Total paid</p>
-          <Card className="mb-4 overflow-hidden">
-            <ListRow first title="Gross pay" trailing={p.gross} />
-            <ListRow title="Next payday" trailing={p.nextPayday} />
-          </Card>
-          <Card className="overflow-hidden">
-            {loc.team.map((m, i) => (
-              <ListRow
-                key={m.name}
-                first={i === 0}
-                leading={<Initials name={m.name} />}
-                title={m.name}
-                subtitle={`Total paid: ${paid(i)} hrs`}
-                trailing={issues(m.name) ? <span className="text-[15px] text-[#d0161f]">{`${issues(m.name)} issues`}</span> : undefined}
-              />
-            ))}
-          </Card>
-        </>
-      )}
+      <ByLocation scope={scope}>
+        {(loc) => {
+          const p = loc.payroll
+          const issues = (name: string) => loc.timesheets.filter((t) => t.name === name).reduce((n, t) => n + t.issues.length, 0)
+          return wire ? (
+            <>
+              <Bar w={150} h={34} />
+              <div className="pb-4 pt-2"><Bar w={80} h={12} /></div>
+              <WireList rows={scope.length > 1 ? 4 : 8} trailing />
+            </>
+          ) : (
+            <>
+              <p className="text-[41px] font-[590] leading-[normal] text-black">{p.hours}</p>
+              <p className="pb-4 text-[15px] font-[510] leading-5 text-[#939393]">Total paid</p>
+              <Card className="mb-4 overflow-hidden">
+                <ListRow first title="Gross pay" trailing={p.gross} />
+                <ListRow title="Next payday" trailing={p.nextPayday} />
+              </Card>
+              <Card className="mb-4 overflow-hidden">
+                {loc.team.map((m, i) => (
+                  <ListRow
+                    key={m.name}
+                    first={i === 0}
+                    leading={<Initials name={m.name} />}
+                    title={m.name}
+                    subtitle={`Total paid: ${paid(i)} hrs`}
+                    trailing={issues(m.name) ? <span className="text-[15px] text-[#d0161f]">{`${issues(m.name)} issues`}</span> : undefined}
+                  />
+                ))}
+              </Card>
+            </>
+          )
+        }}
+      </ByLocation>
     </div>
   )
 }
 
 /** Money (employees): what they've earned and been paid. Earnings belong to the person; pay stubs come from the location. */
-export function MoneyPage({ loc }: { loc: Location }) {
+export function MoneyPage(_props: { loc?: Location }) {
   const wire = useStructure()
+  const scope = useScope()
   if (wire) {
     return (
       <>
@@ -449,11 +491,15 @@ export function MoneyPage({ loc }: { loc: Location }) {
         <ListRow title="Hours and tips" trailing={USER_EARNINGS.today.detail} />
       </Card>
       <SectionHeader>Recent pay stubs</SectionHeader>
-      <Card className="overflow-hidden">
-        {loc.payroll.stubs.map((st, i) => (
-          <ListRow key={st.period} first={i === 0} chevron title={st.period} trailing={st.net} />
-        ))}
-      </Card>
+      <ByLocation scope={scope}>
+        {(l) => (
+          <Card className="overflow-hidden">
+            {l.payroll.stubs.map((st, i) => (
+              <ListRow key={st.period} first={i === 0} chevron title={st.period} trailing={st.net} />
+            ))}
+          </Card>
+        )}
+      </ByLocation>
     </>
   )
 }
@@ -484,10 +530,17 @@ function MessageAvatar({ m }: { m: Message }) {
   )
 }
 
-/** Messages: this location's conversations. The business is the page title (toolbar), so no group headers. */
-export function ChatPage({ loc, selectedId, onSelect }: { loc: Location; /** Split view: the open conversation, highlighted in the list. */ selectedId?: string; onSelect?: (id: string) => void }) {
+type ConvoRow = Message & { l: Location }
+/** Conversations from every location in scope, each id prefixed with its location (ids repeat from one location to the next). */
+const conversationsIn = (scope: Location[]): ConvoRow[] => scope.flatMap((l) => l.messages.map((m) => ({ ...m, id: `${l.id}:${m.id}`, l })))
+
+/** Messages: the selected location's conversations, or in "all locations" each location's under its own header. */
+export function ChatPage({ selectedId, onSelect }: { loc?: Location; /** Split view: the open conversation, highlighted in the list. */ selectedId?: string; onSelect?: (id: string) => void }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
-  const rows = loc.messages.filter((m) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true))
+  const scope = useScope()
+  const keep = (m: Message) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true)
+  const groups = scope.map((l) => ({ l, rows: conversationsIn([l]).filter(keep) }))
+  const grouped = scope.length > 1
   const toggle = (f: "unread" | "threads") => setFilter((cur) => (cur === f ? "all" : f))
   const wire = useStructure()
   return (
@@ -503,30 +556,38 @@ export function ChatPage({ loc, selectedId, onSelect }: { loc: Location; /** Spl
           Threads
         </GlassChip>
       </div>
-      {wire ? <WireList rows={onSelect ? 14 : 7} /> : <Card className="overflow-hidden">
-        {rows.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</p>}
-        {rows.map((m, i) => (
-          <button key={m.id} onClick={onSelect ? () => onSelect(m.id) : undefined} aria-current={selectedId === m.id ? "true" : undefined} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]", selectedId === m.id && "bg-[#8f55e5]/[0.1]")}>
-            <MessageAvatar m={m} />
-            <span className={cn("flex min-w-0 flex-1 flex-col py-3", i > 0 && "border-t border-[#ebebeb]")}>
-              <span className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-[17px] font-[590] leading-[22px] text-black">{m.title}</span>
-                <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{m.time}</span>
-              </span>
-              <span className="flex items-center justify-between gap-2">
-                <span className="truncate text-[15px] leading-5 text-[#7f7f7f]">{m.preview}</span>
-                {m.unread && <span aria-label="Unread" className="size-[10px] shrink-0 rounded-full bg-[#8f55e5]" />}
-              </span>
-            </span>
-          </button>
-        ))}
-      </Card>}
+      {groups.map(({ l, rows }) =>
+        grouped && !wire && rows.length === 0 ? null : (
+          <div key={l.id} className={grouped ? "pb-2" : undefined}>
+            {grouped && <LocationHeader loc={l} className="px-0 pt-1" />}
+            {wire ? <WireList rows={grouped ? 3 : onSelect ? 14 : 7} /> : <Card className="overflow-hidden">
+              {rows.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</p>}
+              {rows.map((m, i) => (
+                <button key={m.id} onClick={onSelect ? () => onSelect(m.id) : undefined} aria-current={selectedId === m.id ? "true" : undefined} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]", selectedId === m.id && "bg-[#8f55e5]/[0.1]")}>
+                  <MessageAvatar m={m} />
+                  <span className={cn("flex min-w-0 flex-1 flex-col py-3", i > 0 && "border-t border-[#ebebeb]")}>
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-[17px] font-[590] leading-[22px] text-black">{m.title}</span>
+                      <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{m.time}</span>
+                    </span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[15px] leading-5 text-[#7f7f7f]">{m.preview}</span>
+                      {m.unread && <span aria-label="Unread" className="size-[10px] shrink-0 rounded-full bg-[#8f55e5]" />}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </Card>}
+          </div>
+        ),
+      )}
+      {grouped && !wire && groups.every((g) => g.rows.length === 0) && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</Card>}
     </>
   )
 }
 
 /** One conversation, opened: who it's with, the thread, and the composer. */
-function Conversation({ m }: { m: Location["messages"][number] }) {
+function Conversation({ m }: { m: Message }) {
   const wire = useStructure()
   const sk = "block rounded-[20px]"
   return (
@@ -561,14 +622,16 @@ function Conversation({ m }: { m: Location["messages"][number] }) {
 }
 
 /** iPad Messages: the list on the left, the open conversation on the right. */
-export function MessagesSplit({ loc }: { loc: Location }) {
-  const [sel, setSel] = useState(loc.messages[0]?.id)
-  const m = loc.messages.find((x) => x.id === sel) ?? loc.messages[0]
+export function MessagesSplit(_props: { loc?: Location }) {
+  const scope = useScope()
+  const messages = conversationsIn(scope)
+  const [sel, setSel] = useState(messages[0]?.id)
+  const m = messages.find((x) => x.id === sel) ?? messages[0]
   const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
   return (
     <div className="absolute inset-0 flex">
       <div className={cn(col, "w-[40%] min-w-[240px] max-w-[380px] shrink-0 overflow-y-auto pl-4 pr-2")} style={{ paddingTop: "calc(var(--safe-top) + 54px)", paddingBottom: "calc(var(--safe-bottom) + 32px)" }}>
-        <ChatPage loc={loc} selectedId={m?.id} onSelect={setSel} />
+        <ChatPage selectedId={m?.id} onSelect={setSel} />
       </div>
       <div className="min-w-0 flex-1 pl-2 pr-4" style={{ paddingTop: "calc(var(--safe-top) + 62px)", paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
         {m && <Conversation m={m} />}

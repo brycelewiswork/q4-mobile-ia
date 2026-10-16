@@ -4,7 +4,10 @@ import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { Initials } from "@/components/ios/list"
 import { TABS, type TabId } from "@/components/ios/TabBar"
 import { SPRING_FAST } from "@/lib/motion"
-import { ANON, useStructure } from "@/store/useViewStore"
+import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, unreadAt, type Location } from "@/data/locations"
+import { UnreadPill } from "@/components/ios/LocationMenu"
+import { useUserTypeStore } from "@/store/useUserTypeStore"
+import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
 
 const BRAND = "#8f55e5"
@@ -36,6 +39,51 @@ export function SidebarToggle({ open, onClick, className }: { open: boolean; onC
 }
 
 const row = "relative flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-black active:opacity-60"
+
+const kMoney = (n: number) => `$${Math.round(n / 1000)}K`
+
+/** One location in the sidebar's Locations list: its name over the labor share, and the day's sales. Also what the overview grows out of. */
+export function SidebarLocationBody({ l }: { l: Location }) {
+  const wire = useStructure()
+  const locName = useLocName()
+  const employee = useUserTypeStore((s) => s.type) === "employee"
+  // An employee sees when they next work here and what's unread, not the location's numbers.
+  if (employee) {
+    const next = nextShiftAt(l.id)
+    return (
+      <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
+          {wire ? <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" /> : <span className="truncate text-[13px] leading-4 text-[#7f7f7f]">{next ? `Next ${next}` : "No shifts this week"}</span>}
+        </span>
+        {wire ? <span aria-hidden className="block size-[18px] shrink-0 rounded-full bg-[#dedde4]" /> : <UnreadPill n={unreadAt(l)} />}
+      </span>
+    )
+  }
+  if (wire) {
+    return (
+      <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
+        <span className="flex min-w-0 flex-1 flex-col gap-[6px]">
+          <span className="truncate text-[17px] leading-[22px] text-black">{locName(l)}</span>
+          <span aria-hidden className="block h-[8px] w-[45%] rounded-full bg-[#dedde4]" />
+        </span>
+        <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" />
+      </span>
+    )
+  }
+  return (
+    <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[17px] leading-[22px] text-black">{shortLocationName(l)}</span>
+        <span className="flex items-center gap-[6px] text-[13px] leading-[16px] text-[#7f7f7f]">
+          <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
+          {l.laborPct}% labor
+        </span>
+      </span>
+      <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(l.sales)}</span>
+    </span>
+  )
+}
 
 export type SidebarClock = { title: string; subtitle: string; status: "out" | "in" | "break"; onOpen: () => void }
 
@@ -91,6 +139,7 @@ export function IpadSidebar({
   onProfile,
   onAssistant,
   clock,
+  locations,
 }: {
   tabs: readonly TabId[]
   tab: TabId
@@ -101,8 +150,11 @@ export function IpadSidebar({
   onProfile: () => void
   onAssistant?: () => void
   clock: SidebarClock
+  /** Multi-location users: the locations, below the tabs. Tapping one opens its overview in the main area. */
+  locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once; `allActive` when that is what is showing. */ onAll?: () => void; allActive?: boolean }
 }) {
   const wire = useStructure()
+  const employeeUser = useUserTypeStore((s) => s.type) === "employee"
   const shown = tabs.map((id) => TABS.find((t) => t.id === id)!)
   return (
     <motion.aside
@@ -152,7 +204,36 @@ export function IpadSidebar({
             )
           })}
         </nav>
-        <div className="mt-auto">
+        {locations && (
+          <div data-anno="sidebar-locations" aria-label="Locations" role="group" className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-black/[0.08] pt-2">
+            {locations.onAll && (
+              <button onClick={locations.onAll} aria-current={locations.allActive ? "page" : undefined} className={cn("mb-1 block w-full rounded-[18px] px-3 py-2 active:opacity-60", locations.allActive && "bg-[#787880]/[0.2]")}>
+                <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-[17px] font-[590] leading-[22px] text-black">{wire ? "All locations" : "All Locations"}</span>
+                    <span className="text-[13px] leading-4 text-[#7f7f7f]">{LOCATIONS.length} locations</span>
+                  </span>
+                  {!wire && employeeUser && <UnreadPill n={LOCATIONS.reduce((n, l) => n + unreadAt(l), 0)} />}
+                  {!wire && !employeeUser && <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(LOCATIONS.reduce((n, l) => n + l.sales, 0))}</span>}
+                </span>
+              </button>
+            )}
+            {COMPANIES.map((c, ci) => (
+              <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name}>
+                <p className="px-3 pb-1 pt-2 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#7f7f7f]">{wire ? `Company ${ci + 1}` : c.name}</p>
+                {c.locations.map((l) => {
+                  const on = locations.activeId === l.id
+                  return (
+                    <button key={l.id} onClick={(e) => locations.onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} className={cn("block w-full rounded-[18px] px-3 py-2 active:opacity-60", on && "bg-[#787880]/[0.2]")}>
+                      <SidebarLocationBody l={l} />
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className={locations ? "mt-3" : "mt-auto"}>
           <ClockCard {...clock} />
         </div>
       </div>

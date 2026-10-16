@@ -30,7 +30,7 @@ import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 
 const LAYOUT = {
   // The map is +60px taller than before; everything below it, and the sheet itself, moved down with it.
-  out: { height: 619, map: 352, dot: 206, heading: 364, card: 404, button: 546, buttonH: 46 },
+  out: { height: 663, map: 352, dot: 206, heading: 364, card: 404, button: 590, buttonH: 46 },
   live: { height: 530, map: 260, dot: 160, heading: 272, progress: 376, tiles: 422 },
 } as const
 
@@ -317,6 +317,8 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
             <ListRow compact first divider="border-black/[0.09]" chevron={multi ? "updown" : undefined} onClick={multi ? open("location") : undefined} title="Location" trailing={<span className="text-[#2c2935]">{locName(loc)}</span>} />
             <ListRow compact divider="border-black/[0.09]" title={today ? "Shift" : "Next shift"} trailing={wire ? <Bar w={90} h={12} /> : <TimePill>{today ? shift : `${nextShiftDay(loc)} ${shift}`}</TimePill>} />
             <ListRow compact divider="border-black/[0.09]" title="Role" trailing={<RoleTag role={role} onClick={open("role")} />} />
+            {/* The location PIN lives here, where someone needs it to clock in, not on a card in Settings. */}
+            <ListRow compact divider="border-black/[0.09]" title="PIN" trailing={wire ? <Bar w={56} h={12} /> : <TimePill>{loc.profile.pin}</TimePill>} />
           </FillCard>
 
           <button
