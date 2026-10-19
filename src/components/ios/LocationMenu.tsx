@@ -5,16 +5,14 @@ import { IconCheck, IconPlus } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
-import { WireBars, shortMoney } from "@/components/WireBars"
+import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { useStructure } from "@/store/useViewStore"
 import { useLocationStore } from "@/store/useLocationStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 
-const sum = (pick: (l: Location) => number[]) => LOCATIONS[0].weekSales.map((_, i) => LOCATIONS.reduce((n, l) => n + pick(l)[i], 0))
-
-/** A location's row in the menu: name over labor share, a wireframe sales-and-labor chart, and today's sales. Also what its overview grows out of. */
+/** A location's row in the menu: name over labor share and what is waiting, and today's sales. Also what its overview grows out of. */
 export function LocationMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
   const locName = useLocName()
@@ -49,7 +47,6 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
           <LocationBadges {...counts} />
         </span>
       </span>
-      <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />
       {wire ? <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" /> : <span className="w-[46px] shrink-0 text-right text-[17px] font-[590] leading-[22px] text-black">{shortMoney(l.sales)}</span>}
     </span>
   )
@@ -70,7 +67,6 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
   const groupId = useLocationStore((s) => s.groupId)
   const setGroup = useLocationStore((s) => s.setGroup)
   const groups = useGroupsStore((s) => s.groups)
-  const employee = useUserTypeStore((s) => s.type) === "employee"
   const single = useUserTypeStore((s) => s.type) === "oam"
   const allCounts = useCounts()
 
@@ -128,12 +124,6 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
                       <LocationBadges {...allCounts} />
                     </span>
                   </span>
-                  {!employee && (
-                    <>
-                      <WireBars sales={sum((l) => l.weekSales)} labor={sum((l) => l.weekLabor)} forecast={sum((l) => l.weekForecast)} />
-                      <span className="w-[46px] shrink-0" />
-                    </>
-                  )}
                 </button>
               )}
               {!single && groups.length > 0 && (

@@ -32,7 +32,7 @@ import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { AndroidFrame } from "@/pages/android/AndroidFrame"
 import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ACheckRow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
-import { WireBars, shortMoney } from "@/components/WireBars"
+import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, LocationBadgesFor, LocationDot, useCounts } from "@/components/LocationBadges"
 import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
@@ -388,8 +388,6 @@ function AGroupSheet({ onClose }: { onClose: () => void }) {
   )
 }
 
-const sumWeek = (pick: (l: Location) => number[]) => LOCATIONS[0].weekSales.map((_, i) => LOCATIONS.reduce((n, l) => n + pick(l)[i], 0))
-
 /** A location's row in the menu: name over labor share, a wireframe sales-and-labor chart, and today's sales. Also what its overview grows out of. */
 function AndroidMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
@@ -418,7 +416,6 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
           <LocationBadges android {...counts} />
         </span>
       </span>
-      {!employee && <WireBars sales={l.weekSales} labor={l.weekLabor} forecast={l.weekForecast} />}
       {!employee && (wire ? <ABar w={36} h={12} /> : <span className="w-[46px] shrink-0 text-right text-[14px] font-medium leading-5">{shortMoney(l.sales)}</span>)}
     </span>
   )
@@ -432,7 +429,6 @@ function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { ope
   const groupId = useLocationStore((s) => s.groupId)
   const setGroup = useLocationStore((s) => s.setGroup)
   const groups = useGroupsStore((s) => s.groups)
-  const employee = useUserTypeStore((s) => s.type) === "employee"
   const single = useUserTypeStore((s) => s.type) === "oam"
   const allCounts = useCounts()
   return (
@@ -472,12 +468,6 @@ function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { ope
                     <LocationBadges android {...allCounts} />
                   </span>
                 </span>
-                {!employee && (
-                  <>
-                    <WireBars sales={sumWeek((l) => l.weekSales)} labor={sumWeek((l) => l.weekLabor)} forecast={sumWeek((l) => l.weekForecast)} />
-                    <span className="w-[46px] shrink-0" />
-                  </>
-                )}
                 {all && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
               </button>
             )}

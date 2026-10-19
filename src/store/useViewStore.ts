@@ -63,7 +63,7 @@ export const useViewStore = create<State>()(
       orientation: "portrait",
       view: "prototype",
       setView: (view) => set({ view }),
-      notes: true,
+      notes: false,
       setNotes: (notes) => set({ notes }),
       setDetail: (detail) => set({ detail: FULL_ENABLED ? detail : "structure" }),
       setDevice: (device) => set({ device }),
