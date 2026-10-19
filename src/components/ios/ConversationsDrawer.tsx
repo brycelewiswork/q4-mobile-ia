@@ -42,7 +42,7 @@ export function ConversationsDrawer({ loc, tabs, onTab, unread, onOpenChat, onNe
   const matches = loc.conversations.filter((c) => c.title.toLowerCase().includes(q))
   const pinned = matches.filter((c) => c.pinned)
   const recents = matches.filter((c) => !c.pinned)
-  const label = "px-4 pb-0.5 pt-4 text-[14px] font-[510] leading-5 text-[#a09ead]"
+  const label = "px-4 pb-1 pt-7 text-[14px] font-[510] leading-5 text-[#a09ead]"
   const row = (c: Location["conversations"][number], i: number) => (
     <button key={c.id} onClick={() => onOpenChat(c.title)} className="flex min-h-10 w-full items-center gap-3 px-4 text-left active:bg-black/[0.04]">
       {wire ? <Bar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={12} /> : <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>}
@@ -76,7 +76,7 @@ export function ConversationsDrawer({ loc, tabs, onTab, unread, onOpenChat, onNe
         {/* The same tabs as the bar on the main page. */}
         {!searching && (
           <nav aria-label="Tabs">
-            <h3 className={cn(label, "pt-2")}>Tabs</h3>
+            <h3 className={cn(label, "pt-6")}>Tabs</h3>
             <div className="flex flex-col gap-[2px] px-2">
               {tabs.map((id) => {
                 const t = TABS.find((x) => x.id === id)!
