@@ -42,7 +42,7 @@ export function ConversationsDrawer({ loc, tabs, onTab, unread, onOpenChat, onNe
   const matches = loc.conversations.filter((c) => c.title.toLowerCase().includes(q))
   const pinned = matches.filter((c) => c.pinned)
   const recents = matches.filter((c) => !c.pinned)
-  const label = "px-4 pb-0.5 pt-4 text-[15px] font-[590] leading-5 text-[#747182]"
+  const label = "px-4 pb-0.5 pt-4 text-[14px] font-[510] leading-5 text-[#a09ead]"
   const row = (c: Location["conversations"][number], i: number, withPin: boolean) => (
     <button key={c.id} onClick={() => onOpenChat(c.title)} className="flex min-h-10 w-full items-center gap-3 px-4 text-left active:bg-black/[0.04]">
       {withPin && <IconPin size={20} stroke={1.75} className="shrink-0 text-[#747182]" />}
