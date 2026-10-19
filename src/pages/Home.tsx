@@ -15,6 +15,8 @@ import {
   IconUserPlus,
   IconPlus,
   IconSearch,
+  IconUsers,
+  IconSettings,
   IconSelector,
   IconUser,
   IconWalk,
@@ -41,8 +43,13 @@ import { HOME_PAGE_TITLES, HomePage, TaskTick, type HomePageId } from "@/pages/H
 import { taskKey, useTasksStore } from "@/store/useTasksStore"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
 import { CustomizeMenuSheet } from "@/components/ios/CustomizeMenuSheet"
+import { ConversationsDrawer } from "@/components/ios/ConversationsDrawer"
+import { DrawerSurface } from "@/components/ios/DrawerSurface"
+import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { inMenuOrder, useMoreMenuStore } from "@/store/useMoreMenuStore"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
+import { PAGES } from "@/components/ios/ProfilePages"
+import { SearchBar } from "@/components/ios/SearchBar"
 import { TABS, TabBar, type TabId } from "@/components/ios/TabBar"
 import { IpadSidebar, SIDEBAR_SPRING, SIDEBAR_W, SidebarLocationBody, SidebarToggle } from "@/components/ios/IpadSidebar"
 import { Squircle } from "@/components/squircle"
@@ -54,7 +61,7 @@ import { NO_FILTERS, TimeFilterSheet, type FilterKind, type TimeFilters } from "
 import { ChatPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
 import { COMPANIES, HOUR_LABELS, LOCATIONS, USER_EARNINGS, nextShiftAnywhere, shortLocationName, recentLog, upcomingEvents, upcomingTasks, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
-import { Initials, ListRow } from "@/components/ios/list"
+import { Initials, ListRow, SELF_TINT } from "@/components/ios/list"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { Annotations } from "@/components/Annotations"
 import { AndroidApp } from "@/pages/android/AndroidApp"
@@ -239,7 +246,7 @@ function BellButton({ unread, onClick }: { unread: number; onClick: () => void }
  * The location title: wraps to two lines, then shrinks its box to the widest line. That leaves the
  * chevron parked right after the text and vertically centered on the whole title, however it wraps.
  */
-function TitleText({ text }: { text: string }) {
+function TitleText({ text, centered = true }: { text: string; centered?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null)
   useLayoutEffect(() => {
     const el = ref.current
@@ -260,7 +267,7 @@ function TitleText({ text }: { text: string }) {
     return () => ro.disconnect()
   }, [text])
   return (
-    <span ref={ref} className="line-clamp-2 min-w-0 text-left text-[18px] font-[590] leading-[21px]">
+    <span ref={ref} className={cn("line-clamp-2 min-w-0 text-[18px] font-[590] leading-[21px]", centered ? "text-center" : "text-left")}>
       {text}
     </span>
   )
@@ -270,22 +277,28 @@ function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBel
   const wire = useStructure()
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
+  // The title is centered between a leading button and the actions; with no button at the left (employees) it takes that place instead.
+  const centered = !!leading
   return (
     <div
-      className="absolute inset-x-4 z-20 flex items-start justify-between gap-3 pb-[10px]"
+      className={cn("absolute inset-x-4 z-20 grid items-start gap-3 pb-[10px]", centered ? "grid-cols-[1fr_minmax(0,auto)_1fr]" : "grid-cols-[minmax(0,1fr)_auto]")}
       style={{ top: "var(--safe-top)" }}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        {leading}
+      {centered && (
+        <div className="flex min-w-0 items-center justify-start gap-3">
+          {leading}
+        </div>
+      )}
+      <div className={cn("flex min-w-0", centered ? "justify-center" : "justify-start")}>
         <button
           onClick={canSwitch ? onTitle : undefined}
           aria-haspopup={canSwitch ? "menu" : undefined}
           data-anno="location-title"
           disabled={!canSwitch}
-          className="flex h-11 min-w-0 flex-1 items-center justify-start tracking-[-0.43px] text-[#1a1a1a]"
+          className={cn("flex h-11 min-w-0 items-center tracking-[-0.43px] text-[#1a1a1a]", centered ? "justify-center" : "justify-start")}
         >
           {subtitle ? (
-            <span className="flex min-w-0 flex-col items-start justify-center">
+            <span className={cn("flex min-w-0 flex-col justify-center", centered ? "items-center" : "items-start")}>
               <span className="max-w-full truncate text-[18px] font-[590] leading-[21px]">{title}</span>
               <span className="flex max-w-full items-center text-[13px] leading-4 tracking-[-0.08px] text-[#6d6a7a]">
                 <span className="truncate">{subtitle}</span>
@@ -294,14 +307,15 @@ function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBel
             </span>
           ) : (
             <>
-              <TitleText text={title} />
+              <TitleText text={title} centered={centered} />
               {canSwitch && <IconSelector size={17} stroke={2.5} className="ml-[3px] shrink-0 text-[#4e4e4e]" />}
             </>
           )}
         </button>
       </div>
-      <div className="flex shrink-0 items-center gap-[10px]">
+      <div className="flex shrink-0 items-center justify-end gap-[10px]">
         {/* Like iOS: every action beside the bell shares ONE glass container. Buttons are 36pt on an 8pt gap, so icons sit 44pt apart (the Figma 18pt gap read wide for a group). */}
+        {(actions || showClock || !hideBell) && (
         <LiquidGlass mode="small" radius={999} className="flex h-11 items-center justify-center gap-2 px-1">
           {actions}
           {/* The time clock up here (owners and managers on a phone, everyone on a tablet): the clock icon, with the green dot while clocked in. */}
@@ -315,10 +329,11 @@ function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBel
           )}
           {!hideBell && <BellButton unread={unread} onClick={onBell} />}
         </LiquidGlass>
+        )}
         {!hideProfile && (
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
-              {wire ? <Initials name={ANON.name} size={42} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
+              {wire ? <Initials name={ANON.name} size={42} tint={SELF_TINT} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
             </button>
           </LiquidGlass>
         )}
@@ -881,6 +896,7 @@ export function Home() {
 const EXTRA_PAGES = {
   // `scoped`: the page is about one location (or several), so its title carries the location switcher.
   tips: { label: "Tip Manager", Icon: IconPigMoney, scoped: true },
+  team: { label: "Team", Icon: IconUsers, scoped: true },
   hiring: { label: "Hiring", Icon: IconUserPlus, scoped: false },
   tasks: { label: "Task Manager", Icon: IconChecklist, scoped: true },
   payroll: { label: "Payroll", Icon: IconReportMoney, scoped: true },
@@ -888,7 +904,20 @@ const EXTRA_PAGES = {
 } as const
 type ExtraId = keyof typeof EXTRA_PAGES
 
-function ExtraPage() {
+/** The Team list, moved here from Settings: who works here, with a search above it. */
+function TeamExtra({ loc }: { loc: Location }) {
+  const [query, setQuery] = useState("")
+  const Team = PAGES.team.Component
+  return (
+    <>
+      <div className="-mx-7 -mt-1"><SearchBar value={query} onChange={setQuery} placeholder="Search your team…" /></div>
+      <Team loc={loc} query={query} />
+    </>
+  )
+}
+
+function ExtraPage({ id, loc }: { id: ExtraId; loc: Location }) {
+  if (id === "team") return <TeamExtra loc={loc} />
   return (
     <>
       <WireCard h={150}>
@@ -956,6 +985,8 @@ function IosHome() {
   const [chatStart, setChatStart] = useState<string | undefined>(undefined)
   // Bumped each time a chat is chosen from the menu, so an open chat swaps in place instead of reopening.
   const [chatToken, setChatToken] = useState(0)
+  // The assistant's past conversations (and the tabs) live in a menu under the app: a menu button, top left, slides the app aside.
+  const [menuDrawer, setMenuDrawer] = useState(false)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
   const [requestsOpen, setRequestsOpen] = useState(false)
   const closeRequests = useCallback(() => setRequestsOpen(false), [])
@@ -1023,7 +1054,7 @@ function IosHome() {
         const src = !extra && tab === t ? def.fill : def.icon
         const mask = (size: string, url: string) => <span aria-hidden className={`block ${size} bg-current`} style={{ maskImage: `url(${url})`, WebkitMaskImage: `url(${url})`, maskSize: "100% 100%", WebkitMaskSize: "100% 100%" }} />
         const here = !extra && tab === t
-        return { id: `tab:${t}`, label: def.label, icon: mask("size-6", src), activeIcon: mask("size-7", def.fill), current: here, active: t === "time" && here, dot: t === "chat" && scope.some((l) => l.messages.some((m) => m.unread)) }
+        return { id: `tab:${t}`, label: def.label, icon: mask("size-6", src), activeIcon: mask("size-7", def.fill), current: here, active: t === "time" && here, badge: t === "chat" ? scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0) : 0 }
       }),
       ...(userType === "employee"
         ? []
@@ -1037,7 +1068,8 @@ function IosHome() {
               active: extra === id,
             })),
           ]),
-      { id: "search", label: "Search", icon: <IconSearch size={24} stroke={1.75} /> },
+      // Settings, last: the same sheet the avatar opens.
+      { id: "settings", label: "Settings", icon: <IconSettings size={24} stroke={1.75} /> },
     ],
     moreOrder,
   )
@@ -1045,6 +1077,25 @@ function IosHome() {
 
   return (
     <IosFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+      <DrawerSurface
+        enabled={!tablet && userType !== "employee"}
+        open={menuDrawer}
+        onOpenChange={setMenuDrawer}
+        drawer={(close) => (
+          <ConversationsDrawer
+            loc={loc}
+            tabs={tabs}
+            pending={pending}
+            // Notifications rise over the menu (it stays open underneath); closing the sheet just dismisses it.
+            onBell={() => setRequestsOpen(true)}
+            onTab={(t) => { close(); setAssistantOpen(false); setExtra(null); setTab(t); setMinimized(false); lastTop.current = 0 }}
+            onOpenChat={(title) => { close(); setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) }}
+            onNewChat={() => { close(); setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
+            // Settings rises over the menu (it stays open underneath); closing the sheet just dismisses it.
+            onProfile={() => setProfileOpen(true)}
+          />
+        )}
+      >
       {tablet && (
         <IpadSidebar
           tabs={tabs}
@@ -1055,10 +1106,9 @@ function IosHome() {
           onToggle={() => setSidebarOpen((o) => !o)}
           locations={{ title: locTitle, open: !!sidebarLocEl, onOpen: setSidebarLocEl }}
           more={{
-            items: moreItems.filter((m) => !m.id.startsWith("tab:")),
+            items: moreItems.filter((m) => !m.id.startsWith("tab:") && m.id !== "settings"),
             onSelect: (id) => {
               if (id in EXTRA_PAGES) { setHomePage(null); setLocOpen(null); setExtra(id as ExtraId) }
-              // Search has no screen in the prototype yet.
             },
           }}
           onProfile={() => setProfileOpen(true)}
@@ -1072,7 +1122,7 @@ function IosHome() {
       {extra ? (
         <OverlayRoot.Provider value={screen}>
           <ScreenScroll key={extra} locationId={`${extra}:${loc.id}`} onScroll={onScroll} top={54} fade={false}>
-            <ExtraPage />
+            <ExtraPage id={extra} loc={loc} />
           </ScreenScroll>
         </OverlayRoot.Provider>
       ) : tab === "home" ? (
@@ -1107,6 +1157,8 @@ function IosHome() {
         </OverlayRoot.Provider>
       )}
       <EdgeBlur
+        // Rounds with the app surface while it is slid aside (the blur would otherwise spill past the corners).
+        radius="var(--drawer-radius, 0px)"
         top={{ strength: 24, steps: 6, height: "calc(var(--safe-top) + 64px)" }}
         // Kept light: just enough blur and wash to lift the nav bar (and the clock bar) off whatever scrolls under it.
         bottom={tablet ? false : { strength: 10, steps: 6, height: "calc(var(--safe-bottom) + 96px)", tint: "var(--ios-page-tint, rgba(243,242,246,0.5))" }}
@@ -1124,11 +1176,24 @@ function IosHome() {
         // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the bottom accessory).
         showClock={tablet || (userType !== "employee" && tab === "home" && !extra)}
         clockActive={clockState.status === "in"}
-        hideBell={!extra && tab === "chat"}
-        // The avatar (top right on a phone, top of the sidebar on a tablet) is how you reach Settings.
-        hideProfile={tablet}
+        hideBell={(!extra && tab === "chat") || (!tablet && userType !== "employee")}
+        // With the app menu (phones, not employees) the avatar lives at the foot of that menu instead; on a tablet, in the sidebar.
+        hideProfile={tablet || userType !== "employee"}
         leading={
-          tablet && !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
+          tablet ? (
+            !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
+          ) : userType !== "employee" ? (
+            // The menu button, top left on every main page: it slides the app aside to show the menu.
+            <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
+              <button onClick={() => setMenuDrawer(true)} aria-label={pending ? `Menu, ${pending} notifications` : "Menu"} aria-haspopup="dialog" data-anno="menu" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <span className="relative">
+                  <MenuTwoLine size={24} stroke={1.75} />
+                  {/* The notifications bell lives in the menu now, so the menu button says when something is waiting there. */}
+                  {pending > 0 && <motion.span aria-hidden initial={false} animate={{ opacity: menuDrawer ? 0 : 1 }} transition={{ duration: 0.2 }} className="absolute -right-[3px] -top-[2px] size-2.5 rounded-full bg-[#ff3b30] ring-2 ring-white/70" />}
+                </span>
+              </button>
+            </LiquidGlass>
+          ) : undefined
         }
         actions={
           extra ? undefined : tab === "shifts" ? (
@@ -1208,11 +1273,11 @@ function IosHome() {
                 setExtra(id as ExtraId)
                 setMinimized(false)
                 lastTop.current = 0
-              }
-              // Search has no screen in the prototype yet.
+              } else if (id === "settings") setProfileOpen(true)
             },
           }}
           onAssistant={userType === "employee" ? undefined : () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
+          faded={menuDrawer}
           minimized={minimized}
           onExpand={() => setMinimized(false)}
           inlineAccessory={null}
@@ -1252,7 +1317,9 @@ function IosHome() {
       {assistantOpen && userType !== "employee" && !tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
+      </DrawerSurface>
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
+      {/* Outside the surface that slides aside, so they rise over the whole screen, whether or not the menu is open. */}
       {customizeOpen && !tablet && <CustomizeMenuSheet items={moreItems} onClose={() => setCustomizeOpen(false)} />}
       {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
     </IosFrame>

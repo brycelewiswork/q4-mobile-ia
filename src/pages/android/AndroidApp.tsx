@@ -47,6 +47,10 @@ import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { CustomizeSheet, MoreMenu, type MoreItem } from "@/pages/android/AndroidMore"
+import { DrawerSurface } from "@/components/ios/DrawerSurface"
+import { SCREENS } from "@/lib/device"
+import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
+import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { inMenuOrder, useMoreMenuStore } from "@/store/useMoreMenuStore"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
@@ -103,15 +107,30 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ onMenu, menuOpen, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The side menu is open (or opening): the menu button's badge fades away. */ menuOpen?: boolean; /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
+  const centered = !rail && !!onMenu
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
-    <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
-      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className="text-m-on-surface flex min-w-0 flex-1 items-center gap-1 pl-2 text-left">
+    <div className={cn("absolute inset-x-0 top-0 z-20 grid items-center gap-1 px-2 transition-colors duration-200", centered ? "grid-cols-[1fr_minmax(0,auto)_1fr]" : "grid-cols-[minmax(0,1fr)_auto]", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
+      {centered && (
+      <div className="flex items-center justify-start">
+        {!rail && onMenu && (
+          <AIconButton label={pending ? `Menu, ${pending} requests waiting` : "Menu"} onClick={onMenu}>
+            <span className="relative">
+              <MenuTwoLine size={24} stroke={1.75} />
+              {/* The bell lives in the menu now, so the menu button says when something is waiting there. */}
+              {pending > 0 && <motion.span aria-hidden initial={false} animate={{ opacity: menuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} className="bg-[var(--m-error)] absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none text-white">{pending}</motion.span>}
+            </span>
+          </AIconButton>
+        )}
+      </div>
+      )}
+      {/* The title is centered in the bar, between the menu button and the actions; with no menu button (employees) it takes the left. */}
+      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 items-center gap-1", centered ? "justify-center px-1 text-center" : "justify-start pl-3 text-left")}>
         {subtitle ? (
-          <span className="flex min-w-0 flex-col justify-center">
+          <span className={cn("flex min-w-0 flex-col justify-center", centered ? "items-center" : "items-start")}>
             <span className="truncate text-[18px] font-medium leading-6">{title}</span>
             <span className="text-m-variant flex items-center text-[13px] leading-4">
               <span className="truncate">{subtitle}</span>
@@ -125,6 +144,7 @@ function TopBar({ title: titleOverride, subtitle, hideProfile, loc, tab, canSwit
           </>
         )}
       </button>
+      <div className="flex items-center justify-end gap-1">
       {showClock && (
         <AIconButton label="Time clock" onClick={onClock}>
           <span className="relative">
@@ -146,7 +166,7 @@ function TopBar({ title: titleOverride, subtitle, hideProfile, loc, tab, canSwit
           <IconSearch size={24} stroke={1.75} />
         </AIconButton>
       )}
-      {tab !== "chat" && (
+      {tab !== "chat" && !onMenu && (
         <AIconButton label={pending ? `Requests, ${pending} waiting` : "Requests"} onClick={onBell}>
           <span className="relative">
             <IconBell size={24} stroke={1.75} />
@@ -160,6 +180,7 @@ function TopBar({ title: titleOverride, subtitle, hideProfile, loc, tab, canSwit
           <Avatar size={32} />
         </button>
       )}
+      </div>
     </div>
   )
 }
@@ -172,7 +193,7 @@ const maskStyle = (src: string, w: number) => ({ width: w, height: w, maskImage:
  * Without the assistant the tabs spread evenly across the bar. The bar floats on a progressive
  * blur and a fade to the page colour.
  */
-function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock }: { tabs: TabId[]; /** Null while a page opened from More is showing. */ tab: TabId | null; onTab: (t: TabId) => void; unread: number; onAssistant?: () => void; /** Owners and managers: the More menu. */ more?: { items: MoreItem[]; header: Parameters<typeof MoreMenu>[0]["header"]; onSelect: (id: string) => void }; /** Employees: the Time Clock button, beside the pill. */ clock?: { active: boolean; onOpen: () => void } }) {
+function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: { tabs: TabId[]; /** Null while a page opened from More is showing. */ tab: TabId | null; onTab: (t: TabId) => void; unread: number; onAssistant?: () => void; /** Owners and managers: the More menu. */ more?: { items: MoreItem[]; header: Parameters<typeof MoreMenu>[0]["header"]; onSelect: (id: string) => void }; /** Employees: the Time Clock button, beside the pill. */ clock?: { active: boolean; onOpen: () => void }; /** Fades the whole bar out (the side menu is opening) and takes it out of reach. */ faded?: boolean }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const cluster = useRef<HTMLDivElement>(null)
   const [clusterW, setClusterW] = useState(0)
@@ -190,7 +211,7 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock }: { tabs: 
   const slot = "relative flex h-12 min-w-0 flex-1 items-center justify-center"
   const selected = <motion.span layoutId="android-tab-selection" transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }} className="absolute inset-y-0 -inset-x-0.5 rounded-full bg-black/[0.08]" />
   return (
-    <div data-anno="nav-bar" className={cn("absolute inset-x-0 bottom-0 isolate", moreOpen ? "z-30" : "z-20")}>
+    <motion.div data-anno="nav-bar" initial={false} animate={{ opacity: faded ? 0 : 1 }} transition={{ duration: 0.2 }} style={{ pointerEvents: faded ? "none" : undefined }} className={cn("absolute inset-x-0 bottom-0 isolate", moreOpen ? "z-30" : "z-20")}>
       <LinearBlur side="bottom" strength={10} className="-z-10" style={{ top: -16 }} />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ top: -16, background: "linear-gradient(to top, color-mix(in srgb, var(--m-surface) 28%, transparent) 15%, transparent)" }} />
       <nav className="flex w-full items-end gap-3" style={{ padding: "16px 20px 20px", minHeight: 92 }}>
@@ -244,7 +265,7 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock }: { tabs: 
           </button>
         )}
       </nav>
-    </div>
+    </motion.div>
   )
 }
 
@@ -277,16 +298,6 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
         <button onClick={onToggle} aria-label={open ? "Collapse navigation rail" : "Expand navigation rail"} aria-expanded={open} className={cn("text-m-variant flex size-14 items-center justify-center rounded-full active:bg-black/10", open && "ml-1")}>
           {open ? <IconMenuDeep size={24} stroke={1.75} /> : <IconMenu2 size={24} stroke={1.75} />}
         </button>
-        <button onClick={onProfile} aria-label="Open settings" aria-haspopup="dialog" data-anno="profile" className={cn("text-m-on-surface mt-1 flex items-center rounded-full active:bg-black/10", open ? "h-14 w-full gap-3 pl-3 pr-6" : "size-14 justify-center")}>
-          <Avatar size={40} />
-          {open && <span className="truncate text-[14px] font-medium leading-5">{ANON.name}</span>}
-        </button>
-        {onAssistant && (
-          <button onClick={onAssistant} aria-label="New chat" aria-haspopup="dialog" className={cn("mt-3 flex h-14 items-center justify-center gap-3 self-center rounded-[16px] bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85", open ? "w-full px-4" : "w-14")}>
-            <span aria-hidden className="block shrink-0 bg-white" style={maskStyle("/android/assistant-solid-24.svg", 24)} />
-            {open && <span className="whitespace-nowrap text-[14px] font-medium leading-5">New chat</span>}
-          </button>
-        )}
       </div>
       <div className={cn("mt-6 flex min-h-0 shrink flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", open ? "gap-1 px-3" : "items-center gap-3")}>
         {locations && (
@@ -347,6 +358,19 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
             <span className="whitespace-nowrap text-[12px] font-medium leading-normal">More</span>
           </button>
         ))}
+      </div>
+      {/* The foot of the rail: New chat, and the avatar (Settings) at the very bottom. */}
+      <div className={cn("mt-auto flex shrink-0 flex-col gap-3 pt-3", open ? "items-stretch px-3" : "items-center")}>
+        {onAssistant && (
+          <button onClick={onAssistant} aria-label="New chat" aria-haspopup="dialog" className={cn("flex h-14 items-center justify-center gap-3 self-center rounded-[16px] bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85", open ? "w-full px-4" : "w-14")}>
+            <span aria-hidden className="block shrink-0 bg-white" style={maskStyle("/android/assistant-solid-24.svg", 24)} />
+            {open && <span className="whitespace-nowrap text-[14px] font-medium leading-5">New chat</span>}
+          </button>
+        )}
+        <button onClick={onProfile} aria-label="Open settings" aria-haspopup="dialog" data-anno="profile" className={cn("text-m-on-surface flex items-center rounded-full active:bg-black/10", open ? "h-14 w-full gap-3 pl-3 pr-6" : "size-14 justify-center")}>
+          <Avatar size={40} />
+          {open && <span className="truncate text-[14px] font-medium leading-5">{ANON.name}</span>}
+        </button>
       </div>
     </motion.nav>
   )
@@ -1345,7 +1369,7 @@ function ProfileCarousel({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   )
 }
 
-function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageSpec) => void }) {
+function SettingsPage({ onOpen }: { onOpen: (p: PageSpec) => void }) {
   const row = (label: string, icon: ReactNode, kind: PageSpec["kind"] = "generic", trailing?: string) => (
     <ARow key={label} icon={icon} label={label} trailing={trailing} onClick={() => onOpen({ id: `${kind}:${label}`, kind, title: label })} />
   )
@@ -1361,16 +1385,6 @@ function SettingsPage({ manager, onOpen }: { manager: boolean; onOpen: (p: PageS
         <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
       </button>
       <ProfileCarousel onOpen={onOpen} />
-      <div className="flex gap-3 pb-1">
-        <ACard title="Earnings" h={96} className="flex-1" dataAnno="drawer-earnings" onClick={() => onOpen({ id: "earnings", kind: "earnings", title: "Money" })} />
-        <ACard title="Time off balance" h={96} className="flex-1" dataAnno="drawer-timeoff" onClick={() => onOpen({ id: "timeoff", kind: "timeoff", title: "Time off" })} />
-      </div>
-      {manager && (
-        <Section title="Work">
-          {row("Team", <IconUsers size={24} stroke={1.75} />, "team")}
-          {row("Payroll", <IconCash size={24} stroke={1.75} />)}
-        </Section>
-      )}
       <Section title="Account" headerAnno="drawer-account">
         {row("Locations", <IconMapPin size={24} stroke={1.75} />, "locations")}
         {row("Calendar Sync", <IconCalendar size={24} stroke={1.75} />, "generic", "Not Connected")}
@@ -1466,7 +1480,7 @@ function LocationsPage({ multi, focus }: { multi: boolean; /** Opened from one l
   )
 }
 
-function PageBody({ spec, manager, multi, onOpen, onClose }: { spec: PageSpec; manager: boolean; multi: boolean; onOpen: (p: PageSpec) => void; onClose: () => void }) {
+function PageBody({ spec, multi, onOpen, onClose }: { spec: PageSpec; multi: boolean; onOpen: (p: PageSpec) => void; onClose: () => void }) {
   const locName = useLocName()
   const loc = useLocation()
   const tablet = useViewStore((v) => v.device === "tablet")
@@ -1560,7 +1574,7 @@ function PageBody({ spec, manager, multi, onOpen, onClose }: { spec: PageSpec; m
         <button className="mt-2 h-14 w-full px-1 text-left text-[16px] text-[var(--m-error)] active:bg-black/5">Sign out</button>
       </div>
     )
-    case "settings": return <SettingsPage manager={manager} onOpen={onOpen} />
+    case "settings": return <SettingsPage onOpen={onOpen} />
     case "assistant": return (
       <div className="flex flex-col gap-4 pt-2">
         <ALines lines={3} />
@@ -1580,6 +1594,7 @@ function PageBody({ spec, manager, multi, onOpen, onClose }: { spec: PageSpec; m
 const EXTRA_PAGES = {
   // `scoped`: the page is about a location, so its title carries the location switcher.
   tips: { label: "Tip Manager", Icon: IconPigMoney, scoped: true },
+  team: { label: "Team", Icon: IconUsers, scoped: true },
   hiring: { label: "Hiring", Icon: IconUserPlus, scoped: false },
   tasks: { label: "Task Manager", Icon: IconChecklist, scoped: true },
   payroll: { label: "Payroll", Icon: IconReportMoney, scoped: true },
@@ -1587,7 +1602,16 @@ const EXTRA_PAGES = {
 } as const
 type ExtraId = keyof typeof EXTRA_PAGES
 
-function ExtraPage() {
+function ExtraPage({ id }: { id: ExtraId }) {
+  // Team keeps what it had in Settings: a searchable list of people.
+  if (id === "team") {
+    return (
+      <>
+        <SearchField />
+        <AList rows={8} />
+      </>
+    )
+  }
   return (
     <>
       <ACard className="flex flex-col gap-4 p-4">
@@ -1596,6 +1620,61 @@ function ExtraPage() {
       </ACard>
       <AList rows={4} />
     </>
+  )
+}
+
+/** The menu under the app: the tabs, then the assistant's past conversations, with a search and New chat; the avatar opens Settings. */
+function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onProfile }: { tabs: TabId[]; onTab: (t: TabId) => void; /** Requests waiting: the badge on the bell. */ pending: number; onBell: () => void; onOpenChat: () => void; onNewChat: () => void; onProfile: () => void }) {
+  const label = "text-m-outline px-4 pb-1 pt-7 text-[14px] font-medium leading-5"
+  const row = (i: number) => (
+    <button key={i} onClick={onOpenChat} className="flex min-h-10 w-full items-center px-4 text-left active:bg-black/5">
+      <ABar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={12} />
+    </button>
+  )
+  return (
+    <div className="absolute inset-0 flex flex-col" style={{ paddingTop: "calc(var(--safe-top) + 4px)" }}>
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 pl-4 pr-2">
+        <HomebaseLogo aria-hidden className="text-m-on-surface h-[18px] w-auto" />
+        {/* The notifications (requests) button, moved here from the top right of every page. */}
+        <AIconButton label={pending ? `Requests, ${pending} waiting` : "Requests"} onClick={onBell}>
+          <span className="relative">
+            <IconBell size={24} stroke={1.75} />
+            {pending > 0 && <span className="bg-[var(--m-error)] absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none text-white">{pending}</span>}
+          </span>
+        </AIconButton>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-28 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {(
+          <nav aria-label="Tabs">
+            <h3 className={cn(label, "pt-6")}>Tabs</h3>
+            <div className="flex flex-col px-2">
+              {tabs.map((id) => {
+                const { label: text, icon } = TABS[id]
+                return (
+                  <button key={id} onClick={() => onTab(id)} className="text-m-on-surface flex h-10 w-full items-center gap-3 rounded-full px-3 text-left active:bg-black/10">
+                    <span aria-hidden className="block bg-current" style={maskStyle(icon, 22)} />
+                    <span className="text-[16px] font-medium leading-6">{text}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        )}
+        <h3 className={label}>Pinned</h3>
+        {[0, 1, 2].map(row)}
+        <h3 className={label}>Recents</h3>
+        {[3, 4, 5, 6].map(row)}
+      </div>
+      <div className="absolute inset-x-0 flex items-center justify-between px-5" style={{ bottom: 20 }}>
+        <button onClick={onProfile} aria-label="Settings" aria-haspopup="dialog" data-anno="profile" className="flex size-11 items-center justify-center rounded-full active:opacity-80">
+          <Avatar size={40} />
+        </button>
+        <button onClick={onNewChat} className="flex h-12 items-center gap-2 rounded-[16px] bg-[#8f55e5] px-4 text-[15px] font-medium tracking-[0.1px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85">
+          <span aria-hidden className="block bg-white" style={maskStyle("/android/assistant-solid-24.svg", 20)} />
+          New chat
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1740,6 +1819,8 @@ export function AndroidApp() {
   const setAll = useLocationStore((s) => s.setAll)
   const [groupOpen, setGroupOpen] = useState(false)
   // The assistant's chat, open over the app as a bottom sheet (not for employees).
+  // The menu under the app (the tabs and the assistant's past conversations): phones, not employees.
+  const [menuDrawer, setMenuDrawer] = useState(false)
   const [chat, setChat] = useState<{ past: boolean; n: number } | null>(null)
   const [tab, setTab] = useState<TabId>("home")
   // A page opened from the More menu: a main page of its own (the bar stays, and More takes that page's icon).
@@ -1845,7 +1926,7 @@ export function AndroidApp() {
       // The primary tabs first (Time, for owners and managers, is only here), then the rest of the app.
       ...(["home", "money", "shifts", "time", "chat"] as const).filter((t) => tabs.includes(t)).map((t) => {
         const here = !extra && tab === t
-        return { id: `tab:${t}`, label: TABS[t].label, icon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, activeIcon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, current: here, active: t === "time" && here, dot: t === "chat" && unread > 0 }
+        return { id: `tab:${t}`, label: TABS[t].label, icon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, activeIcon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, current: here, active: t === "time" && here, badge: t === "chat" ? unread : 0 }
       }),
       ...(employee
         ? []
@@ -1858,7 +1939,6 @@ export function AndroidApp() {
             active: extra === id,
           }))),
       { id: "settings", label: "Settings", icon: <IconSettings size={24} stroke={1.75} /> },
-      { id: "search", label: "Search", icon: <IconSearch size={24} stroke={1.75} /> },
     ],
     moreOrder,
   )
@@ -1866,7 +1946,6 @@ export function AndroidApp() {
     if (id.startsWith("tab:")) goTab(id.slice(4) as TabId)
     else if (id in EXTRA_PAGES) { setStack([]); setLocOpen(null); setExtra(id as ExtraId) }
     else if (id === "settings") open(SETTINGS)
-    // Search has no screen in the prototype yet.
   }
   const locTitle = useLocTitle(loc)
 
@@ -1893,7 +1972,7 @@ export function AndroidApp() {
             }
             action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
           >
-            <ScopeContext.Provider value={homeScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
+            <ScopeContext.Provider value={homeScope}><PageBody spec={p} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
           </APage>
         ))}
       </AnimatePresence>
@@ -1901,6 +1980,27 @@ export function AndroidApp() {
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+      <DrawerSurface
+        enabled={!rail && !employee}
+        open={menuDrawer}
+        onOpenChange={setMenuDrawer}
+        surfaceClass="bg-m-surface"
+        drawerClass="bg-m-container"
+        radiusMax={SCREENS.android.phone.radius}
+        drawer={(close) => (
+          <AndroidMenu
+            tabs={tabs}
+            pending={pending}
+            // Requests rise over the menu; closing the sheet just dismisses it.
+            onBell={() => setSheet("requests")}
+            onTab={(t) => { close(); setChat(null); goTab(t) }}
+            onOpenChat={() => { close(); setChat((c) => ({ past: true, n: (c?.n ?? 0) + 1 })) }}
+            onNewChat={() => { close(); setChat((c) => ({ past: false, n: (c?.n ?? 0) + 1 })) }}
+            // Settings rises over the menu; closing it just dismisses it.
+            onProfile={() => open(SETTINGS)}
+          />
+        )}
+      >
       {rail && <NavRail tabs={tabs} tab={extra ? null : tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} locations={{ title: locTitle, open: !!railLocEl, onOpen: setRailLocEl }} more={{ items: moreItems.filter((m) => !m.id.startsWith("tab:") && m.id !== "settings"), onSelect: onMoreSelect }} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
@@ -1912,7 +2012,7 @@ export function AndroidApp() {
           {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
       )}
-      {extra && <motion.div key={`extra:${extra}:${loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="absolute inset-0 flex flex-col gap-4 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: 200 }}><ExtraPage /></motion.div>}
+      {extra && <motion.div key={`extra:${extra}:${loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="absolute inset-0 flex flex-col gap-4 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: 200 }}><ExtraPage id={extra} /></motion.div>}
       {!extra && !(tab === "chat" && rail) && !(split && tab !== "money") && <motion.div
         key={`${tab}:${tab === "home" && multi ? "overview" : loc.id}`}
         initial={{ opacity: 0 }}
@@ -1937,6 +2037,8 @@ export function AndroidApp() {
         subtitle={extra && EXTRA_PAGES[extra].scoped ? locTitle : undefined}
         // Settings is in the More menu for owners and managers on a phone, so no avatar up here.
         hideProfile={!employee}
+        onMenu={!rail && !employee ? () => setMenuDrawer(true) : undefined}
+        menuOpen={menuDrawer}
         // Home is a fixed overview, so only the other tabs have a switcher.
         canSwitch={extra ? EXTRA_PAGES[extra].scoped : tab !== "home"}
         scrolled={scrolled}
@@ -1951,7 +2053,7 @@ export function AndroidApp() {
         onClock={() => open(CLOCK)}
         onProfile={() => open(SETTINGS)}
       />
-      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={employee ? undefined : { items: moreItems, header: { account, accounts: COMPANIES.map((c) => c.name), onAccount: setAccount, onCustomize: () => setCustomizeOpen(true) }, onSelect: onMoreSelect }} clock={employee ? { active: clock.status === "in", onOpen: () => open(CLOCK) } : undefined} />}
+      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={employee ? undefined : { items: moreItems, header: { account, accounts: COMPANIES.map((c) => c.name), onAccount: setAccount, onCustomize: () => setCustomizeOpen(true) }, onSelect: onMoreSelect }} clock={employee ? { active: clock.status === "in", onOpen: () => open(CLOCK) } : undefined} faded={menuDrawer} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}
@@ -1980,6 +2082,9 @@ export function AndroidApp() {
       </motion.div>
 
 
+
+      {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onDismiss={() => setChat(null)} />}</AnimatePresence>}
+      </DrawerSurface>
       <AnimatePresence>
         {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} side={rail} value={timeFilters[filterSheet]} onApply={(v) => { setTimeFilters((f) => ({ ...f, [filterSheet]: v })); setFilterSheet(null) }} onClose={() => setFilterSheet(null)} />}
         {sheet === "requests" && <RequestsSheet key="requests" loc={loc} multi={multi} side={rail} onClose={() => setSheet(null)} />}
@@ -1987,8 +2092,6 @@ export function AndroidApp() {
         {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
         {groupOpen && <AGroupSheet key="group" onClose={() => setGroupOpen(false)} />}
       </AnimatePresence>
-
-      {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onDismiss={() => setChat(null)} />}</AnimatePresence>}
       {!rail && <AnimatePresence>{customizeOpen && <CustomizeSheet key="customize" items={moreItems} onClose={() => setCustomizeOpen(false)} />}</AnimatePresence>}
       {!rail && pagesLayer}
     </AndroidFrame>

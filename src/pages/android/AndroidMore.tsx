@@ -17,7 +17,8 @@ export type MoreItem = {
   active?: boolean
   /** The page showing right now (tinted in the menu). */
   current?: boolean
-  dot?: boolean
+  /** A count of what is waiting, in a quiet pill at the end of the row. */
+  badge?: number
 }
 
 /** The top row: the business account on the left (not the location), Customize on the right. */
@@ -126,11 +127,9 @@ export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, he
                     className={cn(row, (m.current || m.active) && "bg-black/[0.08]")}
                     style={{ height: ROW }}
                   >
-                    <span className="relative flex size-6 shrink-0 items-center justify-center">
-                      {m.icon}
-                      {m.dot && <span aria-hidden className="bg-[var(--m-badge)] absolute -right-[2px] -top-[1px] size-[9px] rounded-full" />}
-                    </span>
+                    <span className="relative flex size-6 shrink-0 items-center justify-center">{m.icon}</span>
                     {m.label}
+                    {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
                   </button>
                 </li>
               ))}

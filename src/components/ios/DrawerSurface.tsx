@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
-import { animate, motion, useDragControls, useMotionValue, useTransform } from "motion/react"
+import { animate, motion, useDragControls, useMotionTemplate, useMotionValue, useTransform } from "motion/react"
 import { SPRING_FAST } from "@/lib/motion"
+import { SCREENS } from "@/lib/device"
 
 const SPRING = { type: "spring" as const, ...SPRING_FAST.snappy }
 /** The strip of the main surface that stays visible beside the open menu. */
@@ -22,13 +23,13 @@ export function DrawerSurface({
   drawer,
   surfaceClass = "bg-[#f3f2f6]",
   drawerClass = "bg-white",
-  radiusMax = 52,
+  radiusMax = SCREENS.ios.phone.radius,
   children,
 }: {
   /** Classes for the app surface and the menu under it (default: iOS). */
   surfaceClass?: string
   drawerClass?: string
-  /** The app surface's corner radius while the menu is open. */
+  /** The app surface's corner radius while the menu is open: the device's own screen radius, so the app takes the phone's shape. */
   radiusMax?: number
   enabled?: boolean
   open: boolean
@@ -40,8 +41,15 @@ export function DrawerSurface({
   const [W, setW] = useState(300)
   const x = useMotionValue(0)
   const controls = useDragControls()
-  const radius = useTransform(x, [0, W], [0, radiusMax])
-  const shadow = useTransform(x, [0, W], ["-8px 0 0px rgba(20,20,40,0)", "-10px 0 36px rgba(20,20,40,0.16)"])
+  // The corners reach the device's own radius early in the slide, so the app already shows the phone's shape as it moves over.
+  const radius = useTransform(x, [0, W * 0.35], [0, radiusMax], { clamp: true })
+  // The corners are clipped with clip-path as well as rounded: a backdrop blur inside (the progressive blur at the screen's edges) ignores a
+  // parent's border-radius, and would paint a square corner over the rounded one.
+  const clip = useMotionTemplate`inset(0px round ${radius}px)`
+  // The same radius as a CSS variable, for what is inside to read (the screen-edge blur has to round its own corners).
+  const radiusVar = useMotionTemplate`${radius}px`
+  // A hairline edge and a tight shadow, so the surface's rounded corners read against the menu behind it (a wide soft shadow hides them).
+  const shadow = useTransform(x, [0, W], ["0 0 0 0px rgba(20,20,40,0), -2px 0 0px rgba(20,20,40,0)", "0 0 0 1px rgba(20,20,40,0.16), -4px 0 16px rgba(20,20,40,0.18)"])
 
   useLayoutEffect(() => {
     if (root.current) setW(root.current.offsetWidth - PEEK)
@@ -76,11 +84,13 @@ export function DrawerSurface({
           onOpenChange(info.velocity.x > 350 ? true : info.velocity.x < -350 ? false : far)
         }}
         style={{ x, borderTopLeftRadius: radius, borderBottomLeftRadius: radius, borderTopRightRadius: radius, borderBottomRightRadius: radius, boxShadow: shadow, touchAction: "pan-y" }}
-        className={`absolute inset-0 overflow-hidden ${surfaceClass}`}
+        className="absolute inset-0"
       >
-        {children}
-        {/* While the menu is open the app is a single target: tap it to put the menu away. */}
-        {open && <button aria-label="Close menu" onClick={close} className="absolute inset-0 z-[60] cursor-default" />}
+        <motion.div style={{ clipPath: clip, "--drawer-radius": radiusVar } as never} className={`absolute inset-0 overflow-hidden ${surfaceClass}`}>
+          {children}
+          {/* While the menu is open the app is a single target: tap it to put the menu away. */}
+          {open && <button aria-label="Close menu" onClick={close} className="absolute inset-0 z-[60] cursor-default" />}
+        </motion.div>
       </motion.div>
       {!open && <div aria-hidden onPointerDown={(e) => controls.start(e)} className="absolute inset-y-0 left-0 z-[45]" style={{ width: EDGE, touchAction: "none" }} />}
     </div>

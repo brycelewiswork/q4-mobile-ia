@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react"
 import { motion } from "motion/react"
 import { IconBoltFilled, IconChevronDown, IconLayoutSidebar, IconMapPin, IconSelector } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
-import { Initials } from "@/components/ios/list"
+import { Initials, SELF_TINT } from "@/components/ios/list"
 import { TABS, type TabId } from "@/components/ios/TabBar"
 import { SPRING_FAST } from "@/lib/motion"
 import { nextShiftAt, shortLocationName, type Location } from "@/data/locations"
@@ -126,11 +126,7 @@ export function IpadSidebar({
         className="absolute bottom-2 left-2 top-2 flex flex-col rounded-[30px] bg-white/70 px-3 pb-3 shadow-[0_0_0_0.5px_rgba(0,0,0,0.07),0_10px_30px_rgba(20,20,40,0.08)] backdrop-blur-2xl"
         style={{ width: SIDEBAR_W - 16, paddingTop: "calc(var(--safe-top) - 8px)" }}
       >
-        <div className="flex h-11 items-center justify-between gap-2">
-          <button onClick={onProfile} aria-haspopup="dialog" aria-label="Profile and settings" data-anno="profile" className={cn(row, "h-11 min-w-0 flex-1 gap-2 px-1")}>
-            {wire ? <Initials name={ANON.name} size={36} /> : <img src="/phone/avatar.jpg" alt="" className="size-9 rounded-full object-cover" />}
-            <span className="truncate font-[590]">{ANON.name}</span>
-          </button>
+        <div className="flex h-11 items-center justify-end gap-2">
           <SidebarToggle open={open} onClick={onToggle} />
         </div>
         <nav className="mt-3 flex flex-col gap-1 border-t border-black/[0.08] pt-3">
@@ -178,13 +174,19 @@ export function IpadSidebar({
             </div>
           )}
         </nav>
-        {/* New chat, at the foot of the sidebar. */}
-        {chats && (
-          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-[6px] rounded-full bg-[#8f55e5] px-5 text-[15px] font-[590] tracking-[-0.24px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-auto")}>
-            <IconBoltFilled size={18} />
-            New chat
+        {/* The foot of the sidebar: New chat, and the avatar (Settings) at the very bottom. */}
+        <div className="mt-auto flex flex-col gap-2 pt-3">
+          {chats && (
+            <button onClick={chats.onNew} className="flex h-11 shrink-0 items-center justify-center gap-[6px] rounded-full bg-[#8f55e5] px-5 text-[15px] font-[590] tracking-[-0.24px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85">
+              <IconBoltFilled size={18} />
+              New chat
+            </button>
+          )}
+          <button onClick={onProfile} aria-haspopup="dialog" aria-label="Profile and settings" data-anno="profile" className={cn(row, "h-12 gap-2 px-1")}>
+            {wire ? <Initials name={ANON.name} size={36} tint={SELF_TINT} /> : <img src="/phone/avatar.jpg" alt="" className="size-9 rounded-full object-cover" />}
+            <span className="truncate font-[590]">{ANON.name}</span>
           </button>
-        )}
+        </div>
       </div>
     </motion.aside>
   )

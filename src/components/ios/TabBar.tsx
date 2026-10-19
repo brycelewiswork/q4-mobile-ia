@@ -131,7 +131,7 @@ export function BottomAccessory({
   )
 }
 
-export type MoreItem = { id: string; label: string; icon: ReactNode; /** A small red dot, for something waiting. */ dot?: boolean; /** Its page is the one showing: the More item takes the selected look. */ active?: boolean; /** The icon More wears while this item's page is showing (28px, takes the brand color). */ activeIcon?: ReactNode; /** The page showing right now: tinted in the menu, without selecting More itself. */ current?: boolean; }
+export type MoreItem = { id: string; label: string; icon: ReactNode; /** A count of what is waiting, in a quiet pill at the end of the row. */ badge?: number; /** Its page is the one showing: the More item takes the selected look. */ active?: boolean; /** The icon More wears while this item's page is showing (28px, takes the brand color). */ activeIcon?: ReactNode; /** The page showing right now: tinted in the menu, without selecting More itself. */ current?: boolean; }
 
 const MORE_ROW = 40
 const MORE_HEAD = 48
@@ -153,6 +153,7 @@ export function TabBar({
   onAssistant,
   more,
   clock,
+  faded,
 }: {
   /** Which tabs this kind of user gets, in order. */
   tabs: readonly TabId[]
@@ -166,6 +167,8 @@ export function TabBar({
   inlineAccessory: ReactNode
   onAssistant?: () => void
   /** The last item in the bar: opens a menu that the bar's own glass grows into. */
+  /** Fades the whole bar out (the side menu is opening) and takes it out of reach. */
+  faded?: boolean
   /** Employees: the Time Clock button, beside the bar. */
   clock?: { active: boolean; onOpen: () => void }
   more?: {
@@ -196,9 +199,12 @@ export function TabBar({
   const shown = tabs.map((id) => TABS.find((t) => t.id === id)!)
   const current = TABS.find((t) => t.id === tab) ?? TABS[0]
   return (
-    <div
+    <motion.div
+      initial={false}
+      animate={{ opacity: faded ? 0 : 1 }}
+      transition={{ duration: 0.2 }}
       className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-center gap-4 px-[25px] pt-4"
-      style={{ paddingBottom: "var(--safe-bottom)" }}
+      style={{ paddingBottom: "var(--safe-bottom)", pointerEvents: faded ? "none" : undefined }}
     >
       {minimized ? (
         <>
@@ -298,11 +304,9 @@ export function TabBar({
                     className={cn("flex w-full items-center gap-3 rounded-full px-3 text-left text-[15px] font-[510] tracking-[-0.24px] text-[#141414] active:bg-[#787880]/20", (m.current || m.active) && "bg-[#787880]/20")}
                     style={{ height: MORE_ROW }}
                   >
-                    <span className="relative flex size-6 shrink-0 items-center justify-center">
-                      {m.icon}
-                      {m.dot && <span aria-hidden className="absolute -right-[2px] -top-[1px] size-[9px] rounded-full bg-[#ff3b30] ring-[1.5px] ring-white/80" />}
-                    </span>
+                    <span className="relative flex size-6 shrink-0 items-center justify-center">{m.icon}</span>
                     {m.label}
+                    {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
                   </button>
                 </li>
               ))}
@@ -388,7 +392,7 @@ export function TabBar({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

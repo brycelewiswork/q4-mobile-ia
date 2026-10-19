@@ -28,7 +28,7 @@ function resolve(side: EdgeBlurSide | undefined) {
 // Eased (not linear) falloff for the tint so it never reads as a hard edge.
 const EASE_STOPS = [1, 0.56, 0.25, 0.06, 0]
 
-function Edge({ side, cfg, radius }: { side: "top" | "bottom"; cfg: ReturnType<typeof resolve> & object; radius?: number }) {
+function Edge({ side, cfg, radius }: { side: "top" | "bottom"; cfg: ReturnType<typeof resolve> & object; radius?: number | string }) {
   const dir = side === "top" ? "to bottom" : "to top"
   const stops = cfg.tint
     ? EASE_STOPS.map((a, i) => `color-mix(in srgb, ${cfg.tint} ${a * 100}%, transparent) ${i * 25}%`).join(", ")
@@ -60,7 +60,8 @@ function Edge({ side, cfg, radius }: { side: "top" | "bottom"; cfg: ReturnType<t
  * bottom bar. Top and bottom are configured independently. Place it inside a
  * `relative` container, above the scrolling content and below the bars.
  */
-export function EdgeBlur({ top, bottom, radius }: EdgeBlurConfig & { radius?: number }) {
+/** `radius`: the corner radius of what the blur sits in, a number or a CSS length (`var(--drawer-radius)`). */
+export function EdgeBlur({ top, bottom, radius }: EdgeBlurConfig & { radius?: number | string }) {
   const t = resolve(top)
   const b = resolve(bottom)
   return (

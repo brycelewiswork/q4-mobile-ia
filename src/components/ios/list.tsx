@@ -150,13 +150,16 @@ const TINTS: [string, string][] = [
   ["#ffc2d1", "#e6708f"],
   ["#d7c2ff", "#a47ae8"],
 ]
-export function Initials({ name, size = 40 }: { name: string; size?: number }) {
+/** The signed-in person's own avatar tint: the purple of the profile card in Settings, so their avatar matches everywhere it shows. */
+export const SELF_TINT: [string, string] = TINTS[0]
+
+export function Initials({ name, size = 40, tint }: { name: string; size?: number; /** Overrides the tint chosen from the name. */ tint?: [string, string] }) {
   const initials = name
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
     .join("")
-  const [a, b] = TINTS[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % TINTS.length]
+  const [a, b] = tint ?? TINTS[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % TINTS.length]
   return (
     <span
       className="flex shrink-0 items-center justify-center rounded-full font-[590] text-white"

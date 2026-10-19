@@ -2,7 +2,7 @@ import { Bar, BarLines } from "@/components/wire/Wire"
 import { ANON, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
-import { IconCheck, IconPencil, IconUsers } from "@tabler/icons-react"
+import { IconCheck, IconPencil } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
@@ -12,11 +12,10 @@ import { SearchBar } from "@/components/ios/SearchBar"
 import { Sheet } from "@/components/ios/Sheet"
 import { EASE, SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
-import { USER_EARNINGS, type Location } from "@/data/locations"
+import type { Location } from "@/data/locations"
 
 const SPRING = { type: "spring" as const, ...SPRING_FAST.snappy }
 const GAP = 12
-const ROUNDED = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif'
 const PLUS_JAKARTA = '"Plus Jakarta Sans", -apple-system, system-ui, sans-serif'
 
 
@@ -142,7 +141,7 @@ function Carousel({ pages }: { pages: { key: string; label: string; node: ReactN
   )
 
   return (
-    <div className="px-1">
+    <div>
       <div
         ref={frame}
         role="group"
@@ -243,11 +242,6 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
   )
 }
 
-const WORK_ROWS: Row[] = [
-  { label: "Team", page: "team", icon: <IconUsers size={20} stroke={1.75} className="text-[#8f55e5]" /> },
-  { label: "Payroll", page: "payroll", icon: "/phone/row-money.svg" },
-]
-
 const ACCOUNT_ROWS: Row[] = [
   { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
   { icon: "/phone/row-calendar.svg", label: "Calendar Sync", trailing: "Not Connected", page: "calendar" },
@@ -268,7 +262,6 @@ const ACTIONS = [
 
 function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
   const wire = useStructure()
-  const p = loc.profile
 
   const pages = [
     { key: "stats", label: "Stats", node: <StatsCard loc={loc} onOpen={() => onOpen("stats")} /> },
@@ -298,28 +291,6 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
 
         <Carousel key={loc.id} pages={pages} />
 
-        <div className="flex gap-4 tracking-[-0.43px]">
-          {[
-            { label: "Earnings", page: "earnings" as PageId, value: USER_EARNINGS.period.amount, sub: USER_EARNINGS.period.payday },
-            { label: "Time off balance", page: "timeoff" as PageId, value: p.timeOff.balance, sub: p.timeOff.plan },
-          ].map((c) => (
-            <button key={c.label} onClick={() => onOpen(c.page)} className="flex min-w-0 flex-1 text-left active:opacity-80">
-            <Card className="flex min-w-0 flex-1 flex-col p-3">
-              <p className="text-[14px] leading-5 text-[#2c2935]">{c.label}</p>
-              {wire ? (
-                <div className="flex flex-col gap-2 pb-1 pt-2"><Bar w={70} h={20} /><Bar w={100} h={10} /></div>
-              ) : (
-                <>
-                  <p className="text-[22px] font-bold text-[#2c2935]" style={{ fontFamily: ROUNDED }}>{c.value}</p>
-                  <p className="truncate text-[14px] leading-5 text-[#747182]">{c.sub}</p>
-                </>
-              )}
-            </Card>
-            </button>
-          ))}
-        </div>
-
-        <RowGroup rows={WORK_ROWS} onOpen={onOpen} />
         <RowGroup rows={ACCOUNT_ROWS} onOpen={onOpen} />
 
         <div className="flex gap-2">
