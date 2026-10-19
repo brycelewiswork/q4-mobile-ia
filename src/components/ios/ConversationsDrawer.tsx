@@ -37,7 +37,7 @@ export function ConversationsDrawer({ loc, onOpenChat, onNewChat, onProfile }: {
         ) : (
           <h2 className="flex h-11 items-center text-black">
             <span className="sr-only">Assistant</span>
-            <HomebaseLogo aria-hidden className="h-[26px] w-auto" />
+            <HomebaseLogo aria-hidden className="h-[18px] w-auto" />
           </h2>
         )}
         <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
