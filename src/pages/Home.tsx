@@ -991,7 +991,6 @@ function IosHome() {
           <ConversationsDrawer
             loc={loc}
             tabs={tabs}
-            tab={tab}
             unread={scope.some((l) => l.messages.some((m) => m.unread))}
             onTab={(t) => { close(); setAssistantOpen(false); setTab(t); setMinimized(false); lastTop.current = 0 }}
             onOpenChat={(title) => { close(); setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) }}
