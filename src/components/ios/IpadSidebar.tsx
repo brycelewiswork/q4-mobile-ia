@@ -75,48 +75,9 @@ export function SidebarLocationBody({ l }: { l: Location }) {
   )
 }
 
-export type SidebarClock = { title: string; subtitle: string; status: "out" | "in" | "break"; onOpen: () => void }
-
-/**
- * The time clock at the foot of the sidebar: the status on the bottom row, with break and meal above it while
- * clocked in (or the main action while not). Tapping any of it opens the Time Clock sheet.
- */
-function ClockCard({ title, subtitle, status, onOpen }: SidebarClock) {
-  return (
-    <div data-anno="clock-accessory" className="rounded-[24px] bg-[#787880]/[0.12] p-1">
-      {status === "in" ? (
-        <>
-          <button onClick={onOpen} aria-label="Start break" className={row}>
-            <img src="/phone/break-solid.svg" alt="" className="size-6" />
-            Take break
-          </button>
-          <button onClick={onOpen} aria-label="Start meal break" className={row}>
-            <img src="/phone/meal.svg" alt="" className="size-6 p-[2px]" />
-            Take meal
-          </button>
-        </>
-      ) : (
-        <button onClick={onOpen} className="mb-1 flex h-11 w-full items-center justify-center rounded-full bg-[#8f55e5] text-[17px] font-[590] tracking-[-0.43px] text-white active:opacity-80">
-          {status === "break" ? "End break" : "Clock in"}
-        </button>
-      )}
-      <button onClick={onOpen} aria-haspopup="dialog" aria-label={subtitle ? `${title}. ${subtitle}` : title} className={cn(row, "h-12")}>
-        <span className="relative size-6 shrink-0">
-          <img src="/phone/clock-stroke.svg" alt="" className="size-6" />
-          {status === "in" && <span aria-hidden className="absolute -right-[3px] -top-[3px] size-[9px] rounded-full bg-[#34c759] ring-[1.5px] ring-white" />}
-        </span>
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate font-[590]">{title}</span>
-          {subtitle && <span className="truncate text-[13px] leading-[15px] text-[#7f7f7f]">{subtitle}</span>}
-        </span>
-      </button>
-    </div>
-  )
-}
-
 /**
  * Apple's sidebar, for iPad: a frosted panel down the leading edge with the app's destinations, the toggle in its
- * header, and (here, for parity with Android's rail) the avatar and assistant on top and the time clock at the foot.
+ * header, and (here, for parity with Android's rail) the avatar on top, then the tabs, the assistant's chats and the locations.
  * Hidden, it leaves only the toggle in the toolbar. The app's content pane slides over to make room (see IosHome).
  */
 export function IpadSidebar({
@@ -127,7 +88,6 @@ export function IpadSidebar({
   open,
   onToggle,
   onProfile,
-  clock,
   chats,
   locations,
 }: {
@@ -138,7 +98,6 @@ export function IpadSidebar({
   open: boolean
   onToggle: () => void
   onProfile: () => void
-  clock: SidebarClock
   /** The assistant's chats, under the tabs: New chat, then pinned and recent. Not for employees (no assistant). */
   chats?: { conversations: { id: string; title: string; pinned?: boolean }[]; onOpen: (title: string) => void; onNew: () => void }
   /** Multi-location users: the locations, below the tabs. Tapping one opens its overview in the main area. */
@@ -192,10 +151,6 @@ export function IpadSidebar({
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-black/[0.08] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {chats && (
           <section aria-label="Chats" data-anno="sidebar-chats" className="pb-2">
-            <button onClick={chats.onNew} className="mt-2 flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-black active:opacity-60">
-              <IconBoltFilled size={22} className="text-[#8f55e5]" />
-              <span className="font-[590]">New chat</span>
-            </button>
             {[
               { label: "Pinned", list: chats.conversations.filter((c) => c.pinned) },
               { label: "Recents", list: chats.conversations.filter((c) => !c.pinned) },
@@ -203,7 +158,7 @@ export function IpadSidebar({
               (g, gi) =>
                 g.list.length > 0 && (
                   <div key={g.label}>
-                    <p className="px-3 pb-0.5 pt-4 text-[13px] font-[510] leading-[18px] tracking-[-0.08px] text-[#a09ead]">{g.label}</p>
+                    <p className={cn("px-3 pb-0.5 text-[13px] font-[510] leading-[18px] tracking-[-0.08px] text-[#a09ead]", gi === 0 ? "pt-3" : "pt-4")}>{g.label}</p>
                     {g.list.map((c, i) => (
                       <button key={c.id} onClick={() => chats.onOpen(c.title)} className="flex h-9 w-full items-center rounded-full px-3 text-left active:opacity-60">
                         {wire ? <Bar w={`${[78, 62, 70, 54, 66, 58, 74][(i + gi * 3) % 7]}%`} h={10} /> : <span className="truncate text-[15px] leading-5 tracking-[-0.24px] text-black">{c.title}</span>}
@@ -247,9 +202,13 @@ export function IpadSidebar({
         )}
         </div>
         )}
-        <div className={chats || locations ? "mt-3" : "mt-auto"}>
-          <ClockCard {...clock} />
-        </div>
+        {/* Where the time clock used to sit: New chat, at the foot of the sidebar. */}
+        {chats && (
+          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#8f55e5] px-5 text-[17px] font-[590] tracking-[-0.43px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-3")}>
+            <IconBoltFilled size={20} />
+            New chat
+          </button>
+        )}
       </div>
     </motion.aside>
   )

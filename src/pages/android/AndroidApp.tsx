@@ -202,7 +202,7 @@ const RAIL_EASE = { duration: 0.3, ease: [0.2, 0, 0, 1] } as const
  * destinations. Collapsed it is 96dp wide with labels under the icons; expanded the labels sit beside them.
  * The app's content slides right as it grows (see AndroidApp).
  */
-function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssistant, clock, locations }: { /** Multi-location users: the locations below the tabs; tapping one opens its overview in the main area. */ locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once. */ onAll?: () => void; allActive?: boolean }; clock?: { title: string; status: "out" | "in" | "break"; onOpen: () => void }; tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; open: boolean; onToggle: () => void; onProfile: () => void; onAssistant?: () => void }) {
+function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssistant, locations, chats }: { /** The assistant's chats, under the tabs (when the rail is open): pinned and recents. Not for employees. */ chats?: { onOpen: () => void }; /** Multi-location users: the locations below the tabs; tapping one opens its overview in the main area. */ locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once. */ onAll?: () => void; allActive?: boolean }; tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; open: boolean; onToggle: () => void; onProfile: () => void; onAssistant?: () => void }) {
   const pill = (on: boolean) => cn("flex items-center transition-colors", open ? "h-14 w-full gap-3 rounded-full pl-4 pr-6" : "h-8 w-14 justify-center rounded-full", on && "bg-m-secondary-container")
   const label = (text: string, strong?: boolean) => (open ? <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.15 }} className={cn("whitespace-nowrap text-[14px] leading-5", strong ? "font-bold" : "font-medium")}>{text}</motion.span> : null)
   return (
@@ -224,9 +224,9 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
           {open && <span className="truncate text-[14px] font-medium leading-5">{ANON.name}</span>}
         </button>
         {onAssistant && (
-          <button onClick={onAssistant} aria-label="Assistant" aria-haspopup="dialog" className={cn("mt-3 flex h-14 items-center justify-center gap-3 self-center rounded-[16px] bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85", open ? "w-full px-4" : "w-14")}>
+          <button onClick={onAssistant} aria-label="New chat" aria-haspopup="dialog" className={cn("mt-3 flex h-14 items-center justify-center gap-3 self-center rounded-[16px] bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85", open ? "w-full px-4" : "w-14")}>
             <span aria-hidden className="block shrink-0 bg-white" style={maskStyle("/android/assistant-solid-24.svg", 24)} />
-            {open && <span className="whitespace-nowrap text-[14px] font-medium leading-5">Assistant</span>}
+            {open && <span className="whitespace-nowrap text-[14px] font-medium leading-5">New chat</span>}
           </button>
         )}
       </div>
@@ -252,25 +252,47 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
           )
         })}
       </div>
-      {locations && <RailLocations open={open} {...locations} />}
-      {clock && <RailClock open={open} {...clock} />}
+      {((open && chats) || locations) && (
+        <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {open && chats && <RailChats {...chats} />}
+          {locations && <RailLocations open={open} hasChats={open && !!chats} {...locations} />}
+        </div>
+      )}
     </motion.nav>
   )
 }
 
 const railMoney = (n: number) => `$${Math.round(n / 1000)}K`
 
+/** The assistant's chats in the open rail, under the tabs: pinned, then recents (placeholders, as Android is the structure cut). */
+function RailChats({ onOpen }: { onOpen: () => void }) {
+  const label = "text-m-outline px-3 pb-1 pt-4 text-[12px] font-medium leading-4 first:pt-3"
+  const row = (i: number) => (
+    <button key={i} onClick={onOpen} className="flex h-10 w-full items-center rounded-full px-4 text-left active:bg-black/10">
+      <ABar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={10} />
+    </button>
+  )
+  return (
+    <section aria-label="Chats" data-anno="rail-chats" className="border-m-divider border-t px-3 pb-2">
+      <h3 className={label}>Pinned</h3>
+      {[0, 1, 2].map(row)}
+      <h3 className={label}>Recents</h3>
+      {[3, 4, 5].map(row)}
+    </section>
+  )
+}
+
 /**
  * The locations under the tabs. Collapsed: a round chip with the location's initials. Expanded:
  * the name over its labor share, with sales at the end, under a small heading for each company.
  */
-function RailLocations({ open, activeId, onOpen, onAll, allActive }: { open: boolean; activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; onAll?: () => void; allActive?: boolean }) {
+function RailLocations({ open, hasChats, activeId, onOpen, onAll, allActive }: { open: boolean; hasChats?: boolean; activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; onAll?: () => void; allActive?: boolean }) {
   const wire = useStructure()
   const locName = useLocName()
   const employee = useUserTypeStore((s) => s.type) === "employee"
   const chip = (l: Location) => (wire ? `L${LOCATIONS.findIndex((x) => x.id === l.id) + 1}` : shortLocationName(l).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase())
   return (
-    <div data-anno="rail-locations" role="group" aria-label="Locations" className={cn("border-m-divider mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto border-t pt-2 [scrollbar-width:none]", open ? "gap-0 px-3" : "items-center")}>
+    <div data-anno="rail-locations" role="group" aria-label="Locations" className={cn("border-m-divider flex flex-col border-t pt-2", open ? "gap-0 px-3" : "items-center", hasChats && "mt-2")}>
       {onAll && (open ? (
         <button onClick={onAll} aria-current={allActive ? "page" : undefined} className={cn("text-m-on-surface flex h-14 w-full items-center gap-2 rounded-full pl-4 pr-4 text-left active:bg-black/10", allActive && "bg-m-secondary-container")}>
           <span className="flex min-w-0 flex-1 flex-col">
@@ -310,37 +332,6 @@ function RailLocations({ open, activeId, onOpen, onAll, allActive }: { open: boo
           })}
         </div>
       ))}
-    </div>
-  )
-}
-
-/**
- * The time clock at the foot of the rail. Collapsed: a round vertical pill, the break and meal buttons over the
- * status icon. Expanded: a squarer card that adds the status text. Either opens the time clock dialog.
- */
-function RailClock({ open, title, status, onOpen }: { open: boolean; title: string; status: "out" | "in" | "break"; onOpen: () => void }) {
-  // One layout in both states: the rows stay put and the expanded card just reveals each row's text.
-  const row = cn("flex items-center rounded-full active:bg-black/10", open ? "h-10 w-full gap-3 pl-0 pr-4" : "size-10 justify-center")
-  const text = (t: string) => (open ? <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.15 }} className="whitespace-nowrap text-[14px] font-medium leading-5">{t}</motion.span> : null)
-  const icon = (src: string) => <span aria-hidden className="flex size-10 shrink-0 items-center justify-center"><span className="block bg-current" style={maskStyle(src, 24)} /></span>
-  return (
-    <div data-anno="clock-accessory" className={cn("bg-m-high text-m-on-surface mt-auto flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.14)]", open ? "mx-3 rounded-[20px] p-1" : "mx-auto w-14 items-center rounded-full py-2")}>
-      {status === "in" && (
-        <>
-          <button onClick={onOpen} aria-label="Take break" className={row}>{icon("/phone/break-solid.svg")}{text("Take break")}</button>
-          <button onClick={onOpen} aria-label="Take meal" className={row}>{icon("/phone/meal.svg")}{text("Take meal")}</button>
-        </>
-      )}
-      {status !== "in" && open && (
-        <button onClick={onOpen} className="bg-m-primary text-m-on-primary m-1 h-10 rounded-full px-4 text-[14px] font-medium tracking-[0.1px] active:opacity-85">{status === "break" ? "End break" : "Clock in"}</button>
-      )}
-      <button onClick={onOpen} aria-haspopup="dialog" aria-label={title} className={row}>
-        <span className="relative flex size-10 shrink-0 items-center justify-center">
-          <IconClock size={24} stroke={1.75} />
-          {status === "in" && <span aria-hidden className="absolute right-[7px] top-[7px] size-[9px] rounded-full bg-[#34c759] ring-2 ring-[var(--m-container-high)]" />}
-        </span>
-        {text(title)}
-      </button>
     </div>
   )
 }
@@ -1652,7 +1643,7 @@ function AndroidMenu({ tabs, onTab, unread, onOpenChat, onNewChat, onProfile }: 
  * chevron at the top right, and the composer at the foot. A new chat shows the greeting and suggestions just above the
  * composer; a past one shows its thread.
  */
-function AndroidChat({ past, onMenu, onDismiss }: { past: boolean; onMenu: () => void; onDismiss: () => void }) {
+function AndroidChat({ past, onMenu, onDismiss }: { past: boolean; onMenu?: () => void; onDismiss: () => void }) {
   const bubble = "block rounded-[20px]"
   return (
     <motion.div
@@ -1665,9 +1656,13 @@ function AndroidChat({ past, onMenu, onDismiss }: { past: boolean; onMenu: () =>
       className="bg-m-surface absolute inset-0 z-[45] flex flex-col"
     >
       <div className="flex h-16 shrink-0 items-center justify-between px-2" style={{ marginTop: "var(--safe-top)" }}>
-        <AIconButton label="Menu" onClick={onMenu}>
-          <MenuTwoLine size={24} stroke={1.75} />
-        </AIconButton>
+        {onMenu ? (
+          <AIconButton label="Menu" onClick={onMenu}>
+            <MenuTwoLine size={24} stroke={1.75} />
+          </AIconButton>
+        ) : (
+          <span aria-hidden className="size-12" />
+        )}
         <AIconButton label="Dismiss" onClick={onDismiss}>
           <IconChevronDown size={24} stroke={1.75} />
         </AIconButton>
@@ -1820,7 +1815,9 @@ export function AndroidApp() {
     </AnimatePresence>
   )
 
-  const assistant = employee ? undefined : () => open({ id: "assistant", kind: "assistant", title: "Assistant" })
+  // Beside a rail the assistant starts a new chat; the rail lists the past ones.
+  const newChat = () => setChat((c) => ({ past: false, n: (c?.n ?? 0) + 1 }))
+  const assistant = employee ? undefined : newChat
   const unread = scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0)
 
   // Pages open over the whole screen, so on a phone they sit outside the app surface that slides aside; beside a rail they stay in the pane.
@@ -1874,7 +1871,7 @@ export function AndroidApp() {
           />
         )}
       >
-      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
+      {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} chats={employee ? undefined : { onOpen: () => setChat((c) => ({ past: true, n: (c?.n ?? 0) + 1 })) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
       {tab === "chat" && rail && <MessagesSplit key={loc.id} />}
@@ -1910,7 +1907,8 @@ export function AndroidApp() {
         canSwitch={tab !== "home"}
         scrolled={scrolled}
         pending={pending}
-        showClock={!employee && tab === "home" && !rail}
+        // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the clock bar).
+        showClock={rail || (!employee && tab === "home")}
         clockActive={clock.status === "in"}
         rail={rail}
         plus={rail && tab !== "chat" ? undefined : (plus ?? undefined)}
@@ -1933,6 +1931,7 @@ export function AndroidApp() {
       {locOpen && <AndroidLocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={employee} onClosed={() => setLocOpen(null)} />}
 
 
+      {rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onDismiss={() => setChat(null)} />}</AnimatePresence>}
       {rail && pagesLayer}
       </motion.div>
 
@@ -1945,7 +1944,7 @@ export function AndroidApp() {
         {groupOpen && <AGroupSheet key="group" onClose={() => setGroupOpen(false)} />}
       </AnimatePresence>
 
-      <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onMenu={() => setMenuDrawer(true)} onDismiss={() => setChat(null)} />}</AnimatePresence>
+      {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onMenu={() => setMenuDrawer(true)} onDismiss={() => setChat(null)} />}</AnimatePresence>}
       </DrawerSurface>
       {!rail && pagesLayer}
     </AndroidFrame>

@@ -262,8 +262,7 @@ function TitleText({ text }: { text: string }) {
   )
 }
 
-function Toolbar({ title: titleOverride, view, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; view: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
-  const manager = view === "manager"
+function Toolbar({ title: titleOverride, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; view?: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
   const wire = useStructure()
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
@@ -289,8 +288,8 @@ function Toolbar({ title: titleOverride, view, loc, unread, actions, hideBell, l
         {/* Like iOS: every action beside the bell shares ONE glass container. Buttons are 36pt on an 8pt gap, so icons sit 44pt apart (the Figma 18pt gap read wide for a group). */}
         <LiquidGlass mode="small" radius={999} className="flex h-11 items-center justify-center gap-2 px-1">
           {actions}
-          {/* Owners and managers get the time clock up here (no bottom accessory): the same clock icon, with the green dot while clocked in. */}
-          {manager && showClock && (
+          {/* The time clock up here (owners and managers on a phone, everyone on a tablet): the clock icon, with the green dot while clocked in. */}
+          {showClock && (
             <button onClick={onClock} aria-haspopup="dialog" className="flex size-9 items-center justify-center rounded-full active:opacity-60" aria-label="Time clock">
               <span className="relative size-6">
                 <img src="/phone/clock-stroke.svg" alt="" className="size-6" />
@@ -1015,7 +1014,6 @@ function IosHome() {
             onOpen: (title) => { setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) },
             onNew: () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) },
           }}
-          clock={{ title, subtitle, status: clockState.status, onOpen: () => setHalfOpen(true) }}
         />
       )}
       {/* Everything but the sheets lives in this pane, which slides over as the sidebar opens and closes. */}
@@ -1065,8 +1063,8 @@ function IosHome() {
         // Home is a fixed overview, so only the other tabs have a switcher.
         canSwitch={tab !== "home"}
         onClock={() => setHalfOpen(true)}
-        // The iPad has the time clock in its sidebar, so no clock button up here.
-        showClock={tab === "home" && !tablet}
+        // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the bottom accessory).
+        showClock={tablet || (userType !== "employee" && tab === "home")}
         clockActive={clockState.status === "in"}
         hideBell={tab === "chat"}
         // With the app menu (phones, not employees) the avatar lives at the foot of that menu instead.
