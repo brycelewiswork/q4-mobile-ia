@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { IconPencilPlus, IconSearch, IconX } from "@tabler/icons-react"
+import { IconBoltFilled, IconSearch, IconX } from "@tabler/icons-react"
 import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
 import { Bar } from "@/components/wire/Wire"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
@@ -118,7 +118,7 @@ export function ConversationsDrawer({ loc, tabs, onTab, unread, onOpenChat, onNe
           onClick={onNewChat}
           className="flex h-11 items-center gap-[6px] rounded-full bg-[#8f55e5] px-4 text-[15px] font-[590] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85"
         >
-          <IconPencilPlus size={20} stroke={1.75} />
+          <IconBoltFilled size={20} />
           New chat
         </button>
       </div>
