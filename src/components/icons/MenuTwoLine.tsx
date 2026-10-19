@@ -1,15 +1,20 @@
-import type { SVGProps } from "react"
+import type { HTMLAttributes } from "react"
+import { IconBoltFilled } from "@tabler/icons-react"
 
 /**
- * The menu icon: two left-aligned lines, the second shorter, with a small lightning bolt (the assistant's) in the space
- * beside it, so the button says the assistant is in there. Tabler's 24px grid, all in the current color.
+ * The menu icon: two left-aligned lines, the second shorter, with the assistant's own lightning bolt (the same
+ * `IconBoltFilled` used for New chat and the suggestions) shrunk into the space beside it, so the button says the
+ * assistant is in there. All in the current color.
  */
-export function MenuTwoLine({ size = 24, stroke = 1.75, ...props }: { size?: number; stroke?: number } & Omit<SVGProps<SVGSVGElement>, "stroke" | "width" | "height">) {
+export function MenuTwoLine({ size = 24, stroke = 1.75, ...props }: { size?: number; stroke?: number } & Omit<HTMLAttributes<HTMLSpanElement>, "children">) {
+  const bolt = Math.round(size * 0.58)
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
-      <path d="M4 8h16" />
-      <path d="M4 16h7" />
-      <path d="M19.8 10.4 14.6 16.9h2.7l-1 4.9 5.6-6.9h-2.8z" fill="currentColor" stroke="none" />
-    </svg>
+    <span aria-hidden className="relative inline-flex shrink-0" style={{ width: size, height: size }} {...props}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 8h16" />
+        <path d="M4 16h6" />
+      </svg>
+      <IconBoltFilled size={bolt} className="absolute" style={{ right: -size * 0.04, bottom: -size * 0.02 }} />
+    </span>
   )
 }
