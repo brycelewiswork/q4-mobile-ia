@@ -3,7 +3,7 @@ import { useStructure } from "@/store/useViewStore"
 import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
-import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconDots, IconMessages, IconPlus, IconSearch, IconX } from "@tabler/icons-react"
+import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
 import { Keyboard, KEYBOARD_H } from "@/components/ios/Keyboard"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { cn } from "@/lib/utils"
@@ -58,8 +58,9 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
     if (!el) return
     const next = el.offsetHeight
     setH(next)
-    h.set(next - MEDIUM_TOP)
-    y.set(next - MEDIUM_TOP + 12)
+    // Every chat opens as a full page: it rises from the bottom to the full height.
+    h.set(next)
+    y.set(next + 12)
   }, [h, y])
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
     return () => window.removeEventListener("keydown", onKey)
   }, [kb, view, close])
 
-  // Drag: up grows the sheet toward the full page, down shrinks it, then dismisses.
+  // Drag: a full page slides down to dismiss, or springs back to full.
   useEffect(() => {
     const el = surface.current
     const rootEl = root.current
@@ -137,13 +138,13 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
       }
       e.preventDefault()
       const want = h0 - dy // desired visible height
-      if (want >= MED) {
-        const over = Math.max(0, want - H)
-        h.set(Math.min(want, H) + over * 0.15) // rubber band past the full page
+      if (want >= H) {
+        h.set(H + (want - H) * 0.15) // rubber band past the full page
         y.set(0)
       } else {
-        h.set(MED)
-        y.set(MED - want)
+        // A full page only slides down: back to full, or away.
+        h.set(H)
+        y.set(H - want)
       }
       samples.push({ t: performance.now(), y: e.clientY })
       if (samples.length > 6) samples.shift()
@@ -157,10 +158,9 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
       const b = samples[samples.length - 1]
       const v = b.t > a.t ? (((b.y - a.y) / (b.t - a.t)) * 1000) / scale() : 0 // px/s, + = down
       const pos = h.get() - y.get() - v * 0.2 // visible height, projected a little ahead
-      const mid = (MED + H) / 2
-      if (pos < MED * 0.6) return close()
+      if (pos < H * 0.7) return close()
       animate(y, 0, SPRING)
-      animate(h, pos > mid ? H : MED, SPRING)
+      animate(h, H, SPRING)
     }
     el.addEventListener("pointerdown", onDown)
     window.addEventListener("pointermove", onMove, { passive: false })
@@ -277,8 +277,8 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
             Assistant
           </h2>
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-            <button onClick={close} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconX size={24} stroke={2} />
+            <button onClick={close} aria-label="Dismiss" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+              <IconChevronDown size={24} stroke={2} />
             </button>
           </LiquidGlass>
         </motion.div>
