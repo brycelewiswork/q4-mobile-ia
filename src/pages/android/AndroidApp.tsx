@@ -399,17 +399,17 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
   const next = nextShiftAt(l.id)
   const sub = wire ? (
     <span className="flex items-center gap-2">
-      <ABar w={56} h={8} />
       {!employee && <ABar w={32} h={8} />}
+      <ABar w={56} h={8} />
     </span>
   ) : employee ? (
     <span className="truncate">{next ? `Next shift ${next}` : "No shifts this week"}</span>
   ) : (
     <span className="flex items-center gap-[6px]">
+      <span className="text-m-on-surface font-medium">{shortMoney(l.sales)}</span>
+      <span aria-hidden>·</span>
       <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
       {l.laborPct}% labor
-      <span aria-hidden>·</span>
-      <span className="text-m-on-surface font-medium">{shortMoney(l.sales)}</span>
     </span>
   )
   return (
