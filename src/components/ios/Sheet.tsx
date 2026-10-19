@@ -106,7 +106,8 @@ export function Sheet({
     let samples: { t: number; y: number }[] = []
 
     const begin = (x: number, yy: number, target: EventTarget | null) => {
-      if (closing.current) return
+      // Something inside has its own drag (a reorderable list's handles): the sheet stays put.
+      if (closing.current || (target as HTMLElement | null)?.closest?.("[data-no-sheet-drag]")) return
       active = true
       dragging = false
       startX = x

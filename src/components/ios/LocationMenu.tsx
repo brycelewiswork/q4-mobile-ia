@@ -1,5 +1,5 @@
 import { useLocName } from "@/store/useViewStore"
-import { useEffect } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { IconCheck, IconPlus } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
@@ -63,7 +63,7 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
  * Mount it as a direct child of the screen; it fills the screen with a
  * dismiss layer and anchors itself under the toolbar title.
  */
-export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }: { open: boolean; onClose: () => void; /** Show every location at once. */ onAll?: () => void; /** Plus Group: start combining locations into a named group. */ onNewGroup?: () => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
+export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, anchorEl, onPickLocation }: { open: boolean; onClose: () => void; /** Anchor under this element (the iPad sidebar's Locations row) instead of under the toolbar title. */ anchorEl?: HTMLElement | null; /** Also called when a location is picked (the tablet's Home opens that location's view). */ onPickLocation?: (l: Location) => void; /** Show every location at once. */ onAll?: () => void; /** Plus Group: start combining locations into a named group. */ onNewGroup?: () => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
   const wire = useStructure()
   const locationId = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
@@ -73,6 +73,16 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
   const groups = useGroupsStore((s) => s.groups)
   const single = useUserTypeStore((s) => s.type) === "oam"
   const allCounts = useCounts()
+  const overlay = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    const o = overlay.current
+    if (!open || !anchorEl || !o) return setPos(null)
+    const a = anchorEl.getBoundingClientRect()
+    const r = o.getBoundingClientRect()
+    const sc = r.width / o.offsetWidth || 1 // the device frame is scaled; position in local px
+    setPos({ left: (a.left - r.left) / sc, top: (a.bottom - r.top) / sc + 6 })
+  }, [open, anchorEl])
 
   useEffect(() => {
     if (!open) return
@@ -84,7 +94,7 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
   return (
     <AnimatePresence>
       {open && (
-        <div className="absolute inset-0 z-30" onPointerDown={onClose}>
+        <div ref={overlay} className="absolute inset-0 z-30" onPointerDown={onClose}>
           <motion.div
             role="menu"
             aria-label="Location"
@@ -93,8 +103,8 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
             animate={{ scale: 1 }}
             exit={{ scale: 0.8, transition: { duration: 0.12 } }}
             transition={SPRING_FAST.snappy}
-            style={{ transformOrigin: "top left", top: "calc(var(--safe-top) + 51px)" }}
-            className="absolute left-4 w-[calc(100%-32px)] max-w-[420px]"
+            style={anchorEl && pos ? { transformOrigin: "top left", top: pos.top, left: pos.left, width: 340 } : { transformOrigin: "top left", top: "calc(var(--safe-top) + 51px)" }}
+            className={anchorEl && pos ? "absolute" : "absolute left-4 w-[calc(100%-32px)] max-w-[420px]"}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <LiquidGlass mode="medium" radius={34} className="py-[10px]">
@@ -156,6 +166,7 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation }
                         aria-checked={selected}
                         onClick={() => {
                           setLocation(l.id)
+                          onPickLocation?.(l)
                           window.setTimeout(onClose, 120)
                         }}
                         className="flex min-h-[52px] w-full items-center gap-[13px] py-1 pl-[25px] pr-5 text-left tracking-[-0.43px] text-black active:bg-black/5"

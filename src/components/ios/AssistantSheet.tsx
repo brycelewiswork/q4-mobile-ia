@@ -3,19 +3,15 @@ import { useStructure } from "@/store/useViewStore"
 import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
-import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
+import { IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
 import { Keyboard, KEYBOARD_H } from "@/components/ios/Keyboard"
-import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { cn } from "@/lib/utils"
 import type { Location } from "@/data/locations"
 import { usePersonStore } from "@/store/usePersonStore"
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const SPRING = { type: "spring" as const, stiffness: 420, damping: 42 }
-/** Where the medium detent's top edge sits, from the top of the screen (from the design). */
-const MEDIUM_TOP = 176
 
 type Msg = { role: "user" | "assistant"; text: string }
 
@@ -26,7 +22,7 @@ type Msg = { role: "user" | "assistant"; text: string }
  * Geometry is one value, `h` (the sheet's height); `q` (0 = medium, 1 = full) derives inset, radii and
  * header padding from it. `y` is only the slide in/out and dismiss offset, so glass never sees opacity.
  */
-export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHistory = true }: { loc: Location; onClose: () => void; /** Open on this past conversation. */ startWith?: string; /** Changes when the chat should start over (a different conversation, or a new one) while the sheet stays open. */ token?: number; /** The app menu button, top left: opens the menu with the list of chats. */ onMenu?: () => void; /** Show the Conversations button in the header (off where the app's menu holds them). */ showHistory?: boolean }) {
+export function AssistantSheet({ loc, onClose, startWith, token, showHistory = true }: { loc: Location; onClose: () => void; /** Open on this past conversation. */ startWith?: string; /** Changes when the chat should start over (a different conversation, or a new one) while the sheet stays open. */ token?: number; /** Show the Conversations button in the header (off where the app's menu holds them). */ showHistory?: boolean }) {
   const locName = useLocName()
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
@@ -65,9 +61,8 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
   }, [token])
   const [query, setQuery] = useState("")
 
-  const MED = H - MEDIUM_TOP
-  const h = useMotionValue(MED)
-  const y = useMotionValue(MED + 12)
+  const h = useMotionValue(H)
+  const y = useMotionValue(H + 12)
   const kbPad = useMotionValue(0)
   const kbY = useMotionValue(KEYBOARD_H)
   const closing = useRef(false)
@@ -77,7 +72,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
     if (!el) return
     const next = el.offsetHeight
     setH(next)
-    // Every chat opens as a full page: it rises from the bottom to the full height.
+    // Every chat opens as a full-height sheet: it rises from the bottom to just under the status bar.
     h.set(next)
     y.set(next + 12)
   }, [h, y])
@@ -191,15 +186,8 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
       window.removeEventListener("pointerup", onUp)
       window.removeEventListener("pointercancel", onUp)
     }
-  }, [H, MED, h, y, close])
+  }, [H, h, y, close])
 
-  const q = useTransform(h, (v) => clamp01((v - MED) / (H - MED)))
-  const inset = useTransform(q, (v) => lerp(6, 0, v))
-  const radiusTop = useTransform(q, (v) => lerp(34, 0, v))
-  const radiusBottom = useTransform(q, (v) => lerp(58, 0, v))
-  const headerTop = useTransform(q, (v) => `calc(var(--safe-top) * ${v} + 16px)`)
-  // The grabber goes away as the sheet heads for the full page.
-  const grabber = useTransform(q, (v) => 1 - clamp01(v / 0.2))
   const scrim = useTransform([y, h], ([yy, hh]: number[]) => 0.2 * clamp01(1 - yy / hh))
 
   // Conversations opens the sheet to full height, and it stays there when you go back.
@@ -242,8 +230,10 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
   }
 
   return (
-    <div ref={root} className="absolute inset-0 z-[38]">
+    <div className="absolute inset-0 z-[38]">
       <motion.div className="absolute inset-0 bg-black" style={{ opacity: scrim }} onClick={close} />
+      {/* The sheet's room: the whole screen below a gap under the status bar, so the app shows above it. */}
+      <div ref={root} className="pointer-events-none absolute inset-x-0 bottom-0 top-[calc(var(--safe-top)+10px)]">
       <motion.div
         ref={surface}
         role="dialog"
@@ -254,64 +244,43 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
           if (!(e.target as HTMLElement).closest("input, [data-keyboard]")) setKb(false)
         }}
         style={{
-          left: inset,
-          right: inset,
-          bottom: inset,
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: h,
           y,
-          borderTopLeftRadius: radiusTop,
-          borderTopRightRadius: radiusTop,
-          borderBottomLeftRadius: radiusBottom,
-          borderBottomRightRadius: radiusBottom,
+          borderTopLeftRadius: 38,
+          borderTopRightRadius: 38,
           touchAction: "none",
           backgroundColor: "rgba(255,255,255,0.9)",
           backdropFilter: "blur(24px) saturate(1.6)",
           WebkitBackdropFilter: "blur(24px) saturate(1.6)",
           boxShadow: "1.25px 0 0 -0.75px #dbdbdb, -1.25px 0 0 -0.75px #dbdbdb, 0 0 0 0.5px #dbdbdb, 0 8px 48px rgba(0,0,0,0.25)",
         }}
-        className="absolute flex select-none flex-col overflow-hidden"
+        className="pointer-events-auto absolute flex select-none flex-col overflow-hidden"
       >
-        <motion.div style={{ opacity: grabber }} className="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-[6px]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-[6px]">
           <div className="h-1 w-[60px] rounded-full bg-[#c3c3c6]" />
-        </motion.div>
+        </div>
 
-        <motion.div
-          animate={{ x: view === "history" ? "28%" : 0 }}
-          transition={SPRING}
-          inert={view === "history"}
-          className="absolute inset-0 flex flex-col"
-        >
-        <motion.div style={{ paddingTop: headerTop }} className="relative flex h-auto shrink-0 items-start justify-between px-4">
+        <div inert={view === "history"} className="absolute inset-0 flex flex-col">
+        <div className="relative flex h-auto shrink-0 items-start justify-between px-4 pt-4">
+          <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
+            <button onClick={close} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+              <IconChevronDown size={24} stroke={2} />
+            </button>
+          </LiquidGlass>
+          <h2 className="sr-only">Assistant</h2>
           {showHistory ? (
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-              <button aria-label="Conversations" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+              <button aria-label="Conversations" aria-haspopup="dialog" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
                 <IconMessages size={24} stroke={1.75} />
-              </button>
-            </LiquidGlass>
-          ) : onMenu ? (
-            <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-              <button
-                aria-label="Menu"
-                onClick={() => {
-                  setKb(false)
-                  input.current?.blur()
-                  onMenu()
-                }}
-                className="flex size-9 items-center justify-center rounded-full text-[#141414]"
-              >
-                <MenuTwoLine size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           ) : (
             <span aria-hidden className="size-11" />
           )}
-          <h2 className="sr-only">Assistant</h2>
-          <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-            <button onClick={close} aria-label="Dismiss" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconChevronDown size={24} stroke={2} />
-            </button>
-          </LiquidGlass>
-        </motion.div>
+        </div>
 
         <div data-scroll className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {thread.length === 0 ? (
@@ -384,19 +353,28 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
             )}
           </div>
         </motion.div>
-        </motion.div>
+        </div>
 
+        {/* Conversations: a second sheet that rises over this one. */}
         <motion.div
           initial={false}
-          animate={{ x: view === "history" ? 0 : "-100%" }}
+          animate={{ opacity: view === "history" ? 0.2 : 0 }}
+          transition={SPRING}
+          onClick={backToChat}
+          className="absolute inset-0 bg-black"
+          style={{ pointerEvents: view === "history" ? "auto" : "none" }}
+        />
+        <motion.div
+          initial={false}
+          animate={{ y: view === "history" ? 0 : "100%" }}
           transition={SPRING}
           inert={view !== "history"}
-          className="absolute inset-0 flex flex-col bg-[#fbfbfc]"
+          className="absolute inset-x-0 bottom-0 top-3 flex flex-col overflow-hidden rounded-t-[38px] bg-[#fbfbfc] shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
         >
-          <motion.div style={{ paddingTop: headerTop }} className="relative flex shrink-0 items-start justify-between px-4">
+          <div className="relative flex shrink-0 items-start justify-between px-4 pt-4">
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-              <button onClick={backToChat} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconArrowLeft size={24} stroke={1.75} />
+              <button onClick={backToChat} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconChevronDown size={24} stroke={2} />
               </button>
             </LiquidGlass>
             <h2 className="pointer-events-none flex h-11 items-center text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">Conversations</h2>
@@ -412,7 +390,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
                 <IconPlus size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
-          </motion.div>
+          </div>
           <div className="shrink-0 px-4 pt-4">
             <LiquidGlass mode="small" radius={999} className="flex h-11 items-center">
               <label className="flex h-full w-full items-center gap-2 pl-4 pr-4">
@@ -466,9 +444,10 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
         </motion.div>
       </motion.div>
 
-      <motion.div data-keyboard className="absolute inset-x-0 bottom-0 z-10" style={{ y: kbY }}>
+      <motion.div data-keyboard className="pointer-events-auto absolute inset-x-0 bottom-0 z-10" style={{ y: kbY }}>
         <Keyboard onKey={onKeyboard} capitalize={text === "" || /[.!?]\s$/.test(text)} suggestions={suggestions} onSuggestion={replaceLast} />
       </motion.div>
+      </div>
     </div>
   )
 }

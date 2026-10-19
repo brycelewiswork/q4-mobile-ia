@@ -8,6 +8,11 @@ import {
   IconCurrencyDollar,
   IconCalendarEvent,
   IconCalendarPlus,
+  IconChecklist,
+  IconPigMoney,
+  IconNotebook,
+  IconReportMoney,
+  IconUserPlus,
   IconPlus,
   IconSearch,
   IconSelector,
@@ -18,15 +23,13 @@ import { IosFrame } from "@/components/ios/IosFrame"
 import { SitemapView } from "@/components/sitemap/SitemapView"
 import { ViewSwitch } from "@/components/sitemap/ViewSwitch"
 import { CommentsLayer } from "@/components/comments/CommentsLayer"
-import { HANDOFF, HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
+import { HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
 import { UserTypeToggle } from "@/components/ios/UserTypeToggle"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { AddEventSheet } from "@/components/ios/AddEventSheet"
 import { AddShiftSheet } from "@/components/ios/AddShiftSheet"
 import { AssistantSheet } from "@/components/ios/AssistantSheet"
-import { ConversationsDrawer } from "@/components/ios/ConversationsDrawer"
-import { DrawerSurface } from "@/components/ios/DrawerSurface"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { LocationMenu } from "@/components/ios/LocationMenu"
@@ -37,25 +40,26 @@ import { TimeCardSheet } from "@/components/ios/TimeCardSheet"
 import { HOME_PAGE_TITLES, HomePage, TaskTick, type HomePageId } from "@/pages/HomePages"
 import { taskKey, useTasksStore } from "@/store/useTasksStore"
 import { ProfileSheet } from "@/components/ios/ProfileSheet"
+import { CustomizeMenuSheet } from "@/components/ios/CustomizeMenuSheet"
+import { inMenuOrder, useMoreMenuStore } from "@/store/useMoreMenuStore"
 import { RequestsSheet } from "@/components/ios/RequestsSheet"
-import { AccessoryContent, BottomAccessory, TabBar, type TabId } from "@/components/ios/TabBar"
+import { TABS, TabBar, type TabId } from "@/components/ios/TabBar"
 import { IpadSidebar, SIDEBAR_SPRING, SIDEBAR_W, SidebarLocationBody, SidebarToggle } from "@/components/ios/IpadSidebar"
 import { Squircle } from "@/components/squircle"
 import { EdgeBlur } from "@/components/ios/EdgeBlur"
-import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import { NO_FILTERS, TimeFilterSheet, type FilterKind, type TimeFilters } from "@/components/ios/TimeFilterSheet"
 import { ChatPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
-import { HOUR_LABELS, LOCATIONS, USER_EARNINGS, nextShiftAnywhere, shortLocationName, recentLog, upcomingEvents, upcomingTasks, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
+import { COMPANIES, HOUR_LABELS, LOCATIONS, USER_EARNINGS, nextShiftAnywhere, shortLocationName, recentLog, upcomingEvents, upcomingTasks, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { Initials, ListRow } from "@/components/ios/list"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { Annotations } from "@/components/Annotations"
 import { AndroidApp } from "@/pages/android/AndroidApp"
-import { Bar, BarLines, WireList } from "@/components/wire/Wire"
-import { accessoryFor, useClock } from "@/store/useTimeClockStore"
+import { Bar, BarLines, WireCard, WireList } from "@/components/wire/Wire"
+import { useClock } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
 
 const PURPLE_200 = "#c6b3f1"
@@ -262,7 +266,7 @@ function TitleText({ text }: { text: string }) {
   )
 }
 
-function Toolbar({ title: titleOverride, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; view?: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
+function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; view?: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
   const wire = useStructure()
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
@@ -280,8 +284,20 @@ function Toolbar({ title: titleOverride, loc, unread, actions, hideBell, leading
           disabled={!canSwitch}
           className="flex h-11 min-w-0 flex-1 items-center justify-start tracking-[-0.43px] text-[#1a1a1a]"
         >
-          <TitleText text={title} />
-          {canSwitch && <IconSelector size={17} stroke={2.5} className="ml-[3px] shrink-0 text-[#4e4e4e]" />}
+          {subtitle ? (
+            <span className="flex min-w-0 flex-col items-start justify-center">
+              <span className="max-w-full truncate text-[18px] font-[590] leading-[21px]">{title}</span>
+              <span className="flex max-w-full items-center text-[13px] leading-4 tracking-[-0.08px] text-[#6d6a7a]">
+                <span className="truncate">{subtitle}</span>
+                {canSwitch && <IconSelector size={14} stroke={2.5} className="ml-[2px] shrink-0" />}
+              </span>
+            </span>
+          ) : (
+            <>
+              <TitleText text={title} />
+              {canSwitch && <IconSelector size={17} stroke={2.5} className="ml-[3px] shrink-0 text-[#4e4e4e]" />}
+            </>
+          )}
         </button>
       </div>
       <div className="flex shrink-0 items-center gap-[10px]">
@@ -861,6 +877,30 @@ export function Home() {
   )
 }
 
+/** The pages the More menu opens as main pages. Placeholders for now: skeletons under the page's own title. */
+const EXTRA_PAGES = {
+  // `scoped`: the page is about one location (or several), so its title carries the location switcher.
+  tips: { label: "Tip Manager", Icon: IconPigMoney, scoped: true },
+  hiring: { label: "Hiring", Icon: IconUserPlus, scoped: false },
+  tasks: { label: "Task Manager", Icon: IconChecklist, scoped: true },
+  payroll: { label: "Payroll", Icon: IconReportMoney, scoped: true },
+  log: { label: "Manager Log", Icon: IconNotebook, scoped: true },
+} as const
+type ExtraId = keyof typeof EXTRA_PAGES
+
+function ExtraPage() {
+  return (
+    <>
+      <WireCard h={150}>
+        <Bar w="38%" h={14} />
+        <Bar w="64%" h={30} className="mt-4" />
+      </WireCard>
+      <WireList rows={4} />
+      <WireList rows={3} />
+    </>
+  )
+}
+
 function IosHome() {
   // Who is looking decides the home page, the bottom nav and whether locations can be switched
   // (toggled from the bar above the phone; see useUserTypeStore).
@@ -870,6 +910,8 @@ function IosHome() {
   const tabs: readonly TabId[] = userType === "employee" ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const [tab, setTab] = useState<TabId>("home")
+  // A page opened from the More menu (a main page of its own: the tab bar stays, and More takes that page's icon).
+  const [extra, setExtra] = useState<ExtraId | null>(null)
   // iPad: the tab bar becomes Apple's sidebar, and the app's content slides over to make room for it.
   const tablet = useViewStore((s) => s.device === "tablet")
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -885,12 +927,13 @@ function IosHome() {
   // A single-location owner/manager is pinned to their location (a saved choice from another type doesn't leak over).
   const setLocation = useLocationStore((s) => s.setLocation)
   const setAll = useLocationStore((s) => s.setAll)
-  const all = useLocationStore((s) => s.all)
-  const groupId = useLocationStore((s) => s.groupId)
   useEffect(() => {
     if (!multi) setLocation(LOCATIONS[0].id)
   }, [multi, setLocation])
+  const locTitle = useLocTitle(loc)
   const [menuOpen, setMenuOpen] = useState(false)
+  // The iPad sidebar's Locations row, while its menu is open (the menu hangs from it).
+  const [sidebarLocEl, setSidebarLocEl] = useState<HTMLElement | null>(null)
   const [groupOpen, setGroupOpen] = useState(false)
   // The toolbar plus opens an action menu anchored to it; `screen` is where that menu renders.
   const [plusAnchor, setPlusAnchor] = useState<HTMLElement | null>(null)
@@ -908,9 +951,8 @@ function IosHome() {
   const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null)
   const [timeFilters, setTimeFilters] = useState<TimeFilters>(NO_FILTERS)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [account, setAccount] = useState(COMPANIES[0].name)
   const [assistantOpen, setAssistantOpen] = useState(false)
-  // The assistant's past conversations live in a menu under the app (a menu button, top left, slides the app aside).
-  const [menuDrawer, setMenuDrawer] = useState(false)
   const [chatStart, setChatStart] = useState<string | undefined>(undefined)
   // Bumped each time a chat is chosen from the menu, so an open chat swaps in place instead of reopening.
   const [chatToken, setChatToken] = useState(0)
@@ -924,10 +966,8 @@ function IosHome() {
   const pending = scope.reduce((n, l) => n + pendingFor(l, decided, added).length, 0)
   const [halfOpen, setHalfOpen] = useState(false)
   const closeHalf = useCallback(() => setHalfOpen(false), [])
-  // 0 = accessory, 1 = half sheet. The sheet surface fades in over the (opaque) accessory, which is hidden once covered.
+  // 0 = closed, 1 = open: the Time Clock half sheet's progress.
   const halfP = useMotionValue(0)
-  // visibility, not opacity: an opacity < 1 ancestor would isolate the glass backdrop and it would snap in at 1.
-  const accessoryVisibility = useTransform(halfP, (v) => (v >= HANDOFF ? "hidden" : "visible"))
   const closeProfile = useCallback(() => setProfileOpen(false), [])
   // The dashboard widgets (manager log, earnings, shiftmates) open full pages above the tab bar.
   const [homePage, setHomePage] = useState<HomePageId | null>(null)
@@ -935,11 +975,11 @@ function IosHome() {
   // Home is a fixed overview of every location the person has. One location's own view opens from a row or header on it
   // (or, on iPad, from the sidebar), growing out of what was tapped; the X shrinks it back.
   const [locOpen, setLocOpen] = useState<{ loc: Location; from: Box; clone: ReactNode } | null>(null)
-  const locView = locOpen?.loc ?? null
   const homeScope = multi ? LOCATIONS : [loc]
   const openLocation = useCallback((l: Location, row?: HTMLElement, clone?: ReactNode) => {
     setLocation(l.id)
     setHomePage(null)
+    setExtra(null)
     setTab("home")
     const from = row ? boxOf(row) : null
     // The view fills the content pane, so measure from the pane's edge, not the screen's.
@@ -970,55 +1010,72 @@ function IosHome() {
     }
   }, [])
 
-  // The accessory is a view of the clock state, so it always agrees with the sheet.
   const clockState = useClock(loc)
-  const wireCut = useStructure()
-  const { title, subtitle: rawSubtitle } = accessoryFor(loc, clockState)
-  // The structure cut keeps the status and drops the times.
-  const subtitle = wireCut ? "" : rawSubtitle
-  // The Chat tab never shows the accessory, whatever the shift state.
-  // Employees get the anchored accessory (not on Chat); owners and managers get the time clock button in the toolbar instead.
-  const showAccessory = !tablet && tab !== "chat" && userType === "employee"
+
+  // The More menu's items, in the person's own order (Customize, from the gear in the menu's top row).
+  const moreOrder = useMoreMenuStore((s) => s.order)
+  const moreItems = inMenuOrder(
+    [
+
+      // The primary tabs first (Time, for owners and managers, is only here), then the rest of the app.
+      ...(["home", "money", "shifts", "time", "chat"] as const).filter((t) => tabs.includes(t)).map((t) => {
+        const def = TABS.find((x) => x.id === t)!
+        const src = !extra && tab === t ? def.fill : def.icon
+        const mask = (size: string, url: string) => <span aria-hidden className={`block ${size} bg-current`} style={{ maskImage: `url(${url})`, WebkitMaskImage: `url(${url})`, maskSize: "100% 100%", WebkitMaskSize: "100% 100%" }} />
+        const here = !extra && tab === t
+        return { id: `tab:${t}`, label: def.label, icon: mask("size-6", src), activeIcon: mask("size-7", def.fill), current: here, active: t === "time" && here, dot: t === "chat" && scope.some((l) => l.messages.some((m) => m.unread)) }
+      }),
+      ...(userType === "employee"
+        ? []
+        : [
+            ...(Object.entries(EXTRA_PAGES) as [ExtraId, (typeof EXTRA_PAGES)[ExtraId]][]).map(([id, { label, Icon }]) => ({
+              id,
+              label,
+              icon: <Icon size={24} stroke={1.75} />,
+              activeIcon: <Icon size={28} stroke={1.8} />,
+              current: extra === id,
+              active: extra === id,
+            })),
+          ]),
+      { id: "search", label: "Search", icon: <IconSearch size={24} stroke={1.75} /> },
+    ],
+    moreOrder,
+  )
+  const [customizeOpen, setCustomizeOpen] = useState(false)
 
   return (
     <IosFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      <DrawerSurface
-        enabled={!tablet && userType !== "employee"}
-        open={menuDrawer}
-        onOpenChange={setMenuDrawer}
-        drawer={(close) => (
-          <ConversationsDrawer
-            loc={loc}
-            tabs={tabs}
-            unread={scope.some((l) => l.messages.some((m) => m.unread))}
-            onTab={(t) => { close(); setAssistantOpen(false); setTab(t); setMinimized(false); lastTop.current = 0 }}
-            onOpenChat={(title) => { close(); setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) }}
-            onNewChat={() => { close(); setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
-            // Settings rises over the menu (it stays open underneath); closing the sheet just dismisses it.
-            onProfile={() => setProfileOpen(true)}
-          />
-        )}
-      >
       {tablet && (
         <IpadSidebar
           tabs={tabs}
-          tab={tab}
-          onTab={(t) => { setProfileOpen(false); setHomePage(null); setLocOpen(null); setTab(t) }}
+          tab={extra ? null : tab}
+          onTab={(t) => { setProfileOpen(false); setHomePage(null); setLocOpen(null); setExtra(null); setTab(t) }}
           dots={{ chat: scope.some((l) => l.messages.some((m) => m.unread)) }}
           open={sidebarOpen}
           onToggle={() => setSidebarOpen((o) => !o)}
-          locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !all && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setHomePage(null); setTab("home") }, allActive: tab === "home" ? !locView : all } : undefined}
+          locations={{ title: locTitle, open: !!sidebarLocEl, onOpen: setSidebarLocEl }}
+          more={{
+            items: moreItems.filter((m) => !m.id.startsWith("tab:")),
+            onSelect: (id) => {
+              if (id in EXTRA_PAGES) { setHomePage(null); setLocOpen(null); setExtra(id as ExtraId) }
+              // Search has no screen in the prototype yet.
+            },
+          }}
           onProfile={() => setProfileOpen(true)}
           chats={userType === "employee" ? undefined : {
-            conversations: loc.conversations,
-            onOpen: (title) => { setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) },
             onNew: () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) },
           }}
         />
       )}
       {/* Everything but the sheets lives in this pane, which slides over as the sidebar opens and closes. */}
       <motion.div initial={false} animate={{ left: paneLeft }} transition={SIDEBAR_SPRING} className="absolute inset-y-0 right-0">
-      {tab === "home" ? (
+      {extra ? (
+        <OverlayRoot.Provider value={screen}>
+          <ScreenScroll key={extra} locationId={`${extra}:${loc.id}`} onScroll={onScroll} top={54} fade={false}>
+            <ExtraPage />
+          </ScreenScroll>
+        </OverlayRoot.Provider>
+      ) : tab === "home" ? (
         <ScopeContext.Provider value={homeScope}>
           <OpenLocationContext.Provider value={multi ? openLocation : null}>
             {view === "manager" ? (
@@ -1058,31 +1115,23 @@ function IosHome() {
         view={view}
         loc={loc}
         unread={pending}
-        // The overview has no title: it is the page you land on, and a title would only name the scope.
-        title={tab === "home" ? "" : undefined}
+        // The overview is titled Home, like the other pages are titled for what they are; it has no location switcher.
+        title={extra ? EXTRA_PAGES[extra].label : tab === "home" ? "Home" : undefined}
+        subtitle={extra && EXTRA_PAGES[extra].scoped ? locTitle : undefined}
         // Home is a fixed overview, so only the other tabs have a switcher.
-        canSwitch={tab !== "home"}
+        canSwitch={extra ? EXTRA_PAGES[extra].scoped : tab !== "home"}
         onClock={() => setHalfOpen(true)}
         // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the bottom accessory).
-        showClock={tablet || (userType !== "employee" && tab === "home")}
+        showClock={tablet || (userType !== "employee" && tab === "home" && !extra)}
         clockActive={clockState.status === "in"}
-        hideBell={tab === "chat"}
-        // With the app menu (phones, not employees) the avatar lives at the foot of that menu instead.
-        hideProfile={tablet || userType !== "employee"}
+        hideBell={!extra && tab === "chat"}
+        // The avatar (top right on a phone, top of the sidebar on a tablet) is how you reach Settings.
+        hideProfile={tablet}
         leading={
-          tablet ? (
-            !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
-          ) : userType !== "employee" ? (
-            // The menu button, top left on every main page: it slides the app aside to show past conversations.
-            <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
-              <button onClick={() => setMenuDrawer(true)} aria-label="Menu" aria-haspopup="dialog" data-anno="menu" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <MenuTwoLine size={24} stroke={1.75} />
-              </button>
-            </LiquidGlass>
-          ) : undefined
+          tablet && !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
         }
         actions={
-          tab === "shifts" ? (
+          extra ? undefined : tab === "shifts" ? (
             <button
               aria-label="Add"
               aria-haspopup="menu"
@@ -1106,6 +1155,18 @@ function IosHome() {
             </>
           ) : undefined
         } onBell={() => setRequestsOpen(true)} onTitle={() => setMenuOpen((o) => !o)} onProfile={() => setProfileOpen(true)} />
+      {tablet && (
+        <LocationMenu
+          open={!!sidebarLocEl}
+          anchorEl={sidebarLocEl}
+          onClose={() => setSidebarLocEl(null)}
+          onAll={multi ? () => { setAll(true); setLocOpen(null); setHomePage(null); setExtra(null); if (tab === "home") setTab("home") } : undefined}
+          onNewGroup={multi ? () => setGroupOpen(true) : undefined}
+          onAddLocation={multi ? undefined : () => {}}
+          // On Home, picking a location opens its overview in the main area; on other pages it just changes the location.
+          onPickLocation={tab === "home" || extra ? (l) => openLocation(l, sidebarLocEl ?? undefined, <span />) : undefined}
+        />
+      )}
       <LocationMenu open={menuOpen} onClose={closeMenu} onAll={multi ? () => setAll(true) : undefined} onNewGroup={multi ? () => setGroupOpen(true) : undefined} onAddLocation={multi ? undefined : () => {}} />
       {groupOpen && <GroupSheet onClose={() => setGroupOpen(false)} />}
       {locOpen && <LocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={view === "employee"} onClosed={() => setLocOpen(null)} />}
@@ -1122,38 +1183,41 @@ function IosHome() {
       {/* On a tablet the chat opens in the content pane, so the sidebar and its list of chats stay beside it. */}
       {assistantOpen && userType !== "employee" && tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} showHistory={false} />}
       </motion.div>
-      <motion.div style={{ visibility: accessoryVisibility }} className="pointer-events-none absolute inset-0 z-20">
-        <AnimatePresence initial={false}>
-        {!minimized && showAccessory && (
-          <motion.div
-            key="accessory"
-            // Slide only — no fade (see the note above about glass + opacity).
-            initial={{ y: 32 }}
-            animate={{ y: 0 }}
-            exit={{ y: 32 }}
-            transition={SPRING_FAST.snappy}
-            data-anno="clock-accessory"
-            className="pointer-events-auto absolute inset-x-7"
-            style={{ bottom: "calc(var(--safe-bottom) + 64px)" }}
-          >
-            <BottomAccessory placement="expanded" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setHalfOpen(true)} />
-          </motion.div>
-        )}
-        </AnimatePresence>
-      </motion.div>
       {!tablet && (
         <TabBar
-          tabs={tabs}
+          tabs={tabs.filter((t) => t !== "time")}
           dots={{ chat: scope.some((l) => l.messages.some((m) => m.unread)) }}
-          tab={tab}
+          tab={extra ? null : tab}
           onTab={(t) => {
+            setExtra(null)
             setTab(t)
             setMinimized(false)
             lastTop.current = 0
           }}
+          more={userType === "employee" ? undefined : {
+            items: moreItems,
+            // The business account (not the location): placeholders until accounts are modeled.
+            header: { account, accounts: COMPANIES.map((c) => c.name), onAccount: setAccount, onSettings: () => setCustomizeOpen(true) },
+            onSelect: (id) => {
+              if (id.startsWith("tab:")) {
+                setExtra(null)
+                setTab(id.slice(4) as TabId)
+                setMinimized(false)
+                lastTop.current = 0
+              } else if (id in EXTRA_PAGES) {
+                setExtra(id as ExtraId)
+                setMinimized(false)
+                lastTop.current = 0
+              }
+              // Search has no screen in the prototype yet.
+            },
+          }}
+          onAssistant={userType === "employee" ? undefined : () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
           minimized={minimized}
           onExpand={() => setMinimized(false)}
-          inlineAccessory={!showAccessory ? null : <BottomAccessory placement="inline" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setMinimized(false)} />}
+          inlineAccessory={null}
+          // Employees: the Time Clock button takes More's place in the bar (no floating bar above it).
+          clock={userType === "employee" ? { active: clockState.status === "in", onOpen: () => setHalfOpen(true) } : undefined}
         />
       )}
       {halfOpen && (
@@ -1161,11 +1225,10 @@ function IosHome() {
           progress={halfP}
           height={sheetHeightFor(clockState.status)}
           hideTitle
-          // Employees: the sheet grows out of the accessory. Owners and managers have no accessory: a normal bottom sheet.
-          variant={userType === "employee" ? "morph" : "slide"}
+          variant="slide"
           title="Time Clock"
           onClosed={closeHalf}
-          collapsed={userType === "employee" ? <AccessoryContent title={title} subtitle={subtitle} active={clockState.status === "in"} /> : null}
+          collapsed={null}
         >
           {(close) => <TimeClockContent loc={loc} close={close} />}
         </HalfSheet>
@@ -1186,12 +1249,11 @@ function IosHome() {
       />
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
-      {assistantOpen && userType !== "employee" && !tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} onMenu={() => setMenuDrawer(true)} showHistory={false} />}
+      {assistantOpen && userType !== "employee" && !tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
-      </DrawerSurface>
-      {/* Outside the surface that slides aside, so it rises over the whole screen, whether or not the menu is open. */}
+      {customizeOpen && !tablet && <CustomizeMenuSheet items={moreItems} onClose={() => setCustomizeOpen(false)} />}
       {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
     </IosFrame>
   )

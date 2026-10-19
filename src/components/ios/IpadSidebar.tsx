@@ -1,12 +1,12 @@
+import { useState, type ReactNode } from "react"
 import { motion } from "motion/react"
-import { IconBoltFilled, IconLayoutSidebar } from "@tabler/icons-react"
+import { IconBoltFilled, IconChevronDown, IconLayoutSidebar, IconMapPin, IconSelector } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { Initials } from "@/components/ios/list"
 import { TABS, type TabId } from "@/components/ios/TabBar"
 import { SPRING_FAST } from "@/lib/motion"
-import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
+import { nextShiftAt, shortLocationName, type Location } from "@/data/locations"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
-import { Bar } from "@/components/wire/Wire"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
@@ -90,22 +90,25 @@ export function IpadSidebar({
   onProfile,
   chats,
   locations,
+  more,
 }: {
   tabs: readonly TabId[]
-  tab: TabId
+  /** Null while a page opened from More is showing. */
+  tab: TabId | null
   onTab: (t: TabId) => void
   dots?: Partial<Record<TabId, boolean>>
   open: boolean
   onToggle: () => void
   onProfile: () => void
-  /** The assistant's chats, under the tabs: New chat, then pinned and recent. Not for employees (no assistant). */
-  chats?: { conversations: { id: string; title: string; pinned?: boolean }[]; onOpen: (title: string) => void; onNew: () => void }
-  /** Multi-location users: the locations, below the tabs. Tapping one opens its overview in the main area. */
-  locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once; `allActive` when that is what is showing. */ onAll?: () => void; allActive?: boolean }
+  /** New chat, at the foot of the sidebar. Not for employees (no assistant). */
+  chats?: { onNew: () => void }
+  /** The location switcher, first in the list: a row naming the current location that opens a menu (anchored to it). Not for a single location. */
+  locations?: { title: string; open: boolean; onOpen: (el: HTMLElement) => void }
+  /** The rest of what the app provides, in a drop-down under the tabs that collapses and expands. */
+  more?: { items: { id: string; label: string; icon: ReactNode; current?: boolean }[]; onSelect: (id: string) => void }
 }) {
   const wire = useStructure()
-  const employeeUser = useUserTypeStore((s) => s.type) === "employee"
-  const allCounts = useCounts()
+  const [moreOpen, setMoreOpen] = useState(true)
   const shown = tabs.map((id) => TABS.find((t) => t.id === id)!)
   return (
     <motion.aside
@@ -131,6 +134,15 @@ export function IpadSidebar({
           <SidebarToggle open={open} onClick={onToggle} />
         </div>
         <nav className="mt-3 flex flex-col gap-1 border-t border-black/[0.08] pt-3">
+          {locations && (
+            <button onClick={(e) => locations.onOpen(e.currentTarget)} aria-haspopup="menu" aria-expanded={locations.open} data-anno="sidebar-locations" className={row}>
+              <span className="flex min-w-0 flex-1 items-center gap-3">
+                <IconMapPin size={24} stroke={1.75} color={BRAND} className="shrink-0" />
+                <span className="truncate font-[590]">{locations.title}</span>
+              </span>
+              <IconSelector size={17} stroke={2.5} className="shrink-0 text-[#4e4e4e]" />
+            </button>
+          )}
           {shown.map((t) => {
             const active = tab === t.id
             return (
@@ -146,65 +158,29 @@ export function IpadSidebar({
               </button>
             )
           })}
-        </nav>
-        {(chats || locations) && (
-        <div className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-black/[0.08] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {chats && (
-          <section aria-label="Chats" data-anno="sidebar-chats" className="pb-2">
-            {[
-              { label: "Pinned", list: chats.conversations.filter((c) => c.pinned) },
-              { label: "Recents", list: chats.conversations.filter((c) => !c.pinned) },
-            ].map(
-              (g, gi) =>
-                g.list.length > 0 && (
-                  <div key={g.label}>
-                    <p className={cn("px-3 pb-0.5 text-[13px] font-[510] leading-[18px] tracking-[-0.08px] text-[#a09ead]", gi === 0 ? "pt-3" : "pt-4")}>{g.label}</p>
-                    {g.list.map((c, i) => (
-                      <button key={c.id} onClick={() => chats.onOpen(c.title)} className="flex h-9 w-full items-center rounded-full px-3 text-left active:opacity-60">
-                        {wire ? <Bar w={`${[78, 62, 70, 54, 66, 58, 74][(i + gi * 3) % 7]}%`} h={10} /> : <span className="truncate text-[15px] leading-5 tracking-[-0.24px] text-black">{c.title}</span>}
-                      </button>
-                    ))}
-                  </div>
-                ),
-            )}
-          </section>
-        )}
-        {locations && (
-          <div data-anno="sidebar-locations" aria-label="Locations" role="group" className={cn("pt-2", chats && "border-t border-black/[0.08]")}>
-            {locations.onAll && (
-              <button onClick={locations.onAll} aria-current={locations.allActive ? "page" : undefined} className={cn("mb-1 block w-full rounded-[18px] px-3 py-2 active:opacity-60", locations.allActive && "bg-[#787880]/[0.2]")}>
-                <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-[17px] font-[590] leading-[22px] text-black">{wire ? "All locations" : "All Locations"}</span>
-                    <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
-                      {LOCATIONS.length} locations
-                      <LocationBadges {...allCounts} />
-                    </span>
-                  </span>
-                  {!wire && !employeeUser && <span className="shrink-0 text-[17px] font-[590] leading-[22px] text-black">{kMoney(LOCATIONS.reduce((n, l) => n + l.sales, 0))}</span>}
-                </span>
+          {more && (
+            <div data-anno="sidebar-more">
+              <button onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className={cn(row, "text-[#a09ead]")}>
+                <span className="flex-1 text-[15px] font-[510] tracking-[-0.24px]">More</span>
+                <IconChevronDown size={18} stroke={2} className={cn("shrink-0 transition-transform duration-200", !moreOpen && "-rotate-90")} />
               </button>
-            )}
-            {COMPANIES.map((c, ci) => (
-              <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name}>
-                <p className="px-3 pb-1 pt-2 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#7f7f7f]">{wire ? `Company ${ci + 1}` : c.name}</p>
-                {c.locations.map((l) => {
-                  const on = locations.activeId === l.id
-                  return (
-                    <button key={l.id} onClick={(e) => locations.onOpen(l, e.currentTarget)} aria-current={on ? "page" : undefined} className={cn("block w-full rounded-[18px] px-3 py-2 active:opacity-60", on && "bg-[#787880]/[0.2]")}>
-                      <SidebarLocationBody l={l} />
-                    </button>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-        </div>
-        )}
-        {/* Where the time clock used to sit: New chat, at the foot of the sidebar. */}
+              <motion.div initial={false} animate={moreOpen ? { height: "auto", visibility: "visible" } : { height: 0, transitionEnd: { visibility: "hidden" } }} transition={SIDEBAR_SPRING} className="overflow-hidden" inert={!moreOpen}>
+                {more.items.map((m) => (
+                  <button key={m.id} onClick={() => more.onSelect(m.id)} aria-current={m.current ? "page" : undefined} className={row}>
+                    {m.current && <motion.span layoutId="sidebar-selection" transition={SPRING_FAST.snappy} className="absolute inset-0 rounded-full bg-[#787880]/[0.2]" />}
+                    <span className="relative flex items-center gap-3">
+                      <span className="flex size-6 shrink-0 items-center justify-center text-[#8f55e5]">{m.icon}</span>
+                      <span className={m.current ? "font-[590]" : undefined}>{m.label}</span>
+                    </span>
+                  </button>
+                ))}
+              </motion.div>
+            </div>
+          )}
+        </nav>
+        {/* New chat, at the foot of the sidebar. */}
         {chats && (
-          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-[6px] rounded-full bg-[#8f55e5] px-5 text-[15px] font-[590] tracking-[-0.24px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-3")}>
+          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-[6px] rounded-full bg-[#8f55e5] px-5 text-[15px] font-[590] tracking-[-0.24px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-auto")}>
             <IconBoltFilled size={18} />
             New chat
           </button>
