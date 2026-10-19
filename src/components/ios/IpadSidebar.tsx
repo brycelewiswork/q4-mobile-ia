@@ -204,8 +204,8 @@ export function IpadSidebar({
         )}
         {/* Where the time clock used to sit: New chat, at the foot of the sidebar. */}
         {chats && (
-          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#8f55e5] px-5 text-[17px] font-[590] tracking-[-0.43px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-3")}>
-            <IconBoltFilled size={20} />
+          <button onClick={chats.onNew} className={cn("flex h-11 shrink-0 items-center justify-center gap-[6px] rounded-full bg-[#8f55e5] px-5 text-[15px] font-[590] tracking-[-0.24px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.3),0_2px_4px_rgba(0,0,0,0.1)] active:opacity-85", "mt-3")}>
+            <IconBoltFilled size={18} />
             New chat
           </button>
         )}
