@@ -305,10 +305,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
           ) : (
             <span aria-hidden className="size-11" />
           )}
-          <h2 className="pointer-events-none flex h-11 items-center gap-[6px] text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
-            <IconBoltFilled size={22} className="text-[#8f55e5]" />
-            Assistant
-          </h2>
+          <h2 className="sr-only">Assistant</h2>
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button onClick={close} aria-label="Dismiss" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
               <IconChevronDown size={24} stroke={2} />
@@ -320,23 +317,23 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
           {thread.length === 0 ? (
             <>
               {wire ? (
-                <div aria-hidden className="flex flex-col gap-3 pt-2">
-                  <Bar w="100%" h={22} />
-                  <Bar w="70%" h={22} />
+                <div aria-hidden className="flex flex-col items-center gap-2 pt-2">
+                  <Bar w="85%" h={16} />
+                  <Bar w="55%" h={16} />
                 </div>
               ) : (
-                <h1 className="text-[28px] font-[590] leading-[34px] tracking-[-0.43px] text-black text-balance">
+                <h1 className="px-2 text-center text-[22px] font-[590] leading-[28px] tracking-[-0.43px] text-black text-balance">
                   {`Hi ${first}, let’s tackle today. What’s on your mind?`}
                 </h1>
               )}
-              <div className="flex flex-col gap-2 pt-5">
+              <div className="flex flex-col gap-[6px] pt-4">
                 {loc.assistant.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="flex items-center gap-3 rounded-[20px] bg-[#ebe8ef] p-4 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-black active:opacity-70"
+                    className="flex items-center gap-2 rounded-[16px] bg-[#ebe8ef] px-3 py-2.5 text-left text-[15px] leading-5 tracking-[-0.24px] text-black active:opacity-70"
                   >
-                    <IconBoltFilled size={24} className="shrink-0 text-[#8f55e5]" />
+                    <IconBoltFilled size={18} className="shrink-0 text-[#8f55e5]" />
                     {wire ? <Bar w="75%" h={12} /> : s}
                   </button>
                 ))}
