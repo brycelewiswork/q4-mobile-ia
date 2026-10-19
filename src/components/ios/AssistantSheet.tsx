@@ -3,7 +3,7 @@ import { useStructure } from "@/store/useViewStore"
 import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
-import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
+import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMenu2, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
 import { Keyboard, KEYBOARD_H } from "@/components/ios/Keyboard"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { cn } from "@/lib/utils"
@@ -25,7 +25,7 @@ type Msg = { role: "user" | "assistant"; text: string }
  * Geometry is one value, `h` (the sheet's height); `q` (0 = medium, 1 = full) derives inset, radii and
  * header padding from it. `y` is only the slide in/out and dismiss offset, so glass never sees opacity.
  */
-export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: { loc: Location; onClose: () => void; /** Open on this past conversation. */ startWith?: string; /** Show the Conversations button in the header (off where the app's menu holds them). */ showHistory?: boolean }) {
+export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHistory = true }: { loc: Location; onClose: () => void; /** Open on this past conversation. */ startWith?: string; /** Changes when the chat should start over (a different conversation, or a new one) while the sheet stays open. */ token?: number; /** The app menu button, top left: opens the menu with the list of chats. */ onMenu?: () => void; /** Show the Conversations button in the header (off where the app's menu holds them). */ showHistory?: boolean }) {
   const locName = useLocName()
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
@@ -44,6 +44,24 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
       : [],
   )
   const [view, setView] = useState<"chat" | "history">("chat")
+  // Choosing another chat from the menu while this one is open swaps the thread in place.
+  const mounted = useRef(false)
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    setThread(
+      startWith
+        ? [
+            { role: "user", text: startWith },
+            { role: "assistant", text: `Here's where we left off on “${startWith}” for ${locName(loc)}.` },
+          ]
+        : [],
+    )
+    setView("chat")
+    // eslint-disable-next-line react/exhaustive-deps
+  }, [token])
   const [query, setQuery] = useState("")
 
   const MED = H - MEDIUM_TOP
@@ -267,6 +285,20 @@ export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: 
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
               <button aria-label="Conversations" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
                 <IconMessages size={24} stroke={1.75} />
+              </button>
+            </LiquidGlass>
+          ) : onMenu ? (
+            <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
+              <button
+                aria-label="Menu"
+                onClick={() => {
+                  setKb(false)
+                  input.current?.blur()
+                  onMenu()
+                }}
+                className="flex size-9 items-center justify-center rounded-full text-[#141414]"
+              >
+                <IconMenu2 size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           ) : (

@@ -913,6 +913,8 @@ function IosHome() {
   // The assistant's past conversations live in a menu under the app (a menu button, top left, slides the app aside).
   const [menuDrawer, setMenuDrawer] = useState(false)
   const [chatStart, setChatStart] = useState<string | undefined>(undefined)
+  // Bumped each time a chat is chosen from the menu, so an open chat swaps in place instead of reopening.
+  const [chatToken, setChatToken] = useState(0)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
   const [requestsOpen, setRequestsOpen] = useState(false)
   const closeRequests = useCallback(() => setRequestsOpen(false), [])
@@ -988,8 +990,8 @@ function IosHome() {
         drawer={(close) => (
           <ConversationsDrawer
             loc={loc}
-            onOpenChat={(title) => { close(); setChatStart(title); setAssistantOpen(true) }}
-            onNewChat={() => { close(); setChatStart(undefined); setAssistantOpen(true) }}
+            onOpenChat={(title) => { close(); setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) }}
+            onNewChat={() => { close(); setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
             // Settings rises over the menu (it stays open underneath); closing the sheet just dismisses it.
             onProfile={() => setProfileOpen(true)}
           />
@@ -1177,7 +1179,7 @@ function IosHome() {
       />
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
-      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} showHistory={tablet} />}
+      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} onMenu={tablet ? undefined : () => setMenuDrawer(true)} showHistory={tablet} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
