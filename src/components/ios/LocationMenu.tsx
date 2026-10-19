@@ -12,7 +12,7 @@ import { useLocationStore } from "@/store/useLocationStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 
-/** A location's row in the menu: name over labor share and what is waiting, and today's sales. Also what its overview grows out of. */
+/** A location's row in the menu: its name over one line: labor share and today's sales, with what is waiting at the end. Also what its overview grows out of. */
 export function LocationMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
   const locName = useLocName()
@@ -37,17 +37,21 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
         <span className="truncate text-[17px] leading-[22px] text-black">{wire ? locName(l) : shortLocationName(l)}</span>
         <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
           {wire ? (
-            <span aria-hidden className="mt-[5px] block h-2 w-[45%] rounded-full bg-[#dedde4]" />
+            <span aria-hidden className="mt-[5px] flex items-center gap-2">
+              <span className="block h-2 w-14 rounded-full bg-[#dedde4]" />
+              <span className="block h-2 w-8 rounded-full bg-[#dedde4]" />
+            </span>
           ) : (
             <span className="flex items-center gap-[6px]">
               <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
               {l.laborPct}% labor
+              <span aria-hidden>·</span>
+              <span className="font-[590] text-black">{shortMoney(l.sales)}</span>
             </span>
           )}
           <LocationBadges {...counts} />
         </span>
       </span>
-      {wire ? <span aria-hidden className="block h-3 w-9 shrink-0 rounded-full bg-[#dedde4]" /> : <span className="w-[46px] shrink-0 text-right text-[17px] font-[590] leading-[22px] text-black">{shortMoney(l.sales)}</span>}
     </span>
   )
 }

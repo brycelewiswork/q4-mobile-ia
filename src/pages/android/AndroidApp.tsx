@@ -398,13 +398,18 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
   // An employee sees when they next work here, a manager the labor share. Never the other's numbers.
   const next = nextShiftAt(l.id)
   const sub = wire ? (
-    <ABar w="45%" h={8} />
+    <span className="flex items-center gap-2">
+      <ABar w={56} h={8} />
+      {!employee && <ABar w={32} h={8} />}
+    </span>
   ) : employee ? (
     <span className="truncate">{next ? `Next shift ${next}` : "No shifts this week"}</span>
   ) : (
     <span className="flex items-center gap-[6px]">
       <span aria-hidden className="size-[7px] rounded-full" style={{ backgroundColor: l.laborPct < 15 ? "#12a53b" : "#d0161f" }} />
       {l.laborPct}% labor
+      <span aria-hidden>·</span>
+      <span className="text-m-on-surface font-medium">{shortMoney(l.sales)}</span>
     </span>
   )
   return (
@@ -416,7 +421,6 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
           <LocationBadges android {...counts} />
         </span>
       </span>
-      {!employee && (wire ? <ABar w={36} h={12} /> : <span className="w-[46px] shrink-0 text-right text-[14px] font-medium leading-5">{shortMoney(l.sales)}</span>)}
     </span>
   )
 }
