@@ -38,6 +38,9 @@ import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, ty
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
+import { DrawerSurface } from "@/components/ios/DrawerSurface"
+import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
+import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
@@ -93,12 +96,17 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ title: titleOverride, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ onMenu, title: titleOverride, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The menu button, top left on every main page: slides the app aside to show the menu (phones). With it, the avatar lives in the menu instead. */ onMenu?: () => void; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 flex items-center gap-1 pl-2 pr-2 transition-colors duration-200", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
+      {!rail && onMenu && (
+        <AIconButton label="Menu" onClick={onMenu}>
+          <MenuTwoLine size={24} stroke={1.75} />
+        </AIconButton>
+      )}
       <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className="text-m-on-surface flex min-w-0 flex-1 items-center gap-1 pl-2 text-left">
         <span className="line-clamp-2 min-w-0 text-[18px] font-medium leading-6">{title}</span>
         {canSwitch && <IconChevronDown size={20} stroke={2} className="text-m-variant shrink-0" />}
@@ -133,7 +141,7 @@ function TopBar({ title: titleOverride, loc, tab, canSwitch, scrolled, pending, 
         </AIconButton>
       )}
       {/* The avatar opens Settings, at the top right like iOS (with a rail, the avatar lives in the rail instead). */}
-      {!rail && (
+      {!rail && !onMenu && (
         <button onClick={onProfile} aria-label="Open settings" aria-haspopup="dialog" data-anno="profile" className="flex size-12 shrink-0 items-center justify-center rounded-full active:bg-black/10">
           <Avatar size={32} />
         </button>
@@ -1584,6 +1592,118 @@ function PageBody({ spec, manager, multi, onOpen, onClose }: { spec: PageSpec; m
   }
 }
 
+/** The menu under the app: the main tabs, then past conversations (pinned, recents), with search, the avatar and New chat. */
+function AndroidMenu({ tabs, onTab, unread, onOpenChat, onNewChat, onProfile }: { tabs: TabId[]; onTab: (t: TabId) => void; unread: boolean; onOpenChat: () => void; onNewChat: () => void; onProfile: () => void }) {
+  const [searching, setSearching] = useState(false)
+  const label = "text-m-outline px-4 pb-1 pt-7 text-[14px] font-medium leading-5"
+  const row = (i: number) => (
+    <button key={i} onClick={onOpenChat} className="flex min-h-10 w-full items-center px-4 text-left active:bg-black/5">
+      <ABar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={12} />
+    </button>
+  )
+  return (
+    <div className="absolute inset-0 flex flex-col" style={{ paddingTop: "calc(var(--safe-top) + 4px)" }}>
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 pl-4 pr-2">
+        {searching ? <div className="min-w-0 flex-1"><SearchField /></div> : <HomebaseLogo aria-hidden className="text-m-on-surface h-[18px] w-auto" />}
+        <AIconButton label={searching ? "Close search" : "Search conversations"} onClick={() => setSearching((v) => !v)}>
+          {searching ? <IconX size={24} stroke={1.75} /> : <IconSearch size={24} stroke={1.75} />}
+        </AIconButton>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-28 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {!searching && (
+          <nav aria-label="Tabs">
+            <h3 className={cn(label, "pt-6")}>Tabs</h3>
+            <div className="flex flex-col px-2">
+              {tabs.map((id) => {
+                const { label: text, icon } = TABS[id]
+                return (
+                  <button key={id} onClick={() => onTab(id)} className="text-m-on-surface flex h-10 w-full items-center gap-3 rounded-full px-3 text-left active:bg-black/10">
+                    <span className="relative flex">
+                      <span aria-hidden className="block bg-current" style={maskStyle(icon, 22)} />
+                      {id === "chat" && unread && <span aria-hidden className="absolute -right-[2px] top-0 size-[9px] rounded-full bg-[var(--m-badge)]" />}
+                    </span>
+                    <span className="text-[16px] font-medium leading-6">{text}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        )}
+        <h3 className={label}>Pinned</h3>
+        {[0, 1, 2].map(row)}
+        <h3 className={label}>Recents</h3>
+        {[3, 4, 5, 6].map(row)}
+      </div>
+      <div className="absolute inset-x-0 flex items-center justify-between px-5" style={{ bottom: 20 }}>
+        <button onClick={onProfile} aria-label="Settings" aria-haspopup="dialog" data-anno="profile" className="flex size-11 items-center justify-center rounded-full active:opacity-80">
+          <Avatar size={40} />
+        </button>
+        <button onClick={onNewChat} className="flex h-12 items-center gap-2 rounded-[16px] bg-[#8f55e5] px-4 text-[15px] font-medium tracking-[0.1px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85">
+          <span aria-hidden className="block bg-white" style={maskStyle("/android/assistant-solid-24.svg", 20)} />
+          New chat
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A chat, as a full page that rises from the bottom: the menu button at the top left (it opens the same menu), a down
+ * chevron at the top right, and the composer at the foot. A new chat shows the greeting and suggestions just above the
+ * composer; a past one shows its thread.
+ */
+function AndroidChat({ past, onMenu, onDismiss }: { past: boolean; onMenu: () => void; onDismiss: () => void }) {
+  const bubble = "block rounded-[20px]"
+  return (
+    <motion.div
+      role="dialog"
+      aria-label="Assistant"
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+      className="bg-m-surface absolute inset-0 z-[45] flex flex-col"
+    >
+      <div className="flex h-16 shrink-0 items-center justify-between px-2" style={{ marginTop: "var(--safe-top)" }}>
+        <AIconButton label="Menu" onClick={onMenu}>
+          <MenuTwoLine size={24} stroke={1.75} />
+        </AIconButton>
+        <AIconButton label="Dismiss" onClick={onDismiss}>
+          <IconChevronDown size={24} stroke={1.75} />
+        </AIconButton>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 overflow-y-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {past ? (
+          <>
+            <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[42%] self-end")} />
+            <span aria-hidden className={cn(bubble, "bg-m-skeleton h-16 w-[62%] self-start")} />
+            <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[34%] self-end")} />
+            <span aria-hidden className={cn(bubble, "bg-m-skeleton h-24 w-[70%] self-start")} />
+          </>
+        ) : (
+          <>
+            <div aria-hidden className="flex flex-col items-center gap-2 pb-2">
+              <ABar w="85%" h={16} />
+              <ABar w="55%" h={16} />
+            </div>
+            <div className="flex flex-col gap-[6px]">
+              {[70, 90, 64].map((w, i) => (
+                <span key={i} className="bg-m-container flex items-center gap-2 rounded-[12px] px-3 py-2.5">
+                  <span aria-hidden className="block shrink-0 bg-[#8f55e5]" style={maskStyle("/android/assistant-solid-24.svg", 18)} />
+                  <ABar w={`${w}%`} h={10} />
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div className="shrink-0 px-4 pb-8 pt-2">
+        <Composer />
+      </div>
+    </motion.div>
+  )
+}
+
 function Composer() {
   return (
     <div className="bg-m-high flex h-14 items-center gap-3 rounded-full pl-5 pr-2">
@@ -1608,6 +1728,9 @@ export function AndroidApp() {
   const allLoc = useLocationStore((s) => s.all)
   const groupId = useLocationStore((s) => s.groupId)
   const [groupOpen, setGroupOpen] = useState(false)
+  // The menu under the app (past conversations and the tabs) and the chat that can be open over it: phones, not employees.
+  const [menuDrawer, setMenuDrawer] = useState(false)
+  const [chat, setChat] = useState<{ past: boolean; n: number } | null>(null)
   const [tab, setTab] = useState<TabId>("home")
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -1700,8 +1823,57 @@ export function AndroidApp() {
   const assistant = employee ? undefined : () => open({ id: "assistant", kind: "assistant", title: "Assistant" })
   const unread = scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0)
 
+  // Pages open over the whole screen, so on a phone they sit outside the app surface that slides aside; beside a rail they stay in the pane.
+  const pagesLayer = (
+      <AnimatePresence>
+        {stack.map((p, i) => (
+          <APage
+            key={p.id}
+            title={p.title}
+            z={40 + i}
+            onBack={pop}
+            close={p.kind === "settings" || p.kind === "clock"}
+            rise={p.kind === "settings" && !rail}
+            bar={p.kind === "team" ? <SearchField /> : undefined}
+            footer={
+              p.kind === "assistant" ? <Composer />
+              : p.kind === "clock" && clock.status === "out" ? (
+                <button onClick={() => timeClock.clockIn(loc.id, clock.role ?? loc.employee.timeClock.role)} disabled={!scheduledToday(loc)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
+                  {scheduledToday(loc) ? "Confirm Clock in" : "No shift to clock in to"}
+                </button>
+              )
+              : undefined
+            }
+            action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
+          >
+            <ScopeContext.Provider value={homeScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
+          </APage>
+        ))}
+      </AnimatePresence>
+  )
+  const menuOn = !rail && !employee
+
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+      <DrawerSurface
+        enabled={menuOn}
+        open={menuDrawer}
+        onOpenChange={setMenuDrawer}
+        surfaceClass="bg-m-surface"
+        drawerClass="bg-m-container"
+        radiusMax={28}
+        drawer={(close) => (
+          <AndroidMenu
+            tabs={tabs}
+            unread={unread > 0}
+            onTab={(t) => { close(); setChat(null); goTab(t) }}
+            onOpenChat={() => { close(); setChat((c) => ({ past: true, n: (c?.n ?? 0) + 1 })) }}
+            onNewChat={() => { close(); setChat((c) => ({ past: false, n: (c?.n ?? 0) + 1 })) }}
+            // Settings rises over the menu; closing it just dismisses it.
+            onProfile={() => open(SETTINGS)}
+          />
+        )}
+      >
       {rail && <NavRail tabs={tabs} tab={tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} clock={{ title: clockTitle, status: clock.status, onOpen: () => open(CLOCK) }} locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !allLoc && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setStack([]); setTab("home") }, allActive: tab === "home" ? !locView : allLoc } : undefined} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
@@ -1746,8 +1918,9 @@ export function AndroidApp() {
         onBell={() => setSheet("requests")}
         onClock={() => open(CLOCK)}
         onProfile={() => open(SETTINGS)}
+        onMenu={menuOn ? () => setMenuDrawer(true) : undefined}
       />
-      {!rail && <NavBar tabs={tabs} tab={tab} onTab={goTab} unread={unread} onAssistant={assistant} />}
+      {!rail && <NavBar tabs={tabs} tab={tab} onTab={goTab} unread={unread} />}
       {showClockBar && <ClockBar title={clockTitle} status={clock.status} bottom={100} onOpen={() => open(CLOCK)} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
@@ -1760,31 +1933,7 @@ export function AndroidApp() {
       {locOpen && <AndroidLocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={employee} onClosed={() => setLocOpen(null)} />}
 
 
-      <AnimatePresence>
-        {stack.map((p, i) => (
-          <APage
-            key={p.id}
-            title={p.title}
-            z={40 + i}
-            onBack={pop}
-            close={p.kind === "settings" || p.kind === "clock"}
-            rise={p.kind === "settings" && !rail}
-            bar={p.kind === "team" ? <SearchField /> : undefined}
-            footer={
-              p.kind === "assistant" ? <Composer />
-              : p.kind === "clock" && clock.status === "out" ? (
-                <button onClick={() => timeClock.clockIn(loc.id, clock.role ?? loc.employee.timeClock.role)} disabled={!scheduledToday(loc)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
-                  {scheduledToday(loc) ? "Confirm Clock in" : "No shift to clock in to"}
-                </button>
-              )
-              : undefined
-            }
-            action={p.kind === "timecard" ? <button onClick={pop} className="text-m-primary h-10 rounded-full px-3 text-[14px] font-medium tracking-[0.1px] active:bg-black/10">Save</button> : undefined}
-          >
-            <ScopeContext.Provider value={homeScope}><PageBody spec={p} manager={!employee} multi={multi} onOpen={open} onClose={pop} /></ScopeContext.Provider>
-          </APage>
-        ))}
-      </AnimatePresence>
+      {rail && pagesLayer}
       </motion.div>
 
 
@@ -1796,6 +1945,9 @@ export function AndroidApp() {
         {groupOpen && <AGroupSheet key="group" onClose={() => setGroupOpen(false)} />}
       </AnimatePresence>
 
-          </AndroidFrame>
+      <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onMenu={() => setMenuDrawer(true)} onDismiss={() => setChat(null)} />}</AnimatePresence>
+      </DrawerSurface>
+      {!rail && pagesLayer}
+    </AndroidFrame>
   )
 }

@@ -20,8 +20,16 @@ export function DrawerSurface({
   open,
   onOpenChange,
   drawer,
+  surfaceClass = "bg-[#f3f2f6]",
+  drawerClass = "bg-white",
+  radiusMax = 52,
   children,
 }: {
+  /** Classes for the app surface and the menu under it (default: iOS). */
+  surfaceClass?: string
+  drawerClass?: string
+  /** The app surface's corner radius while the menu is open. */
+  radiusMax?: number
   enabled?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -32,7 +40,7 @@ export function DrawerSurface({
   const [W, setW] = useState(300)
   const x = useMotionValue(0)
   const controls = useDragControls()
-  const radius = useTransform(x, [0, W], [0, 52])
+  const radius = useTransform(x, [0, W], [0, radiusMax])
   const shadow = useTransform(x, [0, W], ["-8px 0 0px rgba(20,20,40,0)", "-10px 0 36px rgba(20,20,40,0.16)"])
 
   useLayoutEffect(() => {
@@ -52,8 +60,8 @@ export function DrawerSurface({
   if (!enabled) return <>{children}</>
   const close = () => onOpenChange(false)
   return (
-    <div ref={root} className="absolute inset-0 overflow-hidden bg-white">
-      <div aria-hidden={!open} inert={!open} className="absolute inset-y-0 left-0 bg-white" style={{ width: W }}>
+    <div ref={root} className={`absolute inset-0 overflow-hidden ${drawerClass}`}>
+      <div aria-hidden={!open} inert={!open} className={`absolute inset-y-0 left-0 ${drawerClass}`} style={{ width: W }}>
         {drawer(close)}
       </div>
       <motion.div
@@ -68,7 +76,7 @@ export function DrawerSurface({
           onOpenChange(info.velocity.x > 350 ? true : info.velocity.x < -350 ? false : far)
         }}
         style={{ x, borderTopLeftRadius: radius, borderBottomLeftRadius: radius, borderTopRightRadius: radius, borderBottomRightRadius: radius, boxShadow: shadow, touchAction: "pan-y" }}
-        className="absolute inset-0 overflow-hidden bg-[#f3f2f6]"
+        className={`absolute inset-0 overflow-hidden ${surfaceClass}`}
       >
         {children}
         {/* While the menu is open the app is a single target: tap it to put the menu away. */}
