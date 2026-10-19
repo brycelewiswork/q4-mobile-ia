@@ -990,7 +990,8 @@ function IosHome() {
             loc={loc}
             onOpenChat={(title) => { close(); setChatStart(title); setAssistantOpen(true) }}
             onNewChat={() => { close(); setChatStart(undefined); setAssistantOpen(true) }}
-            onProfile={() => { close(); setProfileOpen(true) }}
+            // Settings rises over the menu (it stays open underneath); closing the sheet just dismisses it.
+            onProfile={() => setProfileOpen(true)}
           />
         )}
       >
@@ -1179,9 +1180,10 @@ function IosHome() {
       {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} showHistory={tablet} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
-      {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
       </DrawerSurface>
+      {/* Outside the surface that slides aside, so it rises over the whole screen, whether or not the menu is open. */}
+      {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
     </IosFrame>
   )
 }
