@@ -14,7 +14,7 @@ function TabGlyph({ src, color }: { src: string; color: string }) {
   return (
     <span
       aria-hidden
-      className="block size-6 shrink-0"
+      className="block size-[22px] shrink-0"
       style={{ backgroundColor: color, maskImage: `url(${src})`, WebkitMaskImage: `url(${src})`, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat", maskPosition: "center", WebkitMaskPosition: "center" }}
     />
   )
@@ -87,7 +87,7 @@ export function ConversationsDrawer({ loc, tabs, onTab, unread, onOpenChat, onNe
                       <TabGlyph src={t.icon} color="#1a1a1a" />
                       {id === "chat" && unread && <span aria-hidden className="absolute -right-[2px] top-0 size-[9px] rounded-full bg-[#ff3b30] ring-[1.5px] ring-white" />}
                     </span>
-                    <span className="text-[17px] leading-[22px] text-black">{t.label}</span>
+                    <span className="text-[17px] font-medium leading-[22px] text-black">{t.label}</span>
                   </button>
                 )
               })}
