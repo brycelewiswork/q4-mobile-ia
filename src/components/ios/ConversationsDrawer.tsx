@@ -3,13 +3,14 @@ import { IconPin, IconPencilPlus, IconSearch, IconX } from "@tabler/icons-react"
 import { Bar } from "@/components/wire/Wire"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import type { Location } from "@/data/locations"
-import { useStructure } from "@/store/useViewStore"
+import { Initials } from "@/components/ios/list"
+import { ANON, useStructure } from "@/store/useViewStore"
 
 /**
  * The menu that sits underneath the app: the assistant's past conversations, pinned first, then recents, with a search
  * and a New chat button. Choosing one (or New chat) puts the menu away and opens the assistant there.
  */
-export function ConversationsDrawer({ loc, onOpenChat, onNewChat }: { loc: Location; onOpenChat: (title: string) => void; onNewChat: () => void }) {
+export function ConversationsDrawer({ loc, onOpenChat, onNewChat, onProfile }: { loc: Location; onOpenChat: (title: string) => void; onNewChat: () => void; onProfile: () => void }) {
   const wire = useStructure()
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState("")
@@ -60,14 +61,21 @@ export function ConversationsDrawer({ loc, onOpenChat, onNewChat }: { loc: Locat
         )}
         {matches.length === 0 && <p className="px-4 pt-6 text-[17px] leading-[22px] text-[#8e8e93]">No conversations</p>}
       </div>
-      <button
-        onClick={onNewChat}
-        className="absolute left-4 flex h-12 items-center gap-2 rounded-full bg-[#8f55e5] px-5 text-[17px] font-[590] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85"
-        style={{ bottom: "calc(var(--safe-bottom) + 16px)" }}
-      >
-        <IconPencilPlus size={22} stroke={1.75} />
-        New chat
-      </button>
+      {/* The foot of the menu: New chat, and the avatar that opens profile and settings. */}
+      <div className="absolute inset-x-4 flex items-center justify-between" style={{ bottom: "calc(var(--safe-bottom) + 16px)" }}>
+        <button
+          onClick={onNewChat}
+          className="flex h-12 items-center gap-2 rounded-full bg-[#8f55e5] px-5 text-[17px] font-[590] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85"
+        >
+          <IconPencilPlus size={22} stroke={1.75} />
+          New chat
+        </button>
+        <LiquidGlass mode="small" radius={999} className="flex size-12 shrink-0 items-center justify-center">
+          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[44px] rounded-full">
+            {wire ? <Initials name={ANON.name} size={44} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
+          </button>
+        </LiquidGlass>
+      </div>
     </div>
   )
 }

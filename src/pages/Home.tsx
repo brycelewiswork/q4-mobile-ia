@@ -990,6 +990,7 @@ function IosHome() {
             loc={loc}
             onOpenChat={(title) => { close(); setChatStart(title); setAssistantOpen(true) }}
             onNewChat={() => { close(); setChatStart(undefined); setAssistantOpen(true) }}
+            onProfile={() => { close(); setProfileOpen(true) }}
           />
         )}
       >
@@ -1058,7 +1059,8 @@ function IosHome() {
         showClock={tab === "home" && !tablet}
         clockActive={clockState.status === "in"}
         hideBell={tab === "chat"}
-        hideProfile={tablet}
+        // With the app menu (phones, not employees) the avatar lives at the foot of that menu instead.
+        hideProfile={tablet || userType !== "employee"}
         leading={
           tablet ? (
             !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
