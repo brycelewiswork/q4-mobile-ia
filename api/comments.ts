@@ -195,7 +195,8 @@ export function createHandler(store: Store) {
 
 // --- Redis, for the deployed site ------------------------------------------------------------------------------------
 
-const KEY = "q4:comments"
+// Each deployment can keep its own comments in the same store by setting COMMENTS_KEY; without it they share this one.
+const KEY = process.env.COMMENTS_KEY || "q4:comments"
 
 async function redisStore(): Promise<Store | null> {
   // Vercel names the variables after the prefix you give the store (KV_REST_API_URL by default, or Upstash's own
