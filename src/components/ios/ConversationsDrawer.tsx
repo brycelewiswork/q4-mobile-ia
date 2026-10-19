@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { IconPin, IconPencilPlus, IconSearch, IconX } from "@tabler/icons-react"
+import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
 import { Bar } from "@/components/wire/Wire"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import type { Location } from "@/data/locations"
@@ -34,7 +35,10 @@ export function ConversationsDrawer({ loc, onOpenChat, onNewChat, onProfile }: {
             <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search conversations" aria-label="Search conversations" className="min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-[#8e8e93]" />
           </label>
         ) : (
-          <h2 className="text-[28px] font-[590] leading-[34px] text-black">Assistant</h2>
+          <h2 className="flex h-11 items-center text-black">
+            <span className="sr-only">Assistant</span>
+            <HomebaseLogo aria-hidden className="h-[26px] w-auto" />
+          </h2>
         )}
         <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
           <button
