@@ -65,18 +65,18 @@ export function ConversationsDrawer({ loc, onOpenChat, onNewChat, onProfile }: {
         )}
         {matches.length === 0 && <p className="px-4 pt-6 text-[17px] leading-[22px] text-[#8e8e93]">No conversations</p>}
       </div>
-      {/* The foot of the menu, level with the tab bar on the app surface: the avatar (profile and settings) and New chat. */}
-      <div className="absolute inset-x-0 flex items-end justify-between px-[25px]" style={{ bottom: "var(--safe-bottom)" }}>
-        <LiquidGlass mode="small" radius={999} className="flex size-[54px] shrink-0 items-center justify-center">
-          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[46px] rounded-full">
-            {wire ? <Initials name={ANON.name} size={46} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
+      {/* The foot of the menu, level with the tab bar on the app surface (centered on it, so smaller buttons sit 5px up): the avatar (profile and settings) and New chat. */}
+      <div className="absolute inset-x-0 flex items-end justify-between px-[25px]" style={{ bottom: "calc(var(--safe-bottom) + 5px)" }}>
+        <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
+          <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[38px] rounded-full">
+            {wire ? <Initials name={ANON.name} size={38} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
           </button>
         </LiquidGlass>
         <button
           onClick={onNewChat}
-          className="flex h-[54px] items-center gap-2 rounded-full bg-[#8f55e5] px-5 text-[17px] font-[590] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85"
+          className="flex h-11 items-center gap-[6px] rounded-full bg-[#8f55e5] px-4 text-[15px] font-[590] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85"
         >
-          <IconPencilPlus size={22} stroke={1.75} />
+          <IconPencilPlus size={20} stroke={1.75} />
           New chat
         </button>
       </div>
