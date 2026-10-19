@@ -1010,7 +1010,11 @@ function IosHome() {
           onToggle={() => setSidebarOpen((o) => !o)}
           locations={multi ? { activeId: locView ? locView.id : tab !== "home" && !all && !groupId ? loc.id : null, onOpen: openLocation, onAll: () => { setAll(true); setLocOpen(null); setHomePage(null); setTab("home") }, allActive: tab === "home" ? !locView : all } : undefined}
           onProfile={() => setProfileOpen(true)}
-          onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
+          chats={userType === "employee" ? undefined : {
+            conversations: loc.conversations,
+            onOpen: (title) => { setChatStart(title); setChatToken((n) => n + 1); setAssistantOpen(true) },
+            onNew: () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) },
+          }}
           clock={{ title, subtitle, status: clockState.status, onOpen: () => setHalfOpen(true) }}
         />
       )}
@@ -1117,6 +1121,8 @@ function IosHome() {
         )}
       </AnimatePresence>
       {profileOpen && tablet && <ProfileSheet inline loc={loc} onClose={closeProfile} />}
+      {/* On a tablet the chat opens in the content pane, so the sidebar and its list of chats stay beside it. */}
+      {assistantOpen && userType !== "employee" && tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} showHistory={false} />}
       </motion.div>
       <motion.div style={{ visibility: accessoryVisibility }} className="pointer-events-none absolute inset-0 z-20">
         <AnimatePresence initial={false}>
@@ -1182,7 +1188,7 @@ function IosHome() {
       />
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
-      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} onMenu={tablet ? undefined : () => setMenuDrawer(true)} showHistory={tablet} />}
+      {assistantOpen && userType !== "employee" && !tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} onMenu={() => setMenuDrawer(true)} showHistory={false} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}

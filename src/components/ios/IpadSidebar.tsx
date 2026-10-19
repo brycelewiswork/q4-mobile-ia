@@ -1,11 +1,12 @@
 import { motion } from "motion/react"
-import { IconLayoutSidebar } from "@tabler/icons-react"
+import { IconBoltFilled, IconLayoutSidebar } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { Initials } from "@/components/ios/list"
 import { TABS, type TabId } from "@/components/ios/TabBar"
 import { SPRING_FAST } from "@/lib/motion"
 import { COMPANIES, LOCATIONS, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
+import { Bar } from "@/components/wire/Wire"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 import { ANON, useLocName, useStructure } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
@@ -126,8 +127,8 @@ export function IpadSidebar({
   open,
   onToggle,
   onProfile,
-  onAssistant,
   clock,
+  chats,
   locations,
 }: {
   tabs: readonly TabId[]
@@ -137,8 +138,9 @@ export function IpadSidebar({
   open: boolean
   onToggle: () => void
   onProfile: () => void
-  onAssistant?: () => void
   clock: SidebarClock
+  /** The assistant's chats, under the tabs: New chat, then pinned and recent. Not for employees (no assistant). */
+  chats?: { conversations: { id: string; title: string; pinned?: boolean }[]; onOpen: (title: string) => void; onNew: () => void }
   /** Multi-location users: the locations, below the tabs. Tapping one opens its overview in the main area. */
   locations?: { activeId?: string | null; onOpen: (l: Location, row: HTMLElement) => void; /** Every location at once; `allActive` when that is what is showing. */ onAll?: () => void; allActive?: boolean }
 }) {
@@ -169,14 +171,6 @@ export function IpadSidebar({
           </button>
           <SidebarToggle open={open} onClick={onToggle} />
         </div>
-        {onAssistant && (
-          <div className="mt-3 flex flex-col gap-1">
-            <button onClick={onAssistant} aria-haspopup="dialog" className={row}>
-              <img src="/phone/tab-assistant.svg" alt="" className="size-6" />
-              Assistant
-            </button>
-          </div>
-        )}
         <nav className="mt-3 flex flex-col gap-1 border-t border-black/[0.08] pt-3">
           {shown.map((t) => {
             const active = tab === t.id
@@ -194,8 +188,34 @@ export function IpadSidebar({
             )
           })}
         </nav>
+        {(chats || locations) && (
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-black/[0.08] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {chats && (
+          <section aria-label="Chats" data-anno="sidebar-chats" className="pb-2">
+            <button onClick={chats.onNew} className="mt-2 flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-[17px] leading-[22px] tracking-[-0.43px] text-black active:opacity-60">
+              <IconBoltFilled size={22} className="text-[#8f55e5]" />
+              <span className="font-[590]">New chat</span>
+            </button>
+            {[
+              { label: "Pinned", list: chats.conversations.filter((c) => c.pinned) },
+              { label: "Recents", list: chats.conversations.filter((c) => !c.pinned) },
+            ].map(
+              (g, gi) =>
+                g.list.length > 0 && (
+                  <div key={g.label}>
+                    <p className="px-3 pb-0.5 pt-4 text-[13px] font-[510] leading-[18px] tracking-[-0.08px] text-[#a09ead]">{g.label}</p>
+                    {g.list.map((c, i) => (
+                      <button key={c.id} onClick={() => chats.onOpen(c.title)} className="flex h-9 w-full items-center rounded-full px-3 text-left active:opacity-60">
+                        {wire ? <Bar w={`${[78, 62, 70, 54, 66, 58, 74][(i + gi * 3) % 7]}%`} h={10} /> : <span className="truncate text-[15px] leading-5 tracking-[-0.24px] text-black">{c.title}</span>}
+                      </button>
+                    ))}
+                  </div>
+                ),
+            )}
+          </section>
+        )}
         {locations && (
-          <div data-anno="sidebar-locations" aria-label="Locations" role="group" className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-black/[0.08] pt-2">
+          <div data-anno="sidebar-locations" aria-label="Locations" role="group" className={cn("pt-2", chats && "border-t border-black/[0.08]")}>
             {locations.onAll && (
               <button onClick={locations.onAll} aria-current={locations.allActive ? "page" : undefined} className={cn("mb-1 block w-full rounded-[18px] px-3 py-2 active:opacity-60", locations.allActive && "bg-[#787880]/[0.2]")}>
                 <span className="flex w-full items-center gap-2 text-left tracking-[-0.43px]">
@@ -225,7 +245,9 @@ export function IpadSidebar({
             ))}
           </div>
         )}
-        <div className={locations ? "mt-3" : "mt-auto"}>
+        </div>
+        )}
+        <div className={chats || locations ? "mt-3" : "mt-auto"}>
           <ClockCard {...clock} />
         </div>
       </div>
