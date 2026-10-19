@@ -25,7 +25,7 @@ type Msg = { role: "user" | "assistant"; text: string }
  * Geometry is one value, `h` (the sheet's height); `q` (0 = medium, 1 = full) derives inset, radii and
  * header padding from it. `y` is only the slide in/out and dismiss offset, so glass never sees opacity.
  */
-export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () => void }) {
+export function AssistantSheet({ loc, onClose, startWith, showHistory = true }: { loc: Location; onClose: () => void; /** Open on this past conversation. */ startWith?: string; /** Show the Conversations button in the header (off where the app's menu holds them). */ showHistory?: boolean }) {
   const locName = useLocName()
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
@@ -35,7 +35,14 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
   const first = usePersonStore((p) => p.firstName || p.name.split(" ")[0])
   const [kb, setKb] = useState(false)
   const [text, setText] = useState("")
-  const [thread, setThread] = useState<Msg[]>([])
+  const [thread, setThread] = useState<Msg[]>(() =>
+    startWith
+      ? [
+          { role: "user", text: startWith },
+          { role: "assistant", text: `Here's where we left off on “${startWith}” for ${locName(loc)}.` },
+        ]
+      : [],
+  )
   const [view, setView] = useState<"chat" | "history">("chat")
   const [query, setQuery] = useState("")
 
@@ -256,11 +263,15 @@ export function AssistantSheet({ loc, onClose }: { loc: Location; onClose: () =>
           className="absolute inset-0 flex flex-col"
         >
         <motion.div style={{ paddingTop: headerTop }} className="relative flex h-auto shrink-0 items-start justify-between px-4">
-          <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
-            <button aria-label="Conversations" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconMessages size={24} stroke={1.75} />
-            </button>
-          </LiquidGlass>
+          {showHistory ? (
+            <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
+              <button aria-label="Conversations" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconMessages size={24} stroke={1.75} />
+              </button>
+            </LiquidGlass>
+          ) : (
+            <span aria-hidden className="size-11" />
+          )}
           <h2 className="pointer-events-none flex h-11 items-center gap-[6px] text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-[#1a1a1a]">
             <IconBoltFilled size={22} className="text-[#8f55e5]" />
             Assistant

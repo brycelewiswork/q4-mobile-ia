@@ -4,6 +4,7 @@ import {
   IconBell,
   IconCheck,
   IconChevronRight,
+  IconMenu2,
   IconX,
   IconCurrencyDollar,
   IconCalendarEvent,
@@ -25,6 +26,8 @@ import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { AddEventSheet } from "@/components/ios/AddEventSheet"
 import { AddShiftSheet } from "@/components/ios/AddShiftSheet"
 import { AssistantSheet } from "@/components/ios/AssistantSheet"
+import { ConversationsDrawer } from "@/components/ios/ConversationsDrawer"
+import { DrawerSurface } from "@/components/ios/DrawerSurface"
 import { ContextMenu } from "@/components/ios/ContextMenu"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { LocationMenu } from "@/components/ios/LocationMenu"
@@ -907,6 +910,9 @@ function IosHome() {
   const [timeFilters, setTimeFilters] = useState<TimeFilters>(NO_FILTERS)
   const [profileOpen, setProfileOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  // The assistant's past conversations live in a menu under the app (a menu button, top left, slides the app aside).
+  const [menuDrawer, setMenuDrawer] = useState(false)
+  const [chatStart, setChatStart] = useState<string | undefined>(undefined)
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
   const [requestsOpen, setRequestsOpen] = useState(false)
   const closeRequests = useCallback(() => setRequestsOpen(false), [])
@@ -975,6 +981,18 @@ function IosHome() {
 
   return (
     <IosFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
+      <DrawerSurface
+        enabled={!tablet && userType !== "employee"}
+        open={menuDrawer}
+        onOpenChange={setMenuDrawer}
+        drawer={(close) => (
+          <ConversationsDrawer
+            loc={loc}
+            onOpenChat={(title) => { close(); setChatStart(title); setAssistantOpen(true) }}
+            onNewChat={() => { close(); setChatStart(undefined); setAssistantOpen(true) }}
+          />
+        )}
+      >
       {tablet && (
         <IpadSidebar
           tabs={tabs}
@@ -1041,7 +1059,18 @@ function IosHome() {
         clockActive={clockState.status === "in"}
         hideBell={tab === "chat"}
         hideProfile={tablet}
-        leading={tablet && !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined}
+        leading={
+          tablet ? (
+            !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
+          ) : userType !== "employee" ? (
+            // The menu button, top left on every main page: it slides the app aside to show past conversations.
+            <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
+              <button onClick={() => setMenuDrawer(true)} aria-label="Menu" aria-haspopup="dialog" data-anno="menu" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconMenu2 size={24} stroke={1.75} />
+              </button>
+            </LiquidGlass>
+          ) : undefined
+        }
         actions={
           tab === "shifts" ? (
             <button
@@ -1110,7 +1139,6 @@ function IosHome() {
             setMinimized(false)
             lastTop.current = 0
           }}
-          onAssistant={userType === "employee" ? undefined : () => setAssistantOpen(true)}
           minimized={minimized}
           onExpand={() => setMinimized(false)}
           inlineAccessory={!showAccessory ? null : <BottomAccessory placement="inline" title={title} subtitle={subtitle} active={clockState.status === "in"} onOpen={() => setMinimized(false)} />}
@@ -1146,11 +1174,12 @@ function IosHome() {
       />
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
-      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} />}
+      {assistantOpen && userType !== "employee" && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} showHistory={tablet} />}
       {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} value={timeFilters[filterSheet]} onApply={(v) => setTimeFilters((f) => ({ ...f, [filterSheet]: v }))} onClose={() => setFilterSheet(null)} />}
       {timeCardOpen && <TimeCardSheet loc={loc} onClose={closeTimeCard} />}
       {profileOpen && !tablet && <ProfileSheet loc={loc} onClose={closeProfile} />}
       {requestsOpen && <RequestsSheet loc={loc} onClose={closeRequests} />}
+      </DrawerSurface>
     </IosFrame>
   )
 }
