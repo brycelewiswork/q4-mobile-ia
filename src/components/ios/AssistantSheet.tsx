@@ -3,8 +3,9 @@ import { useStructure } from "@/store/useViewStore"
 import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
-import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMenu2, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
+import { IconArrowLeft, IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
 import { Keyboard, KEYBOARD_H } from "@/components/ios/Keyboard"
+import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { cn } from "@/lib/utils"
 import type { Location } from "@/data/locations"
@@ -298,7 +299,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
                 }}
                 className="flex size-9 items-center justify-center rounded-full text-[#141414]"
               >
-                <IconMenu2 size={24} stroke={1.75} />
+                <MenuTwoLine size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           ) : (

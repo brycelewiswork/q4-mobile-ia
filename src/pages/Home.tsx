@@ -4,7 +4,6 @@ import {
   IconBell,
   IconCheck,
   IconChevronRight,
-  IconMenu2,
   IconX,
   IconCurrencyDollar,
   IconCalendarEvent,
@@ -43,6 +42,7 @@ import { AccessoryContent, BottomAccessory, TabBar, type TabId } from "@/compone
 import { IpadSidebar, SIDEBAR_SPRING, SIDEBAR_W, SidebarLocationBody, SidebarToggle } from "@/components/ios/IpadSidebar"
 import { Squircle } from "@/components/squircle"
 import { EdgeBlur } from "@/components/ios/EdgeBlur"
+import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
@@ -1071,7 +1071,7 @@ function IosHome() {
             // The menu button, top left on every main page: it slides the app aside to show past conversations.
             <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
               <button onClick={() => setMenuDrawer(true)} aria-label="Menu" aria-haspopup="dialog" data-anno="menu" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconMenu2 size={24} stroke={1.75} />
+                <MenuTwoLine size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           ) : undefined
