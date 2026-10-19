@@ -4,8 +4,8 @@ import type { SVGProps } from "react"
 export function MenuTwoLine({ size = 24, stroke = 1.75, ...props }: { size?: number; stroke?: number } & Omit<SVGProps<SVGSVGElement>, "stroke" | "width" | "height">) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
-      <path d="M4 9h16" />
-      <path d="M4 15h10" />
+      <path d="M4 8h16" />
+      <path d="M4 16h10" />
     </svg>
   )
 }
