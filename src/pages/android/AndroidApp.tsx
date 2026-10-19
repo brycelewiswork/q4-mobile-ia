@@ -161,8 +161,8 @@ const maskStyle = (src: string, w: number) => ({ width: w, height: w, maskImage:
 function NavBar({ tabs, tab, onTab, unread, onAssistant }: { tabs: TabId[]; tab: TabId; onTab: (t: TabId) => void; unread: number; onAssistant?: () => void }) {
   return (
     <div data-anno="nav-bar" className="absolute inset-x-0 bottom-0 z-20 isolate">
-      <LinearBlur side="bottom" strength={24} className="-z-10" style={{ top: -24 }} />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ top: -24, background: "linear-gradient(to top, color-mix(in srgb, var(--m-surface) 50%, transparent) 15%, transparent)" }} />
+      <LinearBlur side="bottom" strength={10} className="-z-10" style={{ top: -16 }} />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ top: -16, background: "linear-gradient(to top, color-mix(in srgb, var(--m-surface) 28%, transparent) 15%, transparent)" }} />
       <nav className="flex w-full items-center" style={{ padding: "16px 24px 20px", gap: onAssistant ? 14 : 0, minHeight: 92 }}>
         {tabs.map((id) => {
           const { label, icon } = TABS[id]

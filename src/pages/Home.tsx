@@ -1051,8 +1051,8 @@ function IosHome() {
       )}
       <EdgeBlur
         top={{ strength: 24, steps: 6, height: "calc(var(--safe-top) + 64px)" }}
-        // Taller and firmer than the top edge: this one has to lift the nav bar (and the clock bar) off whatever scrolls under it.
-        bottom={tablet ? false : { strength: 28, steps: 8, height: "calc(var(--safe-bottom) + 140px)", tint: "var(--ios-page-tint-strong, rgba(243,242,246,0.92))" }}
+        // Kept light: just enough blur and wash to lift the nav bar (and the clock bar) off whatever scrolls under it.
+        bottom={tablet ? false : { strength: 10, steps: 6, height: "calc(var(--safe-bottom) + 96px)", tint: "var(--ios-page-tint, rgba(243,242,246,0.5))" }}
       />
       <Toolbar
         view={view}
