@@ -315,7 +315,8 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
 
         <div data-scroll className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {thread.length === 0 ? (
-            <>
+            // Sits at the bottom of the page, just above the composer.
+            <div className="flex min-h-full flex-col justify-end pb-3">
               {wire ? (
                 <div aria-hidden className="flex flex-col items-center gap-2 pt-2">
                   <Bar w="85%" h={16} />
@@ -338,7 +339,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, onMenu, showHis
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
             <div className="flex flex-col gap-3 pb-3">
               {thread.map((m, i) => (
