@@ -22,9 +22,13 @@ export function DeviceControls() {
   const setOrientation = useViewStore((s) => s.setOrientation)
   return (
     <div className="flex flex-col items-center gap-3">
-    <div className="max-w-[560px] px-4 text-center" data-anno="version">
+    <div className="w-full max-w-[680px] px-4 text-left" data-anno="version">
       <h1 className="text-[15px] font-semibold leading-5 text-neutral-900 dark:text-neutral-100">{VERSION.title}</h1>
-      <p className="text-[13px] leading-[18px] text-neutral-500 dark:text-neutral-400">{VERSION.subtitle}</p>
+      <div className="mt-1 flex flex-col gap-2">
+        {VERSION.subtitle.map((p) => (
+          <p key={p} className="text-[13px] leading-[18px] text-neutral-500 dark:text-neutral-400">{p}</p>
+        ))}
+      </div>
     </div>
     <div className="flex items-center gap-3">
       <SegmentedControl

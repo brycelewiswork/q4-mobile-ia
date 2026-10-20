@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "motion/react"
 import {
   IconAlertHexagon,
   IconBell,
+  IconDots,
+  IconLayoutDashboard,
   IconBriefcase,
   IconFilter,
   IconCalendar,
@@ -11,7 +13,7 @@ import {
   IconCash,
   IconCheck,
   IconChevronDown,
-  IconMessages,
+  IconHistory,
   IconX,
   IconChevronRight,
   IconClock,
@@ -42,11 +44,14 @@ import { AndroidFrame } from "@/pages/android/AndroidFrame"
 import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALines, APage, ARow, ACheckRow, AFormSheet, ASection, ASheet, ASwitch, WeekStrip } from "@/pages/android/m3"
 import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
-import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location } from "@/data/locations"
+import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location, type Message } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { CustomizeSheet, MoreMenu, type MoreItem } from "@/pages/android/AndroidMore"
+import { morphBar } from "@/lib/morph"
+import { AddWidgetsBody, DashboardEditContext, DashboardWidget } from "@/components/DashboardEdit"
+import { AssistantTurns, MessageComposer, MessageRow, MsgAvatar, ThreadBubbles } from "@/pages/android/AndroidChats"
 import { DrawerSurface } from "@/components/ios/DrawerSurface"
 import { SCREENS } from "@/lib/device"
 import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
@@ -85,7 +90,7 @@ const TABS: Record<TabId, { label: string; icon: string }> = {
   chat: { label: "Messages", icon: "/android/chat-solid.svg" },
 }
 
-type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "achievements" | "clock" | "settings" | "team" | "assistant" | "generic"; title: string; /** The item the page opens focused on (a location's id on Locations). */ arg?: string }
+type PageSpec = { id: string; kind: "log" | "earnings" | "timeoff" | "account" | "locations" | "timecard" | "shoutouts" | "stats" | "shiftmates" | "achievements" | "clock" | "settings" | "team" | "assistant" | "thread" | "generic"; title: string; /** The item the page opens focused on (a location's id on Locations). */ arg?: string }
 const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
 const CLOCK: PageSpec = { id: "clock", kind: "clock", title: "Time clock" }
@@ -107,16 +112,21 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ onMenu, menuOpen, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The side menu is open (or opening): the menu button's badge fades away. */ menuOpen?: boolean; /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Customize Dashboard is on: the plus (adds widgets) replaces the menu button, and one check button finishes. */ onEditAdd?: () => void; editDone?: () => void; /** The ... button after the clock (Home, owners and managers). */ onMore?: () => void; /** The side menu is open (or opening): the menu button's badge fades away. */ menuOpen?: boolean; /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
-  const centered = !rail && !!onMenu
+  const centered = !rail && (!!onMenu || !!onEditAdd)
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 grid items-center gap-1 px-2 transition-colors duration-200", centered ? "grid-cols-[1fr_minmax(0,auto)_1fr]" : "grid-cols-[minmax(0,1fr)_auto]", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
       {centered && (
       <div className="flex items-center justify-start">
-        {!rail && onMenu && (
+        {!rail && onEditAdd && (
+          <AIconButton label="Add widgets" onClick={onEditAdd}>
+            <IconPlus size={24} stroke={1.75} />
+          </AIconButton>
+        )}
+        {!rail && !onEditAdd && onMenu && (
           <AIconButton label={pending ? `Menu, ${pending} requests waiting` : "Menu"} onClick={onMenu}>
             <span className="relative">
               <MenuTwoLine size={24} stroke={1.75} />
@@ -145,6 +155,11 @@ function TopBar({ onMenu, menuOpen, title: titleOverride, subtitle, hideProfile,
         )}
       </button>
       <div className="flex items-center justify-end gap-1">
+      {editDone ? (
+        <button onClick={editDone} aria-label="Done customizing" className="bg-m-primary text-m-on-primary flex size-12 items-center justify-center rounded-full shadow-[0_3px_8px_rgba(0,0,0,0.18)] active:opacity-85">
+          <IconCheck size={24} stroke={2.25} />
+        </button>
+      ) : (<>
       {showClock && (
         <AIconButton label="Time clock" onClick={onClock}>
           <span className="relative">
@@ -152,6 +167,13 @@ function TopBar({ onMenu, menuOpen, title: titleOverride, subtitle, hideProfile,
             {clockActive && <span aria-hidden className="absolute -right-[2px] -top-[2px] size-[9px] rounded-full bg-[#34c759]" />}
           </span>
         </AIconButton>
+      )}
+      {onMore && (
+        <span data-anno="home-more" className="contents">
+          <AIconButton label="More" onClick={onMore}>
+            <IconDots size={24} stroke={1.75} />
+          </AIconButton>
+        </span>
       )}
       {plus && (
         <span data-anno="plus" className="contents">
@@ -180,6 +202,7 @@ function TopBar({ onMenu, menuOpen, title: titleOverride, subtitle, hideProfile,
           <Avatar size={32} />
         </button>
       )}
+      </>)}
       </div>
     </div>
   )
@@ -223,7 +246,7 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: {
             // No menu (employees): the pill is just the pill.
             <div aria-hidden className="absolute inset-0 rounded-[28px] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.14),0_4px_18px_rgba(0,0,0,0.14)] backdrop-blur-[22px] backdrop-saturate-[1.6]" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 62%, transparent)" }} />
           )}
-          <motion.div initial={false} animate={{ opacity: moreOpen ? 0 : 1 }} transition={{ duration: moreOpen ? 0.1 : 0.2, delay: moreOpen ? 0 : 0.14 }} inert={moreOpen} className="absolute inset-0 flex items-center px-1">
+          <motion.div initial={false} animate={{ opacity: moreOpen ? 0 : 1 }} transition={morphBar(moreOpen)} inert={moreOpen} className="absolute inset-0 flex items-center px-1">
             {tabs.map((id) => {
               const { label, icon } = TABS[id]
               const on = tab === id
@@ -763,24 +786,31 @@ function LocationBreakdown() {
 }
 
 function HomeManager({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
+  const scope = useScope()
   const hero = (
     <>
-      <div className="flex flex-col gap-1 py-2">
-        <ABar w={150} h={34} />
-        <p className="text-m-variant pt-1 text-[16px] leading-6">Total sales</p>
-      </div>
-      <ALines />
-      <LocationBreakdown />
-      <StatusSkeleton />
+      <DashboardWidget id="sales">
+        <div className="flex flex-col gap-1 py-2">
+          <ABar w={150} h={34} />
+          <p className="text-m-variant pt-1 text-[16px] leading-6">Total sales</p>
+        </div>
+        <ALines />
+      </DashboardWidget>
+      <DashboardWidget id="locations" skip={scope.length < 2}>
+        <LocationBreakdown />
+      </DashboardWidget>
+      <DashboardWidget id="status">
+        <StatusSkeleton />
+      </DashboardWidget>
     </>
   )
   const rest = (
     <>
-      <Section title="My Week"><WeekSkeleton card /></Section>
-      <Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section>
-      <Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section>
-      <Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section>
-      <Section title="Events"><AList rows={3} avatar={false} trailing /></Section>
+      <DashboardWidget id="week"><Section title="My Week"><WeekSkeleton card /></Section></DashboardWidget>
+      <DashboardWidget id="review"><Section title="Needs Review"><AList rows={3} avatar={false} trailing /></Section></DashboardWidget>
+      <DashboardWidget id="tasks"><Section title="Task Manager" action="See all" onAction={() => onOpen(TASKS)}><AList rows={3} avatar={false} trailing onRow={() => onOpen(TASKS)} /></Section></DashboardWidget>
+      <DashboardWidget id="log"><Section title="Manager Log" action="See all" onAction={() => onOpen(LOG)}><AList rows={2} avatar={false} onRow={() => onOpen(LOG)} /></Section></DashboardWidget>
+      <DashboardWidget id="events"><Section title="Events"><AList rows={3} avatar={false} trailing /></Section></DashboardWidget>
     </>
   )
   if (split) return <SplitCols left={<div className="flex flex-col gap-3">{hero}</div>} right={<div className="flex flex-col gap-3">{rest}</div>} />
@@ -924,9 +954,17 @@ function MoneyTab() {
   )
 }
 
-function MessagesTab({ selected, onPick }: { /** Split view (tablet landscape): the open conversation and what choosing one does. */ selected?: number; onPick?: (i: number) => void }) {
+/** Every conversation in scope, each id prefixed with its location (ids repeat from one location to the next). */
+const threadKey = (l: Location, m: Message) => `${l.id}:${m.id}`
+const findMessage = (key: string): Message | undefined => {
+  const [lid, mid] = key.split(":")
+  return LOCATIONS.find((l) => l.id === lid)?.messages.find((m) => m.id === mid)
+}
+
+function MessagesTab({ selected, onPick, onOpen }: { /** Split view (tablet): the open conversation's key, and what choosing one does. */ selected?: string; onPick?: (key: string) => void; /** A phone: opening a conversation pushes it as a page. */ onOpen?: (p: PageSpec) => void }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
   const toggle = (f: "unread" | "threads") => setFilter((c) => (c === f ? "all" : f))
+  const keep = (m: Message) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true)
   return (
     <div className="pt-2">
       <AChips>
@@ -934,51 +972,60 @@ function MessagesTab({ selected, onPick }: { /** Split view (tablet landscape): 
         <AChip selected={filter === "threads"} onClick={() => toggle("threads")}>Threads</AChip>
       </AChips>
       <AByLocation>
-        {(_, g, gi) => {
-          const n = g ? (onPick ? 4 : 3) : onPick ? 14 : 7
-          return <AList rows={n} selected={selected === undefined ? undefined : selected - gi * n} onPick={onPick ? (i) => onPick(i + gi * n) : undefined} />
+        {(l) => {
+          const rows = l.messages.filter(keep)
+          return (
+            <div className="flex flex-col">
+              {rows.length === 0 && <p className="text-m-variant px-4 py-6 text-[16px]">No messages</p>}
+              {rows.map((m) => {
+                const key = threadKey(l, m)
+                return (
+                  <MessageRow
+                    key={key}
+                    m={m}
+                    selected={selected === key}
+                    onClick={onPick ? () => onPick(key) : onOpen ? () => onOpen({ id: `thread:${key}`, kind: "thread", title: m.title, arg: key }) : undefined}
+                  />
+                )
+              })}
+            </div>
+          )
         }}
       </AByLocation>
     </div>
   )
 }
 
-/** One conversation, opened: who it's with, the thread, and the composer, as skeletons. */
-function ConversationPane() {
-  const bubble = "block rounded-[20px]"
+/** One conversation, opened: who it's with, the thread, and the composer. */
+function ConversationPane({ m }: { m?: Message }) {
   return (
     <div className="bg-m-container flex h-full flex-col overflow-hidden rounded-[28px]">
       <div className="border-m-divider flex shrink-0 items-center gap-4 border-b px-5 py-4">
-        <span className="bg-m-skeleton size-10 shrink-0 rounded-full" />
-        <span className="flex flex-col gap-[9px]">
-          <ABar w={140} h={12} />
-          <ABar w={80} h={10} />
+        {m && <MsgAvatar m={m} />}
+        <span className="flex min-w-0 flex-col">
+          <span className="text-m-on-surface truncate text-[16px] font-medium leading-6">{m?.title}</span>
+          <span className="text-m-variant text-[13px] leading-4">{m?.kind === "dm" ? "Direct message" : m?.kind === "announcement" ? "Announcements" : "Thread"}</span>
         </span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-5">
-        <span aria-hidden className={cn(bubble, "bg-m-skeleton h-14 w-[55%] self-start")} />
-        <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[38%] self-end")} />
-        <span aria-hidden className={cn(bubble, "bg-m-skeleton h-20 w-[62%] self-start")} />
-        <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[30%] self-end")} />
-      </div>
-      <div className="shrink-0 px-4 pb-4">
-        <div className="border-m-outline h-12 rounded-full border" />
-      </div>
+      <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-5 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{m && <ThreadBubbles m={m} />}</div>
+      <div className="shrink-0 px-4 pb-4"><MessageComposer /></div>
     </div>
   )
 }
 
 /** Tablet Messages: the list on the left, the open conversation on the right. */
 function MessagesSplit() {
-  const [sel, setSel] = useState(0)
+  const scope = useScope()
+  const first = scope[0] && scope[0].messages[0] ? threadKey(scope[0], scope[0].messages[0]) : ""
+  const [sel, setSel] = useState(first)
   const col = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
   return (
     <div className="absolute inset-0 flex" style={{ paddingTop: "calc(var(--safe-top) + 64px)" }}>
-      <div className={cn(col, "w-[40%] min-w-[240px] max-w-[380px] shrink-0 overflow-y-auto px-4 pb-6")}>
+      <div className={cn(col, "w-[40%] min-w-[240px] max-w-[380px] shrink-0 overflow-y-auto px-0 pb-6")}>
         <MessagesTab selected={sel} onPick={setSel} />
       </div>
       <div className="min-w-0 flex-1 pb-4 pl-1 pr-4 pt-2">
-        <ConversationPane />
+        <ConversationPane m={findMessage(sel)} />
       </div>
     </div>
   )
@@ -1509,6 +1556,10 @@ function PageBody({ spec, multi, onOpen, onClose }: { spec: PageSpec; multi: boo
     case "log": return <div className="pt-2"><AList rows={5} avatar={false} /></div>
     // Earnings is one card on the Money tab, so it opens that tab's content as a page.
     case "earnings": return <MoneyTab />
+    case "thread": {
+      const m = spec.arg ? findMessage(spec.arg) : undefined
+      return m ? <div className="flex min-h-full flex-col justify-end pt-2"><ThreadBubbles m={m} /></div> : null
+    }
     case "shiftmates":
     case "team": return <div className="pt-2"><AList rows={8} trailing={spec.kind === "shiftmates"} /></div>
     case "timeoff": return (
@@ -1624,11 +1675,12 @@ function ExtraPage({ id }: { id: ExtraId }) {
 }
 
 /** The menu under the app: the tabs, then the assistant's past conversations, with a search and New chat; the avatar opens Settings. */
-function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onProfile }: { tabs: TabId[]; onTab: (t: TabId) => void; /** Requests waiting: the badge on the bell. */ pending: number; onBell: () => void; onOpenChat: () => void; onNewChat: () => void; onProfile: () => void }) {
+function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onProfile }: { tabs: TabId[]; onTab: (t: TabId) => void; /** Requests waiting: the badge on the bell. */ pending: number; onBell: () => void; onOpenChat: (title: string) => void; onNewChat: () => void; onProfile: () => void }) {
   const label = "text-m-outline px-4 pb-1 pt-7 text-[14px] font-medium leading-5"
-  const row = (i: number) => (
-    <button key={i} onClick={onOpenChat} className="flex min-h-10 w-full items-center px-4 text-left active:bg-black/5">
-      <ABar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={12} />
+  const convos = useLocation().conversations
+  const row = (c: (typeof convos)[number]) => (
+    <button key={c.id} onClick={() => onOpenChat(c.title)} className="flex min-h-10 w-full items-center px-4 text-left active:bg-black/5">
+      <span className="text-m-on-surface truncate text-[16px] leading-6">{c.title}</span>
     </button>
   )
   return (
@@ -1661,9 +1713,9 @@ function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onPr
           </nav>
         )}
         <h3 className={label}>Pinned</h3>
-        {[0, 1, 2].map(row)}
+        {convos.filter((c) => c.pinned).map(row)}
         <h3 className={label}>Recents</h3>
-        {[3, 4, 5, 6].map(row)}
+        {convos.filter((c) => !c.pinned).map(row)}
       </div>
       <div className="absolute inset-x-0 flex items-center justify-between px-5" style={{ bottom: 20 }}>
         <button onClick={onProfile} aria-label="Settings" aria-haspopup="dialog" data-anno="profile" className="flex size-11 items-center justify-center rounded-full active:opacity-80">
@@ -1678,9 +1730,11 @@ function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onPr
   )
 }
 
-function AndroidChat({ past, history = true, onDismiss }: { past: boolean; /** Show the Conversations button (off beside a rail, which lists them). */ history?: boolean; onDismiss: () => void }) {
+function AndroidChat({ title, history = true, onDismiss }: { /** Open on this past chat; without one it is a new chat. */ title?: string; /** Show the Conversations button (off beside a rail, which lists them). */ history?: boolean; onDismiss: () => void }) {
   const [list, setList] = useState(false)
-  const bubble = "block rounded-[20px]"
+  const convos = useLocation().conversations
+  const [current, setCurrent] = useState(title)
+  const turns = current ? convos.find((c) => c.title === current)?.thread : undefined
   return (
     <div className="absolute inset-0 z-[45]">
     <motion.button
@@ -1707,24 +1761,19 @@ function AndroidChat({ past, history = true, onDismiss }: { past: boolean; /** S
     >
       <div className="flex h-16 shrink-0 items-center justify-between px-2">
         <AIconButton label="Close" onClick={onDismiss}>
-          <IconChevronDown size={24} stroke={1.75} />
+          <IconX size={24} stroke={1.75} />
         </AIconButton>
         {history ? (
           <AIconButton label="Conversations" onClick={() => setList(true)}>
-            <IconMessages size={24} stroke={1.75} />
+            <IconHistory size={24} stroke={1.75} />
           </AIconButton>
         ) : (
           <span aria-hidden className="size-12" />
         )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 overflow-y-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {past ? (
-          <>
-            <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[42%] self-end")} />
-            <span aria-hidden className={cn(bubble, "bg-m-skeleton h-16 w-[62%] self-start")} />
-            <span aria-hidden className={cn(bubble, "bg-m-primary-container h-10 w-[34%] self-end")} />
-            <span aria-hidden className={cn(bubble, "bg-m-skeleton h-24 w-[70%] self-start")} />
-          </>
+        {turns ? (
+          <AssistantTurns turns={turns} />
         ) : (
           <>
             <div aria-hidden className="flex flex-col items-center gap-2 pb-2">
@@ -1776,12 +1825,16 @@ function AndroidChat({ past, history = true, onDismiss }: { past: boolean; /** S
                 <h2 className="text-m-on-surface ml-2 text-[20px] font-medium leading-7">Conversations</h2>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {["Pinned", "Recents"].map((label, g) => (
-                  <section key={label}>
-                    <h3 className="text-m-outline px-3 pb-1 pt-4 text-[12px] font-medium leading-4">{label}</h3>
-                    {[0, 1, 2].map((i) => (
-                      <button key={i} onClick={() => setList(false)} className="flex h-12 w-full items-center rounded-full px-4 text-left active:bg-black/10">
-                        <ABar w={`${[78, 62, 70, 54, 66, 58][i + g * 3]}%`} h={10} />
+                {[
+                  { label: "Pinned", rows: convos.filter((c) => c.pinned) },
+                  { label: "Recents", rows: convos.filter((c) => !c.pinned) },
+                ].map((g) => (
+                  <section key={g.label}>
+                    <h3 className="text-m-outline px-3 pb-1 pt-4 text-[12px] font-medium leading-4">{g.label}</h3>
+                    {g.rows.map((c) => (
+                      <button key={c.id} onClick={() => { setCurrent(c.title); setList(false) }} className="flex h-12 w-full items-center justify-between gap-3 rounded-full px-4 text-left active:bg-black/10">
+                        <span className="text-m-on-surface truncate text-[16px]">{c.title}</span>
+                        <span className="text-m-variant shrink-0 text-[13px]">{c.time}</span>
                       </button>
                     ))}
                   </section>
@@ -1821,11 +1874,16 @@ export function AndroidApp() {
   // The assistant's chat, open over the app as a bottom sheet (not for employees).
   // The menu under the app (the tabs and the assistant's past conversations): phones, not employees.
   const [menuDrawer, setMenuDrawer] = useState(false)
-  const [chat, setChat] = useState<{ past: boolean; n: number } | null>(null)
+  const [chat, setChat] = useState<{ title?: string; n: number } | null>(null)
   const [tab, setTab] = useState<TabId>("home")
   // A page opened from the More menu: a main page of its own (the bar stays, and More takes that page's icon).
   const [extra, setExtra] = useState<ExtraId | null>(null)
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  // Customize Dashboard (the ... menu on Home): widgets jiggle and can be removed, the plus adds some back, the check finishes.
+  const [editing, setEditing] = useState(false)
+  const [dashMenu, setDashMenu] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  useEffect(() => { setEditing(false); setDashMenu(false) }, [tab, extra])
   // The rail's Locations row, while its menu is open (the menu hangs from it).
   const [railLocEl, setRailLocEl] = useState<HTMLElement | null>(null)
   const [account, setAccount] = useState(COMPANIES[0].name)
@@ -1915,7 +1973,7 @@ export function AndroidApp() {
   )
 
   // Beside a rail the assistant starts a new chat; the rail lists the past ones.
-  const newChat = () => setChat((c) => ({ past: false, n: (c?.n ?? 0) + 1 }))
+  const newChat = () => setChat((c) => ({ n: (c?.n ?? 0) + 1 }))
   const assistant = employee ? undefined : newChat
   const unread = scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0)
 
@@ -1963,6 +2021,7 @@ export function AndroidApp() {
             bar={p.kind === "team" ? <SearchField /> : undefined}
             footer={
               p.kind === "assistant" ? <Composer />
+              : p.kind === "thread" ? <MessageComposer />
               : p.kind === "clock" && clock.status === "out" ? (
                 <button onClick={() => timeClock.clockIn(loc.id, clock.role ?? loc.employee.timeClock.role)} disabled={!scheduledToday(loc)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
                   {scheduledToday(loc) ? "Confirm Clock in" : "No shift to clock in to"}
@@ -1981,7 +2040,7 @@ export function AndroidApp() {
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
       <DrawerSurface
-        enabled={!rail && !employee}
+        enabled={!rail && !employee && !editing}
         open={menuDrawer}
         onOpenChange={setMenuDrawer}
         surfaceClass="bg-m-surface"
@@ -1994,8 +2053,8 @@ export function AndroidApp() {
             // Requests rise over the menu; closing the sheet just dismisses it.
             onBell={() => setSheet("requests")}
             onTab={(t) => { close(); setChat(null); goTab(t) }}
-            onOpenChat={() => { close(); setChat((c) => ({ past: true, n: (c?.n ?? 0) + 1 })) }}
-            onNewChat={() => { close(); setChat((c) => ({ past: false, n: (c?.n ?? 0) + 1 })) }}
+            onOpenChat={(title) => { close(); setChat((c) => ({ title, n: (c?.n ?? 0) + 1 })) }}
+            onNewChat={() => { close(); setChat((c) => ({ n: (c?.n ?? 0) + 1 })) }}
             // Settings rises over the menu; closing it just dismisses it.
             onProfile={() => open(SETTINGS)}
           />
@@ -2007,7 +2066,7 @@ export function AndroidApp() {
       {!extra && tab === "chat" && rail && <MessagesSplit key={loc.id} />}
       {!extra && split && tab !== "chat" && tab !== "money" && (
         <motion.div key={`${tab}:${tab === "home" && multi ? "overview" : loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
-          {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <HomeManager split onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
+          {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager split onOpen={open} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
           {tab === "shifts" && <ShiftsTab split />}
           {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
@@ -2022,11 +2081,11 @@ export function AndroidApp() {
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: rail ? 120 : 200 }}
       >
-        {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <HomeManager onOpen={open} />}</OpenLocationContext.Provider></ScopeContext.Provider>}
+        {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager onOpen={open} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab filters={timeFilters} onFilter={setFilterSheet} />}
         {tab === "money" && <MoneyTab />}
-        {tab === "chat" && <MessagesTab />}
+        {tab === "chat" && <MessagesTab onOpen={open} />}
       </motion.div>}
 
       <TopBar
@@ -2038,6 +2097,9 @@ export function AndroidApp() {
         // Settings is in the More menu for owners and managers on a phone, so no avatar up here.
         hideProfile={!employee}
         onMenu={!rail && !employee ? () => setMenuDrawer(true) : undefined}
+        onEditAdd={editing && !rail && !employee ? () => setAddOpen(true) : undefined}
+        editDone={editing ? () => setEditing(false) : undefined}
+        onMore={!employee && tab === "home" && !extra && !editing ? () => setDashMenu((o) => !o) : undefined}
         menuOpen={menuDrawer}
         // Home is a fixed overview, so only the other tabs have a switcher.
         canSwitch={extra ? EXTRA_PAGES[extra].scoped : tab !== "home"}
@@ -2060,6 +2122,18 @@ export function AndroidApp() {
           {addMenu("bottom-16 right-0", "bottom right")}
         </div>
       )}
+      <AnimatePresence>
+        {dashMenu && (
+          <div className="absolute inset-0 z-30" onPointerDown={() => setDashMenu(false)}>
+            <motion.div role="menu" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.15 }} onPointerDown={(e) => e.stopPropagation()} style={{ transformOrigin: "top right", top: "calc(var(--safe-top) + 56px)" }} className="bg-m-high text-m-on-surface absolute right-3 w-[240px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+              <button role="menuitem" onClick={() => { setDashMenu(false); setEditing(true) }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
+                <IconLayoutDashboard size={22} stroke={1.5} className="text-m-variant" />
+                Customize dashboard
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {!rail && <div className="absolute inset-x-0 top-0 z-30">{addMenu("right-3 top-[calc(var(--safe-top)+56px)]", "top right")}</div>}
       {rail && (
         <LocationMenu
@@ -2077,16 +2151,21 @@ export function AndroidApp() {
       {locOpen && <AndroidLocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={employee} onClosed={() => setLocOpen(null)} />}
 
 
-      {rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} history={false} onDismiss={() => setChat(null)} />}</AnimatePresence>}
+      {rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} title={chat.title} history={false} onDismiss={() => setChat(null)} />}</AnimatePresence>}
       {rail && pagesLayer}
       </motion.div>
 
 
 
-      {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} past={chat.past} onDismiss={() => setChat(null)} />}</AnimatePresence>}
+      {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} title={chat.title} onDismiss={() => setChat(null)} />}</AnimatePresence>}
       </DrawerSurface>
       <AnimatePresence>
         {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} side={rail} value={timeFilters[filterSheet]} onApply={(v) => { setTimeFilters((f) => ({ ...f, [filterSheet]: v })); setFilterSheet(null) }} onClose={() => setFilterSheet(null)} />}
+        {addOpen && (
+          <ASheet key="add-widgets" title="Add widgets" full onClose={() => setAddOpen(false)}>
+            <AddWidgetsBody multi={multi} android />
+          </ASheet>
+        )}
         {sheet === "requests" && <RequestsSheet key="requests" loc={loc} multi={multi} side={rail} onClose={() => setSheet(null)} />}
         {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
         {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}

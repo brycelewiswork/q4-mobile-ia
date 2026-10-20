@@ -3,7 +3,7 @@ import { useStructure } from "@/store/useViewStore"
 import { useLocName } from "@/store/useViewStore"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { animate, motion, useMotionValue, useTransform } from "motion/react"
-import { IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconMessages, IconPlus, IconSearch } from "@tabler/icons-react"
+import { IconArrowUp, IconBoltFilled, IconChevronDown, IconDots, IconHistory, IconPlus, IconSearch, IconX } from "@tabler/icons-react"
 import { Keyboard, KEYBOARD_H } from "@/components/ios/Keyboard"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { cn } from "@/lib/utils"
@@ -32,14 +32,13 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
   const first = usePersonStore((p) => p.firstName || p.name.split(" ")[0])
   const [kb, setKb] = useState(false)
   const [text, setText] = useState("")
-  const [thread, setThread] = useState<Msg[]>(() =>
-    startWith
-      ? [
-          { role: "user", text: startWith },
-          { role: "assistant", text: `Here's where we left off on “${startWith}” for ${locName(loc)}.` },
-        ]
-      : [],
-  )
+  // A past chat opens with its own conversation; one without a thread falls back to a stand-in.
+  const threadFor = (title: string): Msg[] =>
+    loc.conversations.find((c) => c.title === title)?.thread ?? [
+      { role: "user", text: title },
+      { role: "assistant", text: `Here's where we left off on “${title}” for ${locName(loc)}.` },
+    ]
+  const [thread, setThread] = useState<Msg[]>(() => (startWith ? threadFor(startWith) : []))
   const [view, setView] = useState<"chat" | "history">("chat")
   // Choosing another chat from the menu while this one is open swaps the thread in place.
   const mounted = useRef(false)
@@ -48,14 +47,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
       mounted.current = true
       return
     }
-    setThread(
-      startWith
-        ? [
-            { role: "user", text: startWith },
-            { role: "assistant", text: `Here's where we left off on “${startWith}” for ${locName(loc)}.` },
-          ]
-        : [],
-    )
+    setThread(startWith ? threadFor(startWith) : [])
     setView("chat")
     // eslint-disable-next-line react/exhaustive-deps
   }, [token])
@@ -201,10 +193,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
   backRef.current = backToChat
   const history = loc.conversations.filter((c) => c.title.toLowerCase().includes(query.trim().toLowerCase()))
   const openConversation = (title: string) => {
-    setThread([
-      { role: "user", text: title },
-      { role: "assistant", text: `Here's where we left off on “${title}” for ${locName(loc)}.` },
-    ])
+    setThread(threadFor(title))
     backToChat()
   }
   const send = (value: string) => {
@@ -267,14 +256,14 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
         <div className="relative flex h-auto shrink-0 items-start justify-between px-4 pt-4">
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button onClick={close} aria-label="Close" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-              <IconChevronDown size={24} stroke={2} />
+              <IconX size={22} stroke={2} />
             </button>
           </LiquidGlass>
           <h2 className="sr-only">Assistant</h2>
           {showHistory ? (
             <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
               <button aria-label="Conversations" aria-haspopup="dialog" onClick={openHistory} className="flex size-9 items-center justify-center rounded-full text-[#141414]">
-                <IconMessages size={24} stroke={1.75} />
+                <IconHistory size={24} stroke={1.75} />
               </button>
             </LiquidGlass>
           ) : (
@@ -315,7 +304,7 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
                 <p
                   key={i}
                   className={cn(
-                    "max-w-[85%] rounded-[20px] px-4 py-[10px] text-[17px] leading-[22px] tracking-[-0.43px]",
+                    "max-w-[85%] whitespace-pre-line rounded-[20px] px-4 py-[10px] text-[17px] leading-[22px] tracking-[-0.43px]",
                     m.role === "user" ? "self-end bg-[#8f55e5] text-white" : "self-start bg-[#ebe8ef] text-black",
                   )}
                 >
@@ -420,17 +409,8 @@ export function AssistantSheet({ loc, onClose, startWith, token, showHistory = t
                         onClick={() => openConversation(c.title)}
                         className="flex min-h-[44px] min-w-0 flex-1 items-center justify-between gap-3 py-3 text-left active:opacity-60"
                       >
-                        {wire ? (
-                          <>
-                            <Bar w="60%" h={12} />
-                            <Bar w={36} h={10} />
-                          </>
-                        ) : (
-                          <>
-                            <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>
-                            <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{c.time}</span>
-                          </>
-                        )}
+                        <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>
+                        <span className="shrink-0 text-[15px] leading-5 text-[#7f7f7f]">{c.time}</span>
                       </button>
                       <button aria-label="More" className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#2c2935] active:opacity-60">
                         <IconDots size={20} />

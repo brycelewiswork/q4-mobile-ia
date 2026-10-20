@@ -3,6 +3,7 @@ import { Reorder, motion, useDragControls } from "motion/react"
 import { IconCheck, IconChevronDown, IconGripVertical, IconSelector } from "@tabler/icons-react"
 import { CustomizeIcon } from "@/components/icons/CustomizeIcon"
 import { AIconButton } from "@/pages/android/m3"
+import { morphRow, morphShape, morphWash } from "@/lib/morph"
 import { useMoreMenuStore } from "@/store/useMoreMenuStore"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,7 @@ export const moreMenuHeight = (items: number) => Math.min(MAX_H, items * ROW + H
 export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, header, onSelect }: { open: boolean; onClose: () => void; /** The bar pill's size, where the morph starts. */ clusterW: number; clusterH?: number; items: MoreItem[]; header: MoreHeader; onSelect: (id: string) => void }) {
   const [picking, setPicking] = useState(false)
   const h = moreMenuHeight(items.length)
+  const rowCount = items.length + 2
   useEffect(() => {
     if (!open) setPicking(false)
   }, [open])
@@ -58,23 +60,20 @@ export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, he
       <motion.div
         initial={false}
         animate={{ width: open ? MORE_W : clusterW, height: open ? h : clusterH }}
-        transition={{ duration: 0.32, ease: [0.2, 0, 0, 1] }}
+        transition={morphShape(open)}
         // The bar's pill, and what it grows into: frosted, with a hairline edge and a soft lift.
         className="absolute bottom-0 left-0 overflow-hidden rounded-[28px] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.14),0_4px_18px_rgba(0,0,0,0.14)] backdrop-blur-[22px] backdrop-saturate-[1.6]"
         style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 62%, transparent)", pointerEvents: open ? "auto" : "none" }}
       >
         {/* Open, the menu needs more body than the bar: a wash that comes in with the morph. */}
-        <motion.div aria-hidden initial={false} animate={{ opacity: open ? 1 : 0 }} transition={{ duration: 0.25 }} className="pointer-events-none absolute inset-0" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 55%, transparent)" }} />
-        <motion.ul
+        <motion.div aria-hidden initial={false} animate={{ opacity: open ? 1 : 0 }} transition={morphWash(open)} className="pointer-events-none absolute inset-0" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 55%, transparent)" }} />
+        <ul
           role="menu"
           aria-label="More"
-          initial={false}
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={open ? { duration: 0.2, delay: 0.12 } : { duration: 0.1 }}
           className="absolute bottom-0 left-0 flex flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ width: MORE_W, height: h, padding: PAD }}
         >
-          <li role="none" className="flex shrink-0 items-center justify-between" style={{ height: HEAD }}>
+          <motion.li initial={false} {...morphRow(open, 0, rowCount)} role="none" className="flex shrink-0 items-center justify-between" style={{ height: HEAD }}>
             <button onClick={() => setPicking((p) => !p)} aria-haspopup="listbox" aria-expanded={picking} tabIndex={open ? 0 : -1} className="flex h-12 min-w-0 items-center gap-2 rounded-full pl-2 pr-2 active:bg-black/10">
               <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] text-[14px] font-semibold text-white">
                 {header.account.charAt(0)}
@@ -91,11 +90,11 @@ export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, he
             >
               <CustomizeIcon size={24} />
             </AIconButton>
-          </li>
-          <li role="separator" className="bg-m-divider mx-3 my-1 h-px shrink-0" />
+          </motion.li>
+          <motion.li initial={false} {...morphRow(open, 1, rowCount)} role="separator" className="bg-m-divider mx-3 my-1 h-px shrink-0" />
           {picking
-            ? header.accounts.map((a) => (
-                <li key={a} role="none" className="shrink-0">
+            ? header.accounts.map((a, i) => (
+                <motion.li key={a} initial={false} {...morphRow(open, i + 2, rowCount)} role="none" className="shrink-0">
                   <button
                     role="option"
                     aria-selected={a === header.account}
@@ -112,10 +111,10 @@ export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, he
                     <span className="flex-1 truncate">{a}</span>
                     {a === header.account && <IconCheck size={20} stroke={2} />}
                   </button>
-                </li>
+                </motion.li>
               ))
-            : items.map((m) => (
-                <li key={m.id} role="none" className="shrink-0">
+            : items.map((m, i) => (
+                <motion.li key={m.id} initial={false} {...morphRow(open, i + 2, rowCount)} role="none" className="shrink-0">
                   <button
                     role="menuitem"
                     tabIndex={open ? 0 : -1}
@@ -131,9 +130,9 @@ export function MoreMenu({ open, onClose, clusterW, clusterH = PILL_H, items, he
                     {m.label}
                     {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
                   </button>
-                </li>
+                </motion.li>
               ))}
-        </motion.ul>
+        </ul>
       </motion.div>
     </>
   )

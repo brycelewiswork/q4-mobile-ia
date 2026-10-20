@@ -1,6 +1,5 @@
 import { IconBell, IconBoltFilled } from "@tabler/icons-react"
 import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
-import { Bar } from "@/components/wire/Wire"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import type { Location } from "@/data/locations"
 import { Initials, SELF_TINT } from "@/components/ios/list"
@@ -40,9 +39,9 @@ export function ConversationsDrawer({ loc, tabs, onTab, pending, onBell, onOpenC
   const pinned = matches.filter((c) => c.pinned)
   const recents = matches.filter((c) => !c.pinned)
   const label = "px-4 pb-1 pt-7 text-[14px] font-[510] leading-5 text-[#a09ead]"
-  const row = (c: Location["conversations"][number], i: number) => (
+  const row = (c: Location["conversations"][number]) => (
     <button key={c.id} onClick={() => onOpenChat(c.title)} className="flex min-h-10 w-full items-center gap-3 px-4 text-left active:bg-black/[0.04]">
-      {wire ? <Bar w={`${[78, 62, 70, 54, 66, 58, 74][i % 7]}%`} h={12} /> : <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>}
+      <span className="truncate text-[17px] leading-[22px] text-black">{c.title}</span>
     </button>
   )
   return (
@@ -83,13 +82,13 @@ export function ConversationsDrawer({ loc, tabs, onTab, pending, onBell, onOpenC
         {pinned.length > 0 && (
           <>
             <h3 className={label}>Pinned</h3>
-            {pinned.map((c, i) => row(c, i))}
+            {pinned.map((c) => row(c))}
           </>
         )}
         {recents.length > 0 && (
           <>
             <h3 className={label}>Recents</h3>
-            {recents.map((c, i) => row(c, i))}
+            {recents.map((c) => row(c))}
           </>
         )}
         {matches.length === 0 && <p className="px-4 pt-6 text-[17px] leading-[22px] text-[#8e8e93]">No conversations</p>}

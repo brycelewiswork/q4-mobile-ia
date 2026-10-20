@@ -1,5 +1,9 @@
-/** Which prototype version this is, shown above the device controls so shared screenshots and links say what they are. */
+/** What this prototype is, shown above the device controls so shared screenshots and links say what they are. */
 export const VERSION = {
-  title: "Version D \u00b7 Side menu and More",
-  subtitle: "Version C's More menu plus Version B's side panel, which also holds the notifications bell; titles centered; Team joins More and Settings is trimmed.",
+  title: "Information architecture for the agentic future",
+  /** One paragraph each. */
+  subtitle: [
+    "A persistent undersheet for past chats gives settings and notifications a second main surface, and the pattern holds across tablets.",
+    "A linear-style options menu in the main navigation puts other features within easy reach and leaves room for future ones without new IA changes.",
+  ],
 } as const

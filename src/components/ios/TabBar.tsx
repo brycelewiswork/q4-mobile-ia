@@ -4,6 +4,7 @@ import { IconCheck, IconSelector } from "@tabler/icons-react"
 import { CustomizeIcon } from "@/components/icons/CustomizeIcon"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
+import { morphBar, morphRow, morphShape, morphWash } from "@/lib/morph"
 import { cn } from "@/lib/utils"
 
 const BRAND = "#8f55e5"
@@ -180,10 +181,11 @@ export function TabBar({
 }) {
   const [picking, setPicking] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const rowCount = (more?.items.length ?? 0) + (more?.header ? 2 : 0)
   const menuH = Math.min(MORE_MAX, (more?.items.length ?? 0) * MORE_ROW + (more?.header ? MORE_HEAD + MORE_RULE : 0) + MORE_PAD * 2)
   const glassH = useMotionValue(BAR_H)
   useEffect(() => {
-    const c = animate(glassH, moreOpen ? menuH : BAR_H, SPRING_FAST.snappy)
+    const c = animate(glassH, moreOpen ? menuH : BAR_H, morphShape(moreOpen))
     return () => c.stop()
   }, [moreOpen, menuH, glassH])
   useEffect(() => {
@@ -228,20 +230,17 @@ export function TabBar({
           <motion.div className="pointer-events-none absolute -inset-x-1 -bottom-1" style={{ height: glassH }}>
             <LiquidGlass mode="small" radius={31} className="size-full" />
             {/* Open, the menu needs more body than the bar: a white wash over the glass, faded in with the morph. */}
-            <motion.div aria-hidden initial={false} animate={{ opacity: moreOpen ? 1 : 0 }} transition={{ duration: 0.25 }} className="absolute inset-0 rounded-[31px] bg-white/65" />
+            <motion.div aria-hidden initial={false} animate={{ opacity: moreOpen ? 1 : 0 }} transition={morphWash(moreOpen)} className="absolute inset-0 rounded-[31px]" style={{ backgroundColor: "var(--ios-menu-wash, rgba(255,255,255,0.65))" }} />
           </motion.div>
           {more && (
-            <motion.ul
+            <ul
               role="menu"
               aria-label="More"
-              initial={false}
-              animate={{ opacity: moreOpen ? 1 : 0 }}
-              transition={moreOpen ? { duration: 0.2, delay: 0.1 } : { duration: 0.1 }}
               className="absolute inset-x-0 bottom-0 flex flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               style={{ height: menuH - 4, padding: `${MORE_PAD}px ${MORE_PAD}px 4px`, pointerEvents: moreOpen ? "auto" : "none" }}
             >
               {more.header && (
-                <li role="none" className="flex shrink-0 items-center justify-between pl-1" style={{ height: MORE_HEAD }}>
+                <motion.li initial={false} {...morphRow(moreOpen, 0, rowCount)} role="none" className="flex shrink-0 items-center justify-between pl-1" style={{ height: MORE_HEAD }}>
                   <button
                     onClick={() => setPicking((p) => !p)}
                     aria-haspopup="listbox"
@@ -267,12 +266,12 @@ export function TabBar({
                   >
                     <CustomizeIcon size={24} />
                   </button>
-                </li>
+                </motion.li>
               )}
-              {more.header && <li role="separator" className="mx-3 my-1 h-px shrink-0 bg-black/[0.08]" />}
+              {more.header && <motion.li initial={false} {...morphRow(moreOpen, 1, rowCount)} role="separator" className="mx-3 my-1 h-px shrink-0 bg-black/[0.08]" />}
               {picking && more.header
-                ? more.header.accounts.map((a) => (
-                    <li key={a} role="none" className="shrink-0">
+                ? more.header.accounts.map((a, i) => (
+                    <motion.li key={a} initial={false} {...morphRow(moreOpen, i + 2, rowCount)} role="none" className="shrink-0">
                       <button
                         role="option"
                         aria-selected={a === more.header?.account}
@@ -289,10 +288,10 @@ export function TabBar({
                         <span className="flex-1 truncate">{a}</span>
                         {a === more.header?.account && <IconCheck size={20} stroke={2} />}
                       </button>
-                    </li>
+                    </motion.li>
                   ))
-                : more.items.map((m) => (
-                <li key={m.id} role="none" className="shrink-0">
+                : more.items.map((m, i) => (
+                <motion.li key={m.id} initial={false} {...morphRow(moreOpen, i + (more.header ? 2 : 0), rowCount)} role="none" className="shrink-0">
                   <button
                     role="menuitem"
                     tabIndex={moreOpen ? 0 : -1}
@@ -308,14 +307,14 @@ export function TabBar({
                     {m.label}
                     {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
                   </button>
-                </li>
+                </motion.li>
               ))}
-            </motion.ul>
+            </ul>
           )}
           <motion.div
             className="relative flex min-w-0 flex-1 items-center"
             animate={{ opacity: moreOpen ? 0 : 1 }}
-            transition={{ duration: moreOpen ? 0.1 : 0.2, delay: moreOpen ? 0 : 0.12 }}
+            transition={morphBar(moreOpen)}
             style={{ pointerEvents: moreOpen ? "none" : "auto" }}
             inert={moreOpen}
           >

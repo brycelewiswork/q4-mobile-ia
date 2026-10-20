@@ -1,3 +1,4 @@
+import { ASSISTANT_CHATS, MESSAGE_CHATS, type AssistantTurn, type ThreadMsg } from "@/data/chats"
 // Dummy data, one record per location. Every widget on every screen reads from
 // the selected location, so switching the title menu changes real content.
 //
@@ -24,6 +25,8 @@ export type Message = {
   time: string
   unread: boolean
   photo?: number
+  /** The conversation itself, for opening it. */
+  thread?: ThreadMsg[]
 }
 /** A timesheet on the Time tab's Day view that needs a manager's review. */
 export type Timesheet = {
@@ -97,7 +100,7 @@ export type Location = {
   /** Suggested prompts on the assistant sheet. */
   assistant: string[]
   /** Past assistant conversations (Conversations page). */
-  conversations: { id: string; title: string; time: string; pinned?: boolean }[]
+  conversations: { id: string; title: string; time: string; pinned?: boolean; thread?: AssistantTurn[] }[]
   timesheets: Timesheet[]
   tasks: { id: string; title: string; due: string; done: boolean }[]
   managerLog: { when: string; author: string; note: string }[]
@@ -694,6 +697,13 @@ export const LOCATIONS: Location[] = [
 ]
 
 /** Locations in menu order, grouped under their company (LOCATIONS keeps each company's locations together). */
+// The same sample conversations at every location, keeping each location's own unread count.
+for (const l of LOCATIONS) {
+  const unread = l.messages.filter((m) => m.unread).length
+  l.messages = MESSAGE_CHATS.map((m, i) => ({ ...m, unread: i < unread }))
+  l.conversations = ASSISTANT_CHATS.map((c) => ({ ...c }))
+}
+
 export const COMPANIES: { name: string; locations: Location[] }[] = LOCATIONS.reduce<{ name: string; locations: Location[] }[]>((groups, l) => {
   const g = groups.find((x) => x.name === l.company)
   if (g) g.locations.push(l)

@@ -4,6 +4,8 @@ import {
   IconBell,
   IconCheck,
   IconChevronRight,
+  IconDots,
+  IconLayoutDashboard,
   IconX,
   IconCurrencyDollar,
   IconCalendarEvent,
@@ -58,7 +60,9 @@ import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import { NO_FILTERS, TimeFilterSheet, type FilterKind, type TimeFilters } from "@/components/ios/TimeFilterSheet"
-import { ChatPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage } from "@/pages/TabPages"
+import { DashboardEditContext, DashboardWidget } from "@/components/DashboardEdit"
+import { AddWidgetsSheet } from "@/components/ios/AddWidgetsSheet"
+import { ChatPage, ConversationPage, MessagesSplit, MoneyPage, ShiftsPage, TimePage, type ConvoRow } from "@/pages/TabPages"
 import { COMPANIES, HOUR_LABELS, LOCATIONS, USER_EARNINGS, nextShiftAnywhere, shortLocationName, recentLog, upcomingEvents, upcomingTasks, USER_AVAILABILITY, type Location, type SegmentId } from "@/data/locations"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { Initials, ListRow, SELF_TINT } from "@/components/ios/list"
@@ -273,7 +277,7 @@ function TitleText({ text, centered = true }: { text: string; centered?: boolean
   )
 }
 
-function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; view?: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
+function Toolbar({ onMore, editDone, title: titleOverride, subtitle, loc, unread, actions, hideBell, leading, hideProfile, canSwitch, onClock, clockActive, showClock, onTitle, onProfile, onBell }: { /** Replaces the location title (Home is an overview, so it names its scope instead). */ /** The ... button after the clock (Home, for owners and managers): opens a menu, anchored to it. */ onMore?: (el: HTMLElement) => void; /** Customize Dashboard is on: the whole right side becomes one check button that finishes it. */ editDone?: () => void; title?: string; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; view?: View; loc: Location; unread: number; /** Per-tab actions, shown at the left of the top-right cluster. */ actions?: ReactNode; /** Drop the bell on tabs that don't want it (Chat). */ hideBell?: boolean; /** Shown before the title (iPad: the sidebar toggle once the sidebar is hidden). */ leading?: ReactNode; /** The avatar lives in the sidebar instead (iPad). */ hideProfile?: boolean; /** Only users with several locations get the location switcher. */ canSwitch?: boolean; /** Show the owner/manager time clock button (Home only). */ showClock?: boolean; /** Owner/manager time clock button: opens the same half sheet the accessory does. */ onClock?: () => void; clockActive?: boolean; onTitle: () => void; onProfile: () => void; onBell: () => void }) {
   const wire = useStructure()
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
@@ -314,6 +318,11 @@ function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBel
         </button>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-[10px]">
+        {editDone ? (
+          <button onClick={editDone} aria-label="Done customizing" className="flex size-11 items-center justify-center rounded-full bg-[#8f55e5] text-white shadow-[0_6px_16px_rgba(143,85,229,0.4),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85">
+            <IconCheck size={24} stroke={2.5} />
+          </button>
+        ) : (<>
         {/* Like iOS: every action beside the bell shares ONE glass container. Buttons are 36pt on an 8pt gap, so icons sit 44pt apart (the Figma 18pt gap read wide for a group). */}
         {(actions || showClock || !hideBell) && (
         <LiquidGlass mode="small" radius={999} className="flex h-11 items-center justify-center gap-2 px-1">
@@ -327,10 +336,16 @@ function Toolbar({ title: titleOverride, subtitle, loc, unread, actions, hideBel
               </span>
             </button>
           )}
+          {onMore && (
+            <button onClick={(e) => onMore(e.currentTarget)} aria-haspopup="menu" aria-label="More" data-anno="home-more" className="flex size-9 items-center justify-center rounded-full active:opacity-60">
+              <IconDots size={24} stroke={1.75} className="text-[#141414]" />
+            </button>
+          )}
           {!hideBell && <BellButton unread={unread} onClick={onBell} />}
         </LiquidGlass>
         )}
-        {!hideProfile && (
+        </>)}
+        {!editDone && !hideProfile && (
           <LiquidGlass mode="small" radius={999} className="flex size-11 items-center justify-center">
             <button onClick={onProfile} aria-label="Profile and settings" aria-haspopup="dialog" data-anno="profile" className="size-[42px] rounded-full">
               {wire ? <Initials name={ANON.name} size={42} tint={SELF_TINT} /> : <img src="/phone/avatar.jpg" alt="" className="size-full rounded-full object-cover" />}
@@ -610,26 +625,33 @@ function ManagerDashboard({ loc, split, bare, onScroll, onOpenPage }: { loc: Loc
   const on = scope.reduce((n, l) => n + l.team.filter((m) => m.status === "on").length, 0)
   const hero = (
     <>
-      <div className="flex flex-col items-center gap-1 py-3 tracking-[-0.43px]">
-        {wire ? <Bar w={150} h={34} className="mb-1 self-start" /> : <p className="w-full text-[41px] font-[590] leading-[normal] text-black">{money(sales)}</p>}
-        <p className="w-full text-[18px] font-[510] leading-[normal] text-[#939393]">Total sales</p>
-      </div>
+      <DashboardWidget id="sales">
+        <div className="flex flex-col items-center gap-1 py-3 tracking-[-0.43px]">
+          {wire ? <Bar w={150} h={34} className="mb-1 self-start" /> : <p className="w-full text-[41px] font-[590] leading-[normal] text-black">{money(sales)}</p>}
+          <p className="w-full text-[18px] font-[510] leading-[normal] text-[#939393]">Total sales</p>
+        </div>
 
-      {wire ? (
-        <BarLines />
-      ) : (
-        <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
-          {all ? `${on} people are clocked in right now.` : loc.managerMessage}
-        </p>
-      )}
+        {wire ? (
+          <BarLines />
+        ) : (
+          <p className="py-3 text-[17px] font-[590] leading-[22px] tracking-[-0.43px] text-black text-balance">
+            {all ? `${on} people are clocked in right now.` : loc.managerMessage}
+          </p>
+        )}
+      </DashboardWidget>
 
-      <LocationBreakdown scope={scope} />
+      <DashboardWidget id="locations" skip={scope.length < 2}>
+        <LocationBreakdown scope={scope} />
+      </DashboardWidget>
 
-      <StatusWidget scope={scope} />
+      <DashboardWidget id="status">
+        <StatusWidget scope={scope} />
+      </DashboardWidget>
     </>
   )
   const rest = (
     <>
+      <DashboardWidget id="week">
       <section>
         <SectionHeader>My Week</SectionHeader>
         {/* Monday to Sunday, with the hours worked running down each day, like the employee home. Across locations the days combine. */}
@@ -639,7 +661,9 @@ function ManagerDashboard({ loc, split, bare, onScroll, onOpenPage }: { loc: Loc
           </div>
         </Card>
       </section>
+      </DashboardWidget>
 
+      <DashboardWidget id="review">
       <section>
         <SectionHeader>Needs Review</SectionHeader>
         {/* One list, not one per location: each row says what it is, who it is about, and (with several locations) where. */}
@@ -653,12 +677,19 @@ function ManagerDashboard({ loc, split, bare, onScroll, onOpenPage }: { loc: Loc
           }
         />}
       </section>
+      </DashboardWidget>
 
-      <TaskManagerWidget scope={scope} onOpen={() => onOpenPage("tasks")} />
+      <DashboardWidget id="tasks">
+        <TaskManagerWidget scope={scope} onOpen={() => onOpenPage("tasks")} />
+      </DashboardWidget>
 
-      <ManagerLogWidget scope={scope} onOpen={() => onOpenPage("log")} />
+      <DashboardWidget id="log">
+        <ManagerLogWidget scope={scope} onOpen={() => onOpenPage("log")} />
+      </DashboardWidget>
 
-      <EventsSection scope={scope} />
+      <DashboardWidget id="events">
+        <EventsSection scope={scope} />
+      </DashboardWidget>
     </>
   )
   const key = all ? "all" : loc.id
@@ -966,6 +997,11 @@ function IosHome() {
   const [groupOpen, setGroupOpen] = useState(false)
   // The toolbar plus opens an action menu anchored to it; `screen` is where that menu renders.
   const [plusAnchor, setPlusAnchor] = useState<HTMLElement | null>(null)
+  // Customize Dashboard (the ... menu on Home): the widgets jiggle and can be removed, the plus adds some back, the check finishes.
+  const [editing, setEditing] = useState(false)
+  const [dashMenu, setDashMenu] = useState<HTMLElement | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  useEffect(() => { setEditing(false) }, [tab, extra])
   const [screen, setScreen] = useState<HTMLDivElement | null>(null)
   const closePlus = useCallback(() => setPlusAnchor(null), [])
   // "Add shift" and "Add event" from the plus menu are bottom sheets.
@@ -1074,11 +1110,13 @@ function IosHome() {
     moreOrder,
   )
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  // A Messages conversation opened on a phone: a page of its own over the app.
+  const [chatOpen, setChatOpen] = useState<ConvoRow | null>(null)
 
   return (
     <IosFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
       <DrawerSurface
-        enabled={!tablet && userType !== "employee"}
+        enabled={!tablet && userType !== "employee" && !editing}
         open={menuDrawer}
         onOpenChange={setMenuDrawer}
         drawer={(close) => (
@@ -1129,7 +1167,9 @@ function IosHome() {
         <ScopeContext.Provider value={homeScope}>
           <OpenLocationContext.Provider value={multi ? openLocation : null}>
             {view === "manager" ? (
-              <ManagerDashboard loc={loc} split={split} onScroll={onScroll} onOpenPage={setHomePage} />
+              <DashboardEditContext.Provider value={{ active: true, editing }}>
+                <ManagerDashboard loc={loc} split={split} onScroll={onScroll} onOpenPage={setHomePage} />
+              </DashboardEditContext.Provider>
             ) : (
               <EmployeeDashboard loc={loc} split={split} onScroll={onScroll} onOpenPage={setHomePage} />
             )}
@@ -1152,7 +1192,7 @@ function IosHome() {
           {tab === "money" && <MoneyPage loc={loc} />}
           {tab === "shifts" && <ShiftsPage loc={loc} />}
           {tab === "time" && <TimePage loc={loc} filters={timeFilters} onFilter={setFilterSheet} />}
-          {tab === "chat" && <ChatPage loc={loc} />}
+          {tab === "chat" && <ChatPage loc={loc} onOpen={setChatOpen} />}
         </ScreenScroll>
         </OverlayRoot.Provider>
       )}
@@ -1166,6 +1206,8 @@ function IosHome() {
       <Toolbar
         view={view}
         loc={loc}
+        onMore={userType !== "employee" && tab === "home" && !extra && !editing ? setDashMenu : undefined}
+        editDone={editing ? () => setEditing(false) : undefined}
         unread={pending}
         // The overview is titled Home, like the other pages are titled for what they are; it has no location switcher.
         title={extra ? EXTRA_PAGES[extra].label : tab === "home" ? "Home" : undefined}
@@ -1180,7 +1222,14 @@ function IosHome() {
         // With the app menu (phones, not employees) the avatar lives at the foot of that menu instead; on a tablet, in the sidebar.
         hideProfile={tablet || userType !== "employee"}
         leading={
-          tablet ? (
+          editing ? (
+            // Customizing: the menu button gives way to the plus that adds widgets.
+            <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
+              <button onClick={() => setAddOpen(true)} aria-label="Add widgets" aria-haspopup="dialog" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconPlus size={24} stroke={1.75} />
+              </button>
+            </LiquidGlass>
+          ) : tablet ? (
             !sidebarOpen ? <SidebarToggle open={false} onClick={() => setSidebarOpen(true)} /> : undefined
           ) : userType !== "employee" ? (
             // The menu button, top left on every main page: it slides the app aside to show the menu.
@@ -1236,6 +1285,11 @@ function IosHome() {
       {groupOpen && <GroupSheet onClose={() => setGroupOpen(false)} />}
       {locOpen && <LocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={view === "employee"} onClosed={() => setLocOpen(null)} />}
       <AnimatePresence>
+        {chatOpen && (
+          <FullPage key={chatOpen.id} title={chatOpen.title} onBack={() => setChatOpen(null)}>
+            <ConversationPage m={chatOpen} />
+          </FullPage>
+        )}
         {homePage && (
           <FullPage key={homePage} title={HOME_PAGE_TITLES[homePage]} onBack={closeHomePage}>
             <ScopeContext.Provider value={homeScope}>
@@ -1300,6 +1354,13 @@ function IosHome() {
       )}
       <div ref={setScreen} className="pointer-events-none absolute inset-0 z-[35]" />
       <ContextMenu
+        anchor={dashMenu}
+        container={screen}
+        items={[{ id: "customize", label: "Customize Dashboard", icon: <IconLayoutDashboard size={22} stroke={1.5} /> }]}
+        onSelect={(id) => id === "customize" && setEditing(true)}
+        onClose={() => setDashMenu(null)}
+      />
+      <ContextMenu
         anchor={plusAnchor}
         container={screen}
         items={[
@@ -1312,6 +1373,7 @@ function IosHome() {
         }}
         onClose={closePlus}
       />
+      {addOpen && <AddWidgetsSheet multi={multi} onClose={() => setAddOpen(false)} />}
       {shiftOpen && <AddShiftSheet loc={loc} onClose={closeShift} />}
       {eventOpen && <AddEventSheet loc={loc} onClose={closeEvent} />}
       {assistantOpen && userType !== "employee" && !tablet && <AssistantSheet loc={loc} onClose={closeAssistant} startWith={chatStart} token={chatToken} />}

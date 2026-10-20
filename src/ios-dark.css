@@ -9,6 +9,8 @@
 
 /* Screen and surfaces */
 .dark .ios-screen { --expand-shadow: rgba(0, 0, 0, 0.55); --expand-shadow-near: rgba(0, 0, 0, 0.35); background-color: #1c1c1e; --ios-page-tint: rgba(28, 28, 30, 0.7); --ios-page-tint-strong: rgba(28, 28, 30, 0.92); }
+/* The frosted wash that gives the open More menu its body (the glass under it is already dark). */
+.dark .ios-screen { --ios-menu-wash: rgba(44, 44, 46, 0.72); }
 .dark .ios-screen .bg-\[\#f3f2f6\] { background-color: #1c1c1e; }
 .dark .ios-screen .bg-white,
 .dark .ios-screen .bg-\[\#fbfbfc\] { background-color: #252527; }

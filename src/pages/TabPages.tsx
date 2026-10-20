@@ -1,3 +1,4 @@
+import { ChatThread } from "@/components/ios/ChatThread"
 import { Fragment, useState } from "react"
 import { IconBriefcase, IconFilter, IconAlertHexagonFilled, IconChevronUp, IconSelector, IconClockFilled, IconCoffee, IconSearch, IconSpeakerphone, IconUsers, IconUsersGroup } from "@tabler/icons-react"
 import { ContextMenu } from "@/components/ios/ContextMenu"
@@ -513,6 +514,7 @@ const TONES = [
 const MATE_PHOTOS = ["/phone/mate-1.jpg", "/phone/mate-2.jpg", "/phone/mate-3.jpg", "/phone/mate-4.jpg"]
 
 function MessageAvatar({ m }: { m: Message }) {
+  const wire = useStructure()
   if (m.kind !== "dm") {
     const Icon = m.kind === "announcement" ? IconSpeakerphone : m.kind === "team" ? IconUsersGroup : IconUsers
     return (
@@ -521,7 +523,8 @@ function MessageAvatar({ m }: { m: Message }) {
       </span>
     )
   }
-  if (m.photo !== undefined) return <img src={MATE_PHOTOS[m.photo % 4]} alt="" className="size-11 shrink-0 rounded-full object-cover object-top" />
+  // The structure cut keeps initials: photos are for the full cut.
+  if (m.photo !== undefined && !wire) return <img src={MATE_PHOTOS[m.photo % 4]} alt="" className="size-11 shrink-0 rounded-full object-cover object-top" />
   const t = TONES[[...m.title].reduce((n, c) => n + c.charCodeAt(0), 0) % TONES.length]
   return (
     <span className="flex size-11 shrink-0 items-center justify-center rounded-full text-[17px] leading-[22px]" style={{ backgroundColor: t.bg, color: t.fg }}>
@@ -530,19 +533,18 @@ function MessageAvatar({ m }: { m: Message }) {
   )
 }
 
-type ConvoRow = Message & { l: Location }
+export type ConvoRow = Message & { l: Location }
 /** Conversations from every location in scope, each id prefixed with its location (ids repeat from one location to the next). */
 const conversationsIn = (scope: Location[]): ConvoRow[] => scope.flatMap((l) => l.messages.map((m) => ({ ...m, id: `${l.id}:${m.id}`, l })))
 
 /** Messages: the selected location's conversations, or in "all locations" each location's under its own header. */
-export function ChatPage({ selectedId, onSelect }: { loc?: Location; /** Split view: the open conversation, highlighted in the list. */ selectedId?: string; onSelect?: (id: string) => void }) {
+export function ChatPage({ selectedId, onSelect, onOpen }: { loc?: Location; /** Split view: the open conversation, highlighted in the list. */ selectedId?: string; onSelect?: (id: string) => void; /** A phone: what opening a conversation does (it takes the whole screen). */ onOpen?: (m: ConvoRow) => void }) {
   const [filter, setFilter] = useState<"all" | "unread" | "threads">("all")
   const scope = useScope()
   const keep = (m: Message) => (filter === "unread" ? m.unread : filter === "threads" ? m.kind !== "dm" : true)
   const groups = scope.map((l) => ({ l, rows: conversationsIn([l]).filter(keep) }))
   const grouped = scope.length > 1
   const toggle = (f: "unread" | "threads") => setFilter((cur) => (cur === f ? "all" : f))
-  const wire = useStructure()
   return (
     <>
       <div className="flex gap-2 pb-4 pt-4">
@@ -557,13 +559,13 @@ export function ChatPage({ selectedId, onSelect }: { loc?: Location; /** Split v
         </GlassChip>
       </div>
       {groups.map(({ l, rows }) =>
-        grouped && !wire && rows.length === 0 ? null : (
+        grouped && rows.length === 0 ? null : (
           <div key={l.id} className={grouped ? "pb-2" : undefined}>
             {grouped && <LocationHeader loc={l} className="px-0 pt-1" />}
-            {wire ? <WireList rows={grouped ? 3 : onSelect ? 14 : 7} /> : <Card className="overflow-hidden">
+            <Card className="overflow-hidden">
               {rows.length === 0 && <p className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</p>}
               {rows.map((m, i) => (
-                <button key={m.id} onClick={onSelect ? () => onSelect(m.id) : undefined} aria-current={selectedId === m.id ? "true" : undefined} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]", selectedId === m.id && "bg-[#8f55e5]/[0.1]")}>
+                <button key={m.id} onClick={onSelect ? () => onSelect(m.id) : onOpen ? () => onOpen(m) : undefined} aria-current={selectedId === m.id ? "true" : undefined} className={cn("flex w-full items-center gap-3 pl-4 pr-4 text-left tracking-[-0.43px] active:bg-black/[0.04]", selectedId === m.id && "bg-[#8f55e5]/[0.1]")}>
                   <MessageAvatar m={m} />
                   <span className={cn("flex min-w-0 flex-1 flex-col py-3", i > 0 && "border-t border-[#ebebeb]")}>
                     <span className="flex items-baseline justify-between gap-2">
@@ -577,45 +579,43 @@ export function ChatPage({ selectedId, onSelect }: { loc?: Location; /** Split v
                   </span>
                 </button>
               ))}
-            </Card>}
+            </Card>
           </div>
         ),
       )}
-      {grouped && !wire && groups.every((g) => g.rows.length === 0) && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</Card>}
+      {grouped && groups.every((g) => g.rows.length === 0) && <Card className="p-4 text-[17px] leading-[22px] tracking-[-0.43px] text-[#999]">No messages</Card>}
     </>
   )
 }
 
 /** One conversation, opened: who it's with, the thread, and the composer. */
 function Conversation({ m }: { m: Message }) {
-  const wire = useStructure()
-  const sk = "block rounded-[20px]"
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-[28px] bg-white tracking-[-0.43px]">
       <div className="flex shrink-0 items-center gap-3 border-b border-black/[0.07] px-5 py-3">
         <MessageAvatar m={m} />
         <div className="min-w-0">
-          {wire ? <Bar w={140} h={14} /> : <p className="truncate text-[17px] font-[590] leading-[22px] text-black">{m.title}</p>}
-          {!wire && <p className="text-[13px] leading-[18px] text-[#7f7f7f]">{m.kind === "dm" ? "Direct message" : "Thread"}</p>}
+          <p className="truncate text-[17px] font-[590] leading-[22px] text-black">{m.title}</p>
+          <p className="text-[13px] leading-[18px] text-[#7f7f7f]">{m.kind === "dm" ? "Direct message" : m.kind === "announcement" ? "Announcements" : "Thread"}</p>
         </div>
       </div>
-      <div className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-5">
-        {wire ? (
-          <>
-            <span aria-hidden className={cn(sk, "h-14 w-[55%] self-start bg-[#dedde4]")} />
-            <span aria-hidden className={cn(sk, "h-10 w-[38%] self-end bg-[#8f55e5]/20")} />
-            <span aria-hidden className={cn(sk, "h-20 w-[62%] self-start bg-[#dedde4]")} />
-            <span aria-hidden className={cn(sk, "h-10 w-[30%] self-end bg-[#8f55e5]/20")} />
-          </>
-        ) : (
-          <>
-            <p className="max-w-[70%] self-start rounded-[20px] bg-[#ececf0] px-4 py-2 text-[17px] leading-[22px] text-black">{m.preview}</p>
-            <span aria-hidden className={cn(sk, "h-10 w-[38%] self-end bg-[#8f55e5]/20")} />
-          </>
-        )}
+      <div className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-5 py-5">
+        <ChatThread m={m} />
       </div>
       <div className="shrink-0 px-4 pb-4">
-        <div className="flex h-11 items-center rounded-full border border-black/10 px-4 text-[17px] text-[#a2a2a8]">{wire ? "" : "Message"}</div>
+        <div className="flex h-11 items-center rounded-full border border-black/10 px-4 text-[17px] text-[#a2a2a8]">Message</div>
+      </div>
+    </div>
+  )
+}
+
+/** A conversation as a page of its own (a phone): the bubbles, with the composer pinned under them. */
+export function ConversationPage({ m }: { m: Message }) {
+  return (
+    <div className="flex min-h-full flex-col justify-end pb-3">
+      <ChatThread m={m} />
+      <div className="sticky bottom-0 -mx-4 mt-3 bg-gradient-to-t from-[#f3f2f6] from-70% to-transparent px-4 pb-1 pt-3">
+        <div className="flex h-11 items-center rounded-full border border-black/10 bg-white px-4 text-[17px] text-[#a2a2a8]">Message</div>
       </div>
     </div>
   )
