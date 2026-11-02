@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from "react"
 import { motion } from "motion/react"
-import { IconSelector, IconSettings } from "@tabler/icons-react"
+import { IconSettings } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { MORPH_EASE, morphLine, morphRow } from "@/lib/morph"
@@ -354,14 +354,8 @@ export function TabBar({
               {(moreActive || moreOpen) && (
                 <motion.span layoutId="tab-selection" transition={SPRING_FAST.snappy} className="absolute -inset-x-[2px] inset-y-0 rounded-full bg-[#787880]/20" />
               )}
-              {/* Beside the icon, not in the flow, so the pill keeps its size: a hint, while one of its pages is showing and the button wears that page's icon, that it still opens the menu. */}
-              {moreActive && <IconSelector aria-hidden size={12} stroke={2.75} className="pointer-events-none absolute left-1/2 top-1/2 ml-[16px] -mt-[6px] text-[#8e8e93]" />}
               <span className="relative flex flex-col items-center gap-[3px]">
-                {moreActive && more.items.find((m) => m.active)?.activeIcon ? (
-                  <span className="flex size-7 items-center justify-center text-[#8f55e5]">{more.items.find((m) => m.active)?.activeIcon}</span>
-                ) : (
-                  <Mask src={moreActive || moreOpen ? "/phone/tab-more-fill.svg" : "/phone/tab-more.svg"} color={moreActive || moreOpen ? BRAND : LABEL_VIBRANT} w={28} h={28} />
-                )}
+                <Mask src={moreActive || moreOpen ? "/phone/tab-more-fill.svg" : "/phone/tab-more.svg"} color={moreActive || moreOpen ? BRAND : LABEL_VIBRANT} w={28} h={28} />
               </span>
             </button>
           )}

@@ -254,10 +254,8 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: {
               <button onClick={() => setMoreOpen((o) => !o)} aria-label="More" aria-haspopup="menu" aria-expanded={moreOpen} className={item} style={{ color: moreOn || moreOpen ? "var(--m-tab-icon-selected)" : "var(--m-tab-icon)" }}>
                 {(moreOn || moreOpen) && selected}
                 <span className="relative flex size-7 items-center justify-center">
-                  {moreOn ? (moreItem?.id === "team" ? glyph("/android/tab/team-sel.svg", 20) : <span className="flex size-5 items-center justify-center [&>svg]:size-5">{moreItem?.activeIcon}</span>) : glyph("/android/tab/more.svg", 20)}
+                  {glyph("/android/tab/more.svg", 20)}
                 </span>
-                {/* While one of its pages is showing, the button wears that page's icon and a small up-down chevron, 3 px in from the right edge. */}
-                {moreOn && <span aria-hidden className="pointer-events-none absolute right-[3px] top-1/2 block size-[10px] -translate-y-1/2 bg-current" style={maskStyle("/android/tab/chevron.svg", 10)} />}
               </button>
             )}
           </motion.div>
