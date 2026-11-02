@@ -1840,7 +1840,7 @@ export function AndroidApp() {
   const userType = useUserTypeStore((s) => s.type)
   const employee = userType === "employee"
   const multi = canSwitchLocation(userType)
-  const tabs: TabId[] = employee ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
+  const tabs: TabId[] = employee ? ["home", "shifts", "money", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const setLocation = useLocationStore((s) => s.setLocation)
   // The assistant's chat, open over the app as a bottom sheet (not for employees).

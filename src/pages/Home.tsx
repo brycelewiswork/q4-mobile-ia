@@ -1018,7 +1018,7 @@ function IosHome() {
   const userType = useUserTypeStore((s) => s.type)
   const view: View = userType === "employee" ? "employee" : "manager"
   const multi = canSwitchLocation(userType)
-  const tabs: readonly TabId[] = userType === "employee" ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
+  const tabs: readonly TabId[] = userType === "employee" ? ["home", "shifts", "money", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const [tab, setTab] = useState<TabId>("home")
   // A page opened from the More menu (a main page of its own: the tab bar stays, and More takes that page's icon).
@@ -1145,7 +1145,7 @@ function IosHome() {
     [
 
       // The primary tabs first (Time is only here: the bar has no room for it), then the rest of the app.
-      ...(["home", "money", "shifts", "chat", "time"] as const).filter((t) => tabs.includes(t) || t === "time").map((t) => {
+      ...(["home", "shifts", "money", "chat", "time"] as const).filter((t) => tabs.includes(t) || t === "time").map((t) => {
         const def = TABS.find((x) => x.id === t)!
         const src = def.icon
         const mask = (size: string, url: string) => <span aria-hidden className={`block ${size} bg-current`} style={{ maskImage: `url(${url})`, WebkitMaskImage: `url(${url})`, maskSize: "100% 100%", WebkitMaskSize: "100% 100%" }} />
