@@ -10,6 +10,8 @@ import {
   IconCalendarPlus,
   IconChecklist,
   IconPigMoney,
+  IconChevronLeft,
+  IconSettings,
   IconCoin,
   IconCalendarClock,
   IconHeadset,
@@ -933,12 +935,18 @@ const EXTRA_PAGES = {
   tasks: { label: "Task Manager", Icon: IconChecklist, scoped: true },
   payroll: { label: "Payroll", Icon: IconReportMoney, scoped: true },
   log: { label: "Manager Log", Icon: IconNotebook, scoped: true },
+  // Opened from the avatar and name in the More menu, so it is not one of the menu's rows.
+  profile: { label: "My Profile", Icon: IconUser, scoped: false },
+  // Opened from the gear in the More menu.
+  settings: { label: "Settings", Icon: IconSettings, scoped: false },
   earnings: { label: "Earnings", Icon: IconCoin, scoped: false },
   timeoff: { label: "Time off balance", Icon: IconCalendarClock, scoped: false },
   support: { label: "Support", Icon: IconHeadset, scoped: false },
   developer: { label: "Developer", Icon: IconStar, scoped: false },
 } as const
 /** The overflow rows under the line, in the design's order. */
+/** What employees see below the line: the rest is for owners and managers. */
+const EMPLOYEE_MORE: ExtraId[] = ["timeoff", "team", "support"]
 const MORE_REST: ExtraId[] = ["earnings", "tasks", "payroll", "timeoff", "team", "support", "developer"]
 type ExtraId = keyof typeof EXTRA_PAGES
 
@@ -954,7 +962,65 @@ function TeamExtra({ loc }: { loc: Location }) {
   )
 }
 
+/** My Profile: what the avatar in the More menu opens. Two tabs, Profile and Tax and Bank Information. */
+function MyProfilePage() {
+  const [tab, setTab] = useState<"profile" | "tax">("profile")
+  const head = "px-1 pb-2 pt-4 text-[17px] font-[590] tracking-[-0.43px] text-[#141414]"
+  return (
+    <>
+      <div role="tablist" className="flex rounded-full bg-[#787880]/[0.12] p-[3px]">
+        {([["profile", "Profile"], ["tax", "Tax and Bank Information"]] as const).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={cn("h-9 flex-1 rounded-full px-2 text-[14px] font-[510] tracking-[-0.24px] text-[#141414]", tab === id && "bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)]")}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "profile" ? (
+        <>
+          <p className={head}>Availability</p>
+          <WireCard h={130}><Bar w="44%" h={14} /><Bar w="70%" h={14} className="mt-3" /></WireCard>
+          <p className={head}>Personal information</p>
+          <WireList rows={3} avatar={false} trailing />
+          <p className={head}>Resume</p>
+          <WireList rows={3} avatar={false} />
+          <p className={head}>Stats and achievements</p>
+          <WireCard h={130}><Bar w="38%" h={14} /><Bar w="64%" h={30} className="mt-4" /></WireCard>
+        </>
+      ) : (
+        <>
+          <p className={head}>Tax information</p>
+          <WireList rows={2} avatar={false} trailing />
+          <p className={head}>Bank information</p>
+          <WireList rows={2} avatar={false} trailing />
+        </>
+      )}
+    </>
+  )
+}
+
+/** Settings, as it is today: four rows and Sign out. */
+function SettingsExtraPage() {
+  return (
+    <>
+      <div className="flex flex-col rounded-[22px] bg-white py-1">
+        {["Locations", "Calendar sync", "Notifications and alerts", "Password and security"].map((label, i) => (
+          <div key={label}>
+            {i > 0 && <div aria-hidden className="mx-4 h-px bg-black/[0.08]" />}
+            <button className="flex h-[52px] w-full items-center justify-between px-4 text-left text-[17px] tracking-[-0.43px] text-black active:bg-black/[0.04]">
+              {label}
+              <IconChevronRight size={18} stroke={2.25} className="text-[#c4c4c7]" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button className="mt-4 flex h-[52px] w-full items-center justify-center rounded-[22px] bg-white text-[17px] font-[510] tracking-[-0.43px] text-[#ff3b30] active:bg-black/[0.04]">Sign out</button>
+    </>
+  )
+}
+
 function ExtraPage({ id, loc }: { id: ExtraId; loc: Location }) {
+  if (id === "settings") return <SettingsExtraPage />
+  if (id === "profile") return <MyProfilePage />
   if (id === "team") return <TeamExtra loc={loc} />
   return (
     <>
@@ -1100,18 +1166,15 @@ function IosHome() {
   const moreItems = inMenuOrder(
     [
 
-      // The primary tabs first (Time, for owners and managers, is only here), then the rest of the app.
-      ...(["home", "money", "shifts", "chat", "time"] as const).filter((t) => tabs.includes(t)).map((t) => {
+      // The primary tabs first (Time is only here: the bar has no room for it), then the rest of the app.
+      ...(["home", "money", "shifts", "chat", "time"] as const).filter((t) => tabs.includes(t) || t === "time").map((t) => {
         const def = TABS.find((x) => x.id === t)!
         const src = def.icon
         const mask = (size: string, url: string) => <span aria-hidden className={`block ${size} bg-current`} style={{ maskImage: `url(${url})`, WebkitMaskImage: `url(${url})`, maskSize: "100% 100%", WebkitMaskSize: "100% 100%" }} />
         const here = !extra && tab === t
         return { id: `tab:${t}`, label: def.label, icon: mask("size-6", src), activeIcon: mask("size-7", def.fill), current: here, active: t === "time" && here, badge: t === "chat" ? scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0) : 0 }
       }),
-      ...(userType === "employee"
-        ? []
-        : [
-            ...MORE_REST.map((id) => ({ id, ...EXTRA_PAGES[id] })).map(({ id, label, Icon }) => ({
+      ...MORE_REST.filter((id) => userType !== "employee" || EMPLOYEE_MORE.includes(id)).map((id) => ({ id, ...EXTRA_PAGES[id] })).map(({ id, label, Icon }) => ({
               id,
               label,
               icon: <Icon size={24} stroke={1.75} />,
@@ -1119,7 +1182,6 @@ function IosHome() {
               current: extra === id,
               active: extra === id,
             })),
-          ]),
     ],
     moreOrder,
   )
@@ -1210,17 +1272,23 @@ function IosHome() {
         canSwitch={extra ? EXTRA_PAGES[extra].scoped : tab !== "home"}
         onClock={openClock}
         // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the bottom accessory).
-        showClock={tablet || (userType !== "employee" && tab === "home" && !extra)}
+        showClock={tablet || (userType === "employee" ? !extra : tab === "home" && !extra)}
         clockActive={clockedIn}
         hideBell={!!extra || tab !== "home"}
-        // Owners and managers on a phone find Profile and Settings in the More menu; on a tablet, in the sidebar.
-        hideProfile={tablet || userType !== "employee"}
+        // On a phone the profile is in the More menu; on a tablet, in the sidebar.
+        hideProfile
         leading={
           editing ? (
             // Customizing: the menu button gives way to the plus that adds widgets.
             <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
               <button onClick={() => setAddOpen(true)} aria-label="Add widgets" aria-haspopup="dialog" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
                 <IconPlus size={24} stroke={1.75} />
+              </button>
+            </LiquidGlass>
+          ) : extra === "profile" || extra === "settings" ? (
+            <LiquidGlass mode="small" radius={999} className="flex size-11 shrink-0 items-center justify-center">
+              <button onClick={() => setExtra(null)} aria-label="Back" className="flex size-9 items-center justify-center rounded-full text-[#141414]">
+                <IconChevronLeft size={24} stroke={2} />
               </button>
             </LiquidGlass>
           ) : tablet ? (
@@ -1293,11 +1361,12 @@ function IosHome() {
             setMinimized(false)
             lastTop.current = 0
           }}
-          more={userType === "employee" ? undefined : {
+          more={{
             items: moreItems,
-            header: { onProfile: () => openProfile("account"), onSettings: () => openProfile() },
+            header: { onProfile: () => { setHomePage(null); setLocOpen(null); setExtra("profile"); setMinimized(false); lastTop.current = 0 }, onSettings: () => { setHomePage(null); setLocOpen(null); setExtra("settings"); setMinimized(false); lastTop.current = 0 } },
             onSelect: (id) => {
-              if (id.startsWith("tab:")) {
+              if (id === "tab:time" && userType === "employee") openClock()
+              else if (id.startsWith("tab:")) {
                 setExtra(null)
                 setTab(id.slice(4) as TabId)
                 setMinimized(false)
@@ -1313,8 +1382,6 @@ function IosHome() {
           minimized={minimized}
           onExpand={() => setMinimized(false)}
           inlineAccessory={null}
-          // Employees: the Time Clock button takes More's place in the bar (no floating bar above it).
-          clock={userType === "employee" ? { active: clockedIn, onOpen: openClock } : undefined}
         />
       )}
       {halfOpen && (

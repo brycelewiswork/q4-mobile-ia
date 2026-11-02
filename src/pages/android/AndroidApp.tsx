@@ -15,7 +15,10 @@ import {
   IconHistory,
   IconX,
   IconChevronRight,
+  IconArrowLeft,
   IconCalendarClock,
+  IconUser,
+  IconSettings,
   IconClock,
   IconCoin,
   IconHeadset,
@@ -91,7 +94,6 @@ const LOG: PageSpec = { id: "log", kind: "log", title: "Manager Log" }
 const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
 const CLOCK: PageSpec = { id: "clock", kind: "clock", title: "Time clock" }
 const TASKS: PageSpec = { id: "tasks", kind: "generic", title: "Task Manager" }
-const SETTINGS: PageSpec = { id: "settings", kind: "settings", title: "Settings" }
 const ACCOUNT: PageSpec = { id: "account", kind: "account", title: "Account" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
 
@@ -109,7 +111,7 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ bell, onEditAdd, editDone, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The notifications button: on Home only. */ bell: boolean; /** Customize Dashboard is on: the plus (adds widgets) replaces the menu button, and one check button finishes. */ onEditAdd?: () => void; editDone?: () => void; /** The ... button after the clock (Home, owners and managers). */  /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ bell, onEditAdd, editDone, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, back, onTitle, onBell, onClock, onProfile }: { /** The notifications button: on Home only. */ bell: boolean; /** Customize Dashboard is on: the plus (adds widgets) replaces the menu button, and one check button finishes. */ onEditAdd?: () => void; editDone?: () => void; /** The ... button after the clock (Home, owners and managers). */  /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; /** A page with a back button in the top left, beside its title. */ back?: () => void; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
   const centered = !rail && !!onEditAdd
@@ -126,7 +128,8 @@ function TopBar({ bell, onEditAdd, editDone, title: titleOverride, subtitle, hid
       </div>
       )}
       {/* The title is centered in the bar, between the add button (while customizing) and the actions; otherwise it takes the left. */}
-      <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 items-center gap-1", centered ? "justify-center px-1 text-center" : "justify-start pl-3 text-left")}>
+      <button onClick={back ?? (canSwitch ? onTitle : undefined)} disabled={!back && !canSwitch} aria-label={back ? "Back" : undefined} aria-haspopup={canSwitch && !back ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 items-center gap-1", centered ? "justify-center px-1 text-center" : "justify-start pl-3 text-left", back && "gap-4")}>
+        {back && <IconArrowLeft size={24} stroke={1.75} className="shrink-0" />}
         {subtitle ? (
           <span className={cn("flex min-w-0 flex-col justify-center", centered ? "items-center" : "items-start")}>
             <span className="truncate text-[18px] font-medium leading-6">{title}</span>
@@ -1598,6 +1601,10 @@ function PageBody({ spec, multi, onOpen, onClose }: { spec: PageSpec; multi: boo
 /** The pages the More menu opens as main pages. Placeholders for now: skeletons under the page's own title. */
 const EXTRA_PAGES = {
   // `scoped`: the page is about a location, so its title carries the location switcher.
+  // Opened from the avatar and name in the More menu, so it is not one of the menu's rows.
+  profile: { label: "My Profile", Icon: IconUser, scoped: false },
+  // Opened from the gear in the More menu.
+  settings: { label: "Settings", Icon: IconSettings, scoped: false },
   tips: { label: "Tip Manager", Icon: IconPigMoney, scoped: true },
   team: { label: "Team", Icon: IconUsers, scoped: true },
   hiring: { label: "Hiring", Icon: IconUserPlus, scoped: false },
@@ -1617,6 +1624,8 @@ const MORE_REST: { id: string; label: string; Icon: typeof IconCoin }[] = [
   { id: "support", label: "Support", Icon: IconHeadset },
   { id: "developer", label: "Developer", Icon: IconStar },
 ]
+/** What employees see below the line: the rest is for owners and managers. */
+const EMPLOYEE_MORE = ["timeoff", "team", "support"]
 const MORE_PAGES: Record<string, PageSpec> = {
   earnings: EARNINGS,
   timeoff: { id: "timeoff", kind: "timeoff", title: "Time off balance" },
@@ -1624,7 +1633,59 @@ const MORE_PAGES: Record<string, PageSpec> = {
   developer: { id: "developer", kind: "generic", title: "Developer" },
 }
 
+/** My Profile: what the avatar in the More menu opens. Two tabs, Profile and Tax and Bank Information. */
+function MyProfilePage() {
+  const [tab, setTab] = useState<"profile" | "tax">("profile")
+  return (
+    <>
+      <div role="tablist" className="flex border-b" style={{ borderColor: "var(--m-outline-variant)" }}>
+        {([["profile", "Profile"], ["tax", "Tax and Bank Information"]] as const).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={cn("relative h-12 flex-1 px-2 text-[14px] font-medium leading-5", tab === id ? "text-m-primary" : "text-m-variant")}>
+            {label}
+            {tab === id && <span aria-hidden className="bg-m-primary absolute inset-x-4 bottom-0 h-[3px] rounded-t-full" />}
+          </button>
+        ))}
+      </div>
+      {tab === "profile" ? (
+        <>
+          <Section title="Availability"><ACard h={110} /></Section>
+          <Section title="Personal information"><AList rows={3} avatar={false} trailing /></Section>
+          <Section title="Resume"><AList rows={3} avatar={false} /></Section>
+          <Section title="Stats and achievements"><ACard h={110} /></Section>
+        </>
+      ) : (
+        <>
+          <Section title="Tax information"><AList rows={2} avatar={false} trailing /></Section>
+          <Section title="Bank information"><AList rows={2} avatar={false} trailing /></Section>
+        </>
+      )}
+    </>
+  )
+}
+
+/** Settings, as it is today: four rows and Sign out. */
+function SettingsExtraPage() {
+  return (
+    <>
+      <div className="bg-m-container flex flex-col overflow-hidden rounded-[16px]">
+        {["Locations", "Calendar sync", "Notifications and alerts", "Password and security"].map((label, i) => (
+          <div key={label}>
+            {i > 0 && <div aria-hidden className="bg-m-divider mx-4 h-px" />}
+            <button className="text-m-on-surface flex h-14 w-full items-center justify-between px-4 text-left text-[16px] active:bg-black/10">
+              {label}
+              <IconChevronRight size={20} stroke={1.75} className="text-m-variant" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button className="mx-auto mt-2 h-10 rounded-full px-5 text-[14px] font-medium tracking-[0.1px] active:bg-black/10" style={{ color: "var(--m-error)" }}>Sign out</button>
+    </>
+  )
+}
+
 function ExtraPage({ id }: { id: ExtraId }) {
+  if (id === "settings") return <SettingsExtraPage />
+  if (id === "profile") return <MyProfilePage />
   // Team keeps what it had in Settings: a searchable list of people.
   if (id === "team") {
     return (
@@ -1911,17 +1972,15 @@ export function AndroidApp() {
         const here = !extra && tab === t
         return { id: `tab:${t}`, label: TABS[t].label, icon: outline(t), activeIcon: outline(t), current: here, active: t === "time" && here, badge: t === "chat" ? unread : 0 }
       }),
-      // Below the line, the overflow, in the design's order (managers; employees have only the tabs).
-      ...(employee
-        ? []
-        : MORE_REST.map(({ id, label, Icon }) => ({
+      // Below the line, the overflow, in the design's order (employees see only some of it).
+      ...MORE_REST.filter(({ id }) => !employee || EMPLOYEE_MORE.includes(id)).map(({ id, label, Icon }) => ({
             id,
             label,
             icon: <Icon size={20} stroke={1.75} />,
             activeIcon: <Icon size={20} stroke={2} />,
             current: extra === id,
             active: extra === id,
-          }))),
+          })),
     ],
     moreOrder,
   )
@@ -2012,13 +2071,14 @@ export function AndroidApp() {
         showClock={rail || (employee ? !extra : tab === "home" && !extra)}
         clockActive={clockedIn}
         rail={rail}
+        back={extra === "profile" || extra === "settings" ? () => setExtra(null) : undefined}
         plus={extra || (rail && tab !== "chat") ? undefined : (plus ?? undefined)}
         onTitle={() => setMenu((m) => !m)}
         onBell={() => setSheet("requests")}
         onClock={openClock}
         onProfile={() => open(ACCOUNT)}
       />
-      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={{ items: moreItems, header: { avatar: <Avatar size={28} />, name: ANON.name, onProfile: () => open(ACCOUNT), onSettings: () => open(SETTINGS) }, onSelect: onMoreSelect }} />}
+      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={{ items: moreItems, header: { avatar: <Avatar size={28} />, name: ANON.name, onProfile: () => { setStack([]); setLocOpen(null); setExtra("profile") }, onSettings: () => { setStack([]); setLocOpen(null); setExtra("settings") } }, onSelect: onMoreSelect }} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}
