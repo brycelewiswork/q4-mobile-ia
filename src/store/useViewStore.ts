@@ -13,6 +13,8 @@ import { LOCATIONS } from "@/data/locations"
 export type Detail = "full" | "structure"
 
 /** The Full design is only switched on locally: the deployed site shows the Structure cut alone. */
+/** This version ships on phones in portrait only: the tablet and landscape views are off (and their controls hidden) until the larger IA redo. */
+export const TABLET_ENABLED = false
 export const FULL_ENABLED = import.meta.env.DEV || import.meta.env.VITE_FULL === "1"
 export type Platform = "ios" | "android"
 /** The screen it's shown on: a phone or a tablet, held upright or on its side. */
@@ -65,8 +67,8 @@ export const useViewStore = create<State>()(
       notes: false,
       setNotes: (notes) => set({ notes }),
       setDetail: (detail) => set({ detail: FULL_ENABLED ? detail : "structure" }),
-      setDevice: (device) => set({ device }),
-      setOrientation: (orientation) => set({ orientation }),
+      setDevice: (device) => set({ device: TABLET_ENABLED ? device : "phone" }),
+      setOrientation: (orientation) => set({ orientation: TABLET_ENABLED ? orientation : "portrait" }),
       setPlatform: (platform) => set({ platform, ...(platform === "android" ? { detail: "structure" as const } : {}) }),
     }),
     {
@@ -75,7 +77,8 @@ export const useViewStore = create<State>()(
       merge: (saved, current) => {
         const merged = { ...current, ...(saved as object), ...fromUrl() }
         // A saved choice or a ?detail=full link can't turn Full on where it's disabled.
-        return FULL_ENABLED ? merged : { ...merged, detail: "structure" as const }
+        const clamped = TABLET_ENABLED ? merged : { ...merged, device: "phone" as const, orientation: "portrait" as const }
+        return FULL_ENABLED ? clamped : { ...clamped, detail: "structure" as const }
       },
     },
   ),

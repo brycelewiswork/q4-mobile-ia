@@ -1,6 +1,6 @@
 import { IconBrandAppleFilled, IconDeviceMobile, IconDeviceTablet, IconRectangle, IconRectangleVertical } from "@tabler/icons-react"
 import { SegmentedControl } from "@/components/ios/SegmentedControl"
-import { useViewStore } from "@/store/useViewStore"
+import { TABLET_ENABLED, useViewStore } from "@/store/useViewStore"
 import { VERSION } from "@/lib/version"
 
 /** Tabler has no filled Android mark, so this is the Material "android" glyph (Apache 2.0). */
@@ -40,6 +40,8 @@ export function DeviceControls() {
           { id: "android", label: <AndroidFilled />, ariaLabel: "Android" },
         ]}
       />
+      {TABLET_ENABLED && (
+        <>
       <SegmentedControl
         className="w-[84px]"
         value={device}
@@ -58,6 +60,8 @@ export function DeviceControls() {
           { id: "landscape", label: <IconRectangle size={18} stroke={1.75} />, ariaLabel: "Landscape" },
         ]}
       />
+        </>
+      )}
     </div>
     </div>
   )
