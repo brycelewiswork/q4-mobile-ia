@@ -29,7 +29,6 @@ import {
 import { IosFrame } from "@/components/ios/IosFrame"
 import { SitemapView } from "@/components/sitemap/SitemapView"
 import { ViewSwitch } from "@/components/sitemap/ViewSwitch"
-import { CommentsLayer } from "@/components/comments/CommentsLayer"
 import { HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { ClockLocationStep } from "@/components/ios/ClockLocationStep"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
@@ -67,7 +66,6 @@ import { HOUR_LABELS, LOCATIONS, USER_EARNINGS, nextShiftAnywhere, shortLocation
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { Initials, ListRow, SELF_TINT } from "@/components/ios/list"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
-import { Annotations } from "@/components/Annotations"
 import { AndroidApp } from "@/pages/android/AndroidApp"
 import { Bar, BarLines, WireCard, WireList } from "@/components/wire/Wire"
 import { seedClock, useClock, useTimeClockStore } from "@/store/useTimeClockStore"
@@ -912,16 +910,13 @@ export function Home() {
       <>
         <SitemapView />
         <ViewSwitch />
-        <CommentsLayer />
       </>
     )
   }
   return (
     <>
       {platform === "android" ? <AndroidApp /> : <IosHome />}
-      <Annotations />
       <ViewSwitch />
-      <CommentsLayer />
     </>
   )
 }
