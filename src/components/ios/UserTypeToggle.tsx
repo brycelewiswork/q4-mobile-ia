@@ -17,14 +17,14 @@ export function UserTypeToggle() {
     <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-3 text-[13px] text-[#5a5666] dark:text-neutral-400">
       <div className="flex items-center gap-3">
       <SegmentedControl
-        className="w-[330px] max-w-full"
+        className="w-[500px] max-w-full"
         value={type}
         onChange={(t) => {
           setType(t)
           // A single-location owner/manager is pinned to their location.
           if (!canSwitchLocation(t)) setLocation(LOCATIONS[0].id)
         }}
-        options={USER_TYPES}
+        options={USER_TYPES.map((t) => ({ ...t, label: <span className="whitespace-nowrap">{t.label}</span> }))}
       />
       </div>
       {/* Android only exists as the structure cut, so its detail switch is locked to Structure. */}

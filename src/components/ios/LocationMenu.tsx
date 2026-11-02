@@ -9,7 +9,7 @@ import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { useStructure } from "@/store/useViewStore"
 import { useLocationStore } from "@/store/useLocationStore"
-import { useUserTypeStore } from "@/store/useUserTypeStore"
+import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 
 /** A location's row in the menu: its name over one line: today's sales and labor share, with what is waiting at the end. Also what its overview grows out of. */
 export function LocationMenuRowBody({ l }: { l: Location }) {
@@ -66,7 +66,7 @@ export function LocationMenu({ open, onClose, onAddLocation, anchorEl, onPickLoc
   const wire = useStructure()
   const locationId = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
-  const single = useUserTypeStore((s) => s.type) === "oam"
+  const single = useUserTypeStore((s) => !canSwitchLocation(s.type))
   const overlay = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {

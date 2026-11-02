@@ -6,7 +6,7 @@ export type Anchor = {
   platform?: "ios" | "android"
   device?: "phone" | "tablet"
   orientation?: "portrait" | "landscape"
-  user?: "employee" | "oam" | "multi"
+  user?: "employee" | "oam" | "oamna" | "multi"
   detail?: "full" | "structure"
   nodeId?: string
   tree?: "before" | "after"

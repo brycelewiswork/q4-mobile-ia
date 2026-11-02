@@ -1352,7 +1352,7 @@ function IosHome() {
       </motion.div>
       {!tablet && (
         <TabBar
-          tabs={tabs.filter((t) => t !== "time")}
+          tabs={userType === "oamna" ? tabs : tabs.filter((t) => t !== "time")}
           dots={{ chat: scope.some((l) => l.messages.some((m) => m.unread)) }}
           tab={extra ? null : tab}
           onTab={(t) => {
@@ -1378,7 +1378,7 @@ function IosHome() {
               }
             },
           }}
-          onAssistant={userType === "employee" ? undefined : () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
+          onAssistant={userType === "employee" || userType === "oamna" ? undefined : () => { setChatStart(undefined); setChatToken((n) => n + 1); setAssistantOpen(true) }}
           minimized={minimized}
           onExpand={() => setMinimized(false)}
           inlineAccessory={null}

@@ -50,7 +50,7 @@ import { ABar, ACard, ASideSheet, AChip, AChips, AFab, AIconButton, AList, ALine
 import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location, type Message } from "@/data/locations"
-import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
+import { canSwitchLocation, hasAssistant, useUserTypeStore } from "@/store/useUserTypeStore"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { CustomizeSheet, MoreMenu, type MoreItem } from "@/pages/android/AndroidMore"
 import { AddWidgetsBody, DashboardEditContext, DashboardWidget } from "@/components/DashboardEdit"
@@ -240,7 +240,7 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: {
                 <button key={id} onClick={() => { setMoreOpen(false); onTab(id) }} aria-label={id === "chat" && unread > 0 ? `${label}, ${unread} unread` : label} aria-current={on ? "page" : undefined} className={item} style={{ color: on ? "var(--m-tab-icon-selected)" : "var(--m-tab-icon)" }}>
                   {on && selected}
                   <span className="relative flex size-7 items-center justify-center">
-                    {glyph(on ? art.on : art.off, 20)}
+                    {id === "time" ? <IconClock size={20} stroke={on ? 2.5 : 1.75} /> : glyph(on ? art.on : art.off, 20)}
                     {id === "chat" && unread > 0 && (
                       <span aria-hidden className="bg-[var(--m-badge)] absolute -top-[3px] left-[14px] flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white">
                         {unread}
@@ -429,7 +429,7 @@ function LocationMenu({ open, onClose, onAddLocation, anchorEl, onPickLocation }
   const wire = useStructure()
   const id = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
-  const single = useUserTypeStore((s) => s.type) === "oam"
+  const single = useUserTypeStore((s) => !canSwitchLocation(s.type))
   const overlay = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
@@ -1958,7 +1958,9 @@ export function AndroidApp() {
 
   // Beside a rail the assistant starts a new chat; the rail lists the past ones.
   const newChat = () => setChat((c) => ({ n: (c?.n ?? 0) + 1 }))
-  const assistant = employee ? undefined : newChat
+  // The OAM without the assistant has no button for it: Time takes that slot in the bar.
+  const noAssistant = !hasAssistant(userType)
+  const assistant = employee || noAssistant ? undefined : newChat
   const unread = scope.reduce((n, l) => n + l.messages.filter((m) => m.unread).length, 0)
 
   // The More menu's items, in the person's own order (Customize, from the top row of the menu).
@@ -2078,7 +2080,7 @@ export function AndroidApp() {
         onClock={openClock}
         onProfile={() => open(ACCOUNT)}
       />
-      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={{ items: moreItems, header: { avatar: <Avatar size={28} />, name: ANON.name, onProfile: () => { setStack([]); setLocOpen(null); setExtra("profile") }, onSettings: () => { setStack([]); setLocOpen(null); setExtra("settings") } }, onSelect: onMoreSelect }} />}
+      {!rail && <NavBar tabs={noAssistant && !employee ? tabs : tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={{ items: moreItems, header: { avatar: <Avatar size={28} />, name: ANON.name, onProfile: () => { setStack([]); setLocOpen(null); setExtra("profile") }, onSettings: () => { setStack([]); setLocOpen(null); setExtra("settings") } }, onSelect: onMoreSelect }} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}

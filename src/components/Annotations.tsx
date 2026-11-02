@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { IconArrowsHorizontal, IconChevronDown, IconDeviceMobile, IconDeviceTablet, IconRectangle, IconStack2, IconTrash, IconUser } from "@tabler/icons-react"
 import type { Annotation } from "@/annotations"
 import { useNotes, useNotesStore } from "@/store/useNotesStore"
-import { useUserTypeStore, USER_TYPES } from "@/store/useUserTypeStore"
+import { baseUserType, useUserTypeStore, USER_TYPES } from "@/store/useUserTypeStore"
 import { useViewStore } from "@/store/useViewStore"
 import { describe, selectorFor } from "@/lib/selectorFor"
 import { cn } from "@/lib/utils"
@@ -113,7 +113,7 @@ function Note({ a, side, left, top, editing, onHeight }: { a: Annotation; side: 
   const update = useNotesStore((s) => s.update)
   const remove = useNotesStore((s) => s.remove)
   const focusId = useNotesStore((s) => s.focusId)
-  const user = useUserTypeStore((s) => s.type)
+  const user = useUserTypeStore((s) => baseUserType(s.type))
   const platform = useViewStore((s) => s.platform)
   useLayoutEffect(() => {
     const el = ref.current
@@ -281,7 +281,7 @@ function Picker() {
 export function Annotations() {
   const on = useViewStore((s) => s.notes)
   const platform = useViewStore((s) => s.platform)
-  const user = useUserTypeStore((s) => s.type)
+  const user = useUserTypeStore((s) => baseUserType(s.type))
   const notes = useNotes()
   const editing = useNotesStore((s) => s.editing)
   const picking = useNotesStore((s) => s.picking)
