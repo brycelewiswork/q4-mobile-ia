@@ -27,8 +27,6 @@ import {
   IconWalk,
 } from "@tabler/icons-react"
 import { IosFrame } from "@/components/ios/IosFrame"
-import { SitemapView } from "@/components/sitemap/SitemapView"
-import { ViewSwitch } from "@/components/sitemap/ViewSwitch"
 import { HalfSheet, OverlayRoot } from "@/components/ios/HalfSheet"
 import { ClockLocationStep } from "@/components/ios/ClockLocationStep"
 import { PrototypeFooter } from "@/components/ios/PrototypeFooter"
@@ -903,22 +901,7 @@ function EmployeeDashboard({ loc, split, bare, onScroll, onOpenPage }: { loc: Lo
 
 export function Home() {
   const platform = useViewStore((s) => s.platform)
-  const view = useViewStore((s) => s.view)
-  // The same page, two views: the sitemap of the mobile platform, or the prototype itself.
-  if (view === "sitemap") {
-    return (
-      <>
-        <SitemapView />
-        <ViewSwitch />
-      </>
-    )
-  }
-  return (
-    <>
-      {platform === "android" ? <AndroidApp /> : <IosHome />}
-      <ViewSwitch />
-    </>
-  )
+  return platform === "android" ? <AndroidApp /> : <IosHome />
 }
 
 /** The pages the More menu opens as main pages. Placeholders for now: skeletons under the page's own title. */
