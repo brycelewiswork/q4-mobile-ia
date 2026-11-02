@@ -9,7 +9,6 @@ import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { useStructure } from "@/store/useViewStore"
 import { useLocationStore } from "@/store/useLocationStore"
-import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { useUserTypeStore } from "@/store/useUserTypeStore"
 
 /** A location's row in the menu: its name over one line: today's sales and labor share, with what is waiting at the end. Also what its overview grows out of. */
@@ -63,16 +62,11 @@ export function LocationMenuRowBody({ l }: { l: Location }) {
  * Mount it as a direct child of the screen; it fills the screen with a
  * dismiss layer and anchors itself under the toolbar title.
  */
-export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, anchorEl, onPickLocation }: { open: boolean; onClose: () => void; /** Anchor under this element (the iPad sidebar's Locations row) instead of under the toolbar title. */ anchorEl?: HTMLElement | null; /** Also called when a location is picked (the tablet's Home opens that location's view). */ onPickLocation?: (l: Location) => void; /** Show every location at once. */ onAll?: () => void; /** Plus Group: start combining locations into a named group. */ onNewGroup?: () => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
+export function LocationMenu({ open, onClose, onAddLocation, anchorEl, onPickLocation }: { open: boolean; onClose: () => void; /** Anchor under this element (the iPad sidebar's Locations row) instead of under the toolbar title. */ anchorEl?: HTMLElement | null; /** Also called when a location is picked (the tablet's Home opens that location's view). */ onPickLocation?: (l: Location) => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
   const wire = useStructure()
   const locationId = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
-  const all = useLocationStore((s) => s.all)
-  const groupId = useLocationStore((s) => s.groupId)
-  const setGroup = useLocationStore((s) => s.setGroup)
-  const groups = useGroupsStore((s) => s.groups)
   const single = useUserTypeStore((s) => s.type) === "oam"
-  const allCounts = useCounts()
   const overlay = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
@@ -128,37 +122,11 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, 
                   )}
                 </>
               )}
-              {!single && onAll && (
-                <button role="menuitemradio" aria-checked={all} onClick={() => { onAll(); window.setTimeout(onClose, 120) }} className="flex w-full items-center gap-[13px] border-b border-black/[0.08] py-2 pl-[25px] pr-5 text-left tracking-[-0.43px] text-black active:bg-black/5">
-                  <span className="flex w-[18px] shrink-0 justify-center">{all && <IconCheck size={20} stroke={2.5} />}</span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-[17px] font-[590] leading-[22px]">{wire ? "All locations" : "All Locations"}</span>
-                    <span className="flex items-center justify-between gap-2 text-[13px] leading-4 text-[#7f7f7f]">
-                      {LOCATIONS.length} locations
-                      <LocationBadges {...allCounts} />
-                    </span>
-                  </span>
-                </button>
-              )}
-              {!single && groups.length > 0 && (
-                <div role="group" aria-label="Groups" className="mt-1 border-b border-black/[0.08] pb-1">
-                  <div className="px-[25px] pb-0.5 pt-1.5 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#7f7f7f]">Groups</div>
-                  {groups.map((g) => (
-                    <button key={g.id} role="menuitemradio" aria-checked={groupId === g.id} onClick={() => { setGroup(g.id); window.setTimeout(onClose, 120) }} className="flex min-h-[52px] w-full items-center gap-[13px] py-1 pl-[25px] pr-5 text-left tracking-[-0.43px] text-black active:bg-black/5">
-                      <span className="flex w-[18px] shrink-0 justify-center">{groupId === g.id && <IconCheck size={20} stroke={2.5} />}</span>
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-[17px] leading-[22px]">{g.name}</span>
-                        <span className="text-[13px] leading-4 text-[#7f7f7f]">{locationsOf(g).length} locations</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
               {!single && COMPANIES.map((c, ci) => (
                 <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name} className={ci > 0 ? "mt-1 border-t border-black/[0.08] pt-1" : undefined}>
                   <div className="px-[25px] pb-0.5 pt-1.5 text-[13px] font-[590] leading-[18px] tracking-[-0.08px] text-[#7f7f7f]">{wire ? `Company ${ci + 1}` : c.name}</div>
                   {c.locations.map((l) => {
-                    const selected = !all && !groupId && l.id === locationId
+                    const selected = l.id === locationId
                     return (
                       <button
                         key={l.id}
@@ -180,12 +148,6 @@ export function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, 
                   })}
                 </div>
               ))}
-              {onNewGroup && (
-                <button onClick={() => { onNewGroup(); window.setTimeout(onClose, 120) }} className="mt-1 flex h-11 w-full items-center gap-[13px] border-t border-black/[0.08] pl-[25px] pr-5 text-left tracking-[-0.43px] text-[#8f55e5] active:bg-black/5">
-                  <span className="flex w-[18px] shrink-0 justify-center"><IconPlus size={20} stroke={2.5} /></span>
-                  <span className="text-[17px] font-[590] leading-[22px]">Group</span>
-                </button>
-              )}
               </motion.div>
             </LiquidGlass>
           </motion.div>

@@ -8,7 +8,6 @@ import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import { shortLocationName, type Location, type RequestItem } from "@/data/locations"
-import { useLocationStore } from "@/store/useLocationStore"
 import { requestsFor, useRequestsStore } from "@/store/useRequestsStore"
 import { LOCATIONS } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
@@ -166,7 +165,7 @@ export function RequestsSheet({ loc, onClose }: { loc: Location; onClose: () => 
   const locName = useLocName()
   const wire = useStructure()
   // In "all locations" the sheet opens on every location's requests.
-  const [filter, setFilter] = useState<FilterId>(() => (useLocationStore.getState().all ? "all" : "location"))
+  const [filter, setFilter] = useState<FilterId>("location")
   const canAll = useUserTypeStore((s) => canSwitchLocation(s.type))
   const decided = useRequestsStore((s) => s.decided)
   const decide = useRequestsStore((s) => s.decide)

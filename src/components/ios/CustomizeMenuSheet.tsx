@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { Reorder, useDragControls } from "motion/react"
 import { IconGripVertical } from "@tabler/icons-react"
 import { Sheet } from "@/components/ios/Sheet"
-import { useMoreMenuStore } from "@/store/useMoreMenuStore"
+import { isTabItem, useMoreMenuStore } from "@/store/useMoreMenuStore"
 
 export type CustomizeItem = { id: string; label: string; icon: ReactNode }
 
@@ -38,16 +38,28 @@ function Row({ item }: { item: CustomizeItem }) {
 export function CustomizeMenuSheet({ items, onClose }: { items: CustomizeItem[]; onClose: () => void }) {
   const setOrder = useMoreMenuStore((s) => s.setOrder)
   const reset = useMoreMenuStore((s) => s.reset)
-  const byId = new Map(items.map((i) => [i.id, i]))
+  const tabs = items.filter((i) => isTabItem(i.id))
+  const rest = items.filter((i) => !isTabItem(i.id))
+  const byId = new Map(rest.map((i) => [i.id, i]))
   return (
     <Sheet title="Customize" onClose={onClose}>
       <div className="px-4 pb-10 pt-[76px]">
-        <p className="px-2 pb-3 text-[15px] leading-5 tracking-[-0.24px] text-[#6d6a7a]">Drag to change the order of the menu.</p>
-        <Reorder.Group axis="y" values={items.map((i) => i.id)} onReorder={setOrder} className="flex flex-col rounded-[22px] bg-white py-1">
-          {items.map((i) => (
-            <Row key={i.id} item={byId.get(i.id)!} />
+        <p className="px-2 pb-3 text-[15px] leading-5 tracking-[-0.24px] text-[#6d6a7a]">The tabs keep their order. Drag the rest to change the order of the menu.</p>
+        <div className="flex flex-col rounded-[22px] bg-white py-1">
+          {/* The tabs: where the main navigation shows them, in its order, so there is nothing to drag. */}
+          {tabs.map((i) => (
+            <div key={i.id} className="flex h-[52px] items-center gap-3 px-4">
+              <span className="flex size-6 shrink-0 items-center justify-center text-[#141414]">{i.icon}</span>
+              <span className="flex-1 truncate text-[17px] tracking-[-0.43px] text-black">{i.label}</span>
+            </div>
           ))}
-        </Reorder.Group>
+          <div aria-hidden className="mx-4 my-1 h-px bg-black/[0.08]" />
+          <Reorder.Group axis="y" values={rest.map((i) => i.id)} onReorder={setOrder} className="flex flex-col">
+            {rest.map((i) => (
+              <Row key={i.id} item={byId.get(i.id)!} />
+            ))}
+          </Reorder.Group>
+        </div>
         <button onClick={reset} className="mx-auto mt-5 block h-11 rounded-full px-5 text-[15px] font-[510] tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
           Reset order
         </button>

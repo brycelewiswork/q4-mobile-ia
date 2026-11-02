@@ -100,3 +100,9 @@ export function accessoryFor(loc: Location, st: ClockState): { title: string; su
   if (!scheduledToday(loc)) return { title: "No shift today", subtitle: `Next shift ${nextShiftDay(loc)} at ${start}` }
   return { title: "Not clocked in", subtitle: `Shift starts at ${start}` }
 }
+
+/**
+ * The location the time clock screen is for. Home has no location, so someone with several picks one first
+ * (and skips the step if they're already clocked in somewhere). It belongs to the clock, not to the app's location.
+ */
+export const useClockTargetStore = create<{ id: string | null; set: (id: string | null) => void }>((set) => ({ id: null, set: (id) => set({ id }) }))

@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { useActiveGroup, useLocationStore } from "@/store/useLocationStore"
 import { LOCATIONS } from "@/data/locations"
 
 /**
@@ -14,7 +13,7 @@ import { LOCATIONS } from "@/data/locations"
 export type Detail = "full" | "structure"
 
 /** The Full design is only switched on locally: the deployed site shows the Structure cut alone. */
-export const FULL_ENABLED = import.meta.env.DEV
+export const FULL_ENABLED = import.meta.env.DEV || import.meta.env.VITE_FULL === "1"
 export type Platform = "ios" | "android"
 /** The screen it's shown on: a phone or a tablet, held upright or on its side. */
 export type Device = "phone" | "tablet"
@@ -94,12 +93,10 @@ export function useLocName() {
   return (l: { id: string; name: string }) => (wire ? `Location ${LOCATIONS.findIndex((x) => x.id === l.id) + 1}` : l.name)
 }
 
-/** The title in the toolbar: the selected location's name, or the number of locations in "all locations". */
+/** The title in the toolbar: the selected location's name. */
 export function useLocTitle(loc: { id: string; name: string }) {
   const name = useLocName()
-  const all = useLocationStore((s) => s.all)
-  const group = useActiveGroup()
-  return group ? group.name : all ? "All Locations" : name(loc)
+  return name(loc)
 }
 
 /** The user, anonymized for the structure cut. */

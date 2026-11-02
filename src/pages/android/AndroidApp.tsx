@@ -3,8 +3,7 @@ import { AnimatePresence, motion } from "motion/react"
 import {
   IconAlertHexagon,
   IconBell,
-  IconDots,
-  IconLayoutDashboard,
+  IconCreditCard,
   IconBriefcase,
   IconFilter,
   IconCalendar,
@@ -16,7 +15,11 @@ import {
   IconHistory,
   IconX,
   IconChevronRight,
+  IconCalendarClock,
   IconClock,
+  IconCoin,
+  IconHeadset,
+  IconStar,
   IconGift,
   IconHeartbeat,
   IconHelp,
@@ -28,7 +31,6 @@ import {
   IconPlus,
   IconSearch,
   IconSend,
-  IconSettings,
   IconUsers,
   IconChecklist,
   IconNotebook,
@@ -46,21 +48,15 @@ import { shortMoney } from "@/components/WireBars"
 import { LocationBadges, useCounts } from "@/components/LocationBadges"
 import { COMPANIES, LOCATIONS, USER_SCHEDULE, nextShiftAt, shortLocationName, type Location, type Message } from "@/data/locations"
 import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
-import { locationsOf, useGroupsStore } from "@/store/useGroupsStore"
 import { ExpandSurface, boxOf, type Box } from "@/components/ExpandSurface"
 import { CustomizeSheet, MoreMenu, type MoreItem } from "@/pages/android/AndroidMore"
-import { morphBar } from "@/lib/morph"
 import { AddWidgetsBody, DashboardEditContext, DashboardWidget } from "@/components/DashboardEdit"
 import { AssistantTurns, MessageComposer, MessageRow, MsgAvatar, ThreadBubbles } from "@/pages/android/AndroidChats"
-import { DrawerSurface } from "@/components/ios/DrawerSurface"
-import { SCREENS } from "@/lib/device"
-import { HomebaseLogo } from "@/components/icons/HomebaseLogo"
-import { MenuTwoLine } from "@/components/icons/MenuTwoLine"
 import { inMenuOrder, useMoreMenuStore } from "@/store/useMoreMenuStore"
 import { OpenLocationContext, ScopeContext, useLocation, useLocationStore, useScope } from "@/store/useLocationStore"
 import { ANON, useLocName, useLocTitle, useStructure, useViewStore } from "@/store/useViewStore"
 import { useDateStore } from "@/store/useDateStore"
-import { NOW_MIN, scheduledToday, shiftRange, useClock, useTimeClockStore } from "@/store/useTimeClockStore"
+import { NOW_MIN, nextShiftDay, scheduledToday, seedClock, shiftRange, useClock, useClockTargetStore, useTimeClockStore } from "@/store/useTimeClockStore"
 import { pendingFor, useRequestsStore } from "@/store/useRequestsStore"
 import { cn } from "@/lib/utils"
 import { dayLabel, payPeriodOf, rangeLabel } from "@/lib/dates"
@@ -96,6 +92,7 @@ const EARNINGS: PageSpec = { id: "earnings", kind: "earnings", title: "Money" }
 const CLOCK: PageSpec = { id: "clock", kind: "clock", title: "Time clock" }
 const TASKS: PageSpec = { id: "tasks", kind: "generic", title: "Task Manager" }
 const SETTINGS: PageSpec = { id: "settings", kind: "settings", title: "Settings" }
+const ACCOUNT: PageSpec = { id: "account", kind: "account", title: "Account" }
 const SHIFTMATES: PageSpec = { id: "shiftmates", kind: "shiftmates", title: "Shiftmates" }
 
 /** Placeholder avatar: the user's two initials on a tonal circle. */
@@ -112,10 +109,10 @@ function Avatar({ size }: { size: number }) {
 // Chrome
 // ---------------------------------------------------------------------------
 
-function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** Customize Dashboard is on: the plus (adds widgets) replaces the menu button, and one check button finishes. */ onEditAdd?: () => void; editDone?: () => void; /** The ... button after the clock (Home, owners and managers). */ onMore?: () => void; /** The side menu is open (or opening): the menu button's badge fades away. */ menuOpen?: boolean; /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
+function TopBar({ bell, onEditAdd, editDone, title: titleOverride, subtitle, hideProfile, loc, tab, canSwitch, scrolled, pending, showClock, clockActive, rail, plus, onTitle, onBell, onClock, onProfile }: { /** The notifications button: on Home only. */ bell: boolean; /** Customize Dashboard is on: the plus (adds widgets) replaces the menu button, and one check button finishes. */ onEditAdd?: () => void; editDone?: () => void; /** The ... button after the clock (Home, owners and managers). */  /** The menu button, top left on every main page: slides the app aside to show the menu (phones, not employees). */ onMenu?: () => void; /** The location, under the title, for pages scoped to one: tapping it switches. */ subtitle?: string; /** No avatar up here (phones, owners and managers: Settings is in the More menu). */ hideProfile?: boolean; /** Replaces the location title (Home is an overview, so it names its scope instead). */ title?: string; rail: boolean; /** The tab's add action, grouped with the other actions up here (phones; tablets use a FAB). */ plus?: { label: string; onClick: () => void }; loc: Location; tab: TabId; canSwitch: boolean; scrolled: boolean; pending: number; showClock: boolean; clockActive: boolean; onTitle: () => void; onBell: () => void; onClock: () => void; onProfile: () => void }) {
   const storeTitle = useLocTitle(loc)
   const title = titleOverride ?? storeTitle
-  const centered = !rail && (!!onMenu || !!onEditAdd)
+  const centered = !rail && !!onEditAdd
   return (
     // The bar's fill runs up behind the status bar too (an opaque surface, tonal once scrolled), so nothing shows through there.
     <div className={cn("absolute inset-x-0 top-0 z-20 grid items-center gap-1 px-2 transition-colors duration-200", centered ? "grid-cols-[1fr_minmax(0,auto)_1fr]" : "grid-cols-[minmax(0,1fr)_auto]", scrolled ? "bg-m-container" : "bg-m-surface")} style={{ height: "calc(var(--safe-top) + 64px)", paddingTop: "var(--safe-top)" }}>
@@ -126,18 +123,9 @@ function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOve
             <IconPlus size={24} stroke={1.75} />
           </AIconButton>
         )}
-        {!rail && !onEditAdd && onMenu && (
-          <AIconButton label={pending ? `Menu, ${pending} requests waiting` : "Menu"} onClick={onMenu}>
-            <span className="relative">
-              <MenuTwoLine size={24} stroke={1.75} />
-              {/* The bell lives in the menu now, so the menu button says when something is waiting there. */}
-              {pending > 0 && <motion.span aria-hidden initial={false} animate={{ opacity: menuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} className="bg-[var(--m-error)] absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none text-white">{pending}</motion.span>}
-            </span>
-          </AIconButton>
-        )}
       </div>
       )}
-      {/* The title is centered in the bar, between the menu button and the actions; with no menu button (employees) it takes the left. */}
+      {/* The title is centered in the bar, between the add button (while customizing) and the actions; otherwise it takes the left. */}
       <button onClick={canSwitch ? onTitle : undefined} disabled={!canSwitch} aria-haspopup={canSwitch ? "menu" : undefined} className={cn("text-m-on-surface flex min-w-0 items-center gap-1", centered ? "justify-center px-1 text-center" : "justify-start pl-3 text-left")}>
         {subtitle ? (
           <span className={cn("flex min-w-0 flex-col justify-center", centered ? "items-center" : "items-start")}>
@@ -168,13 +156,6 @@ function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOve
           </span>
         </AIconButton>
       )}
-      {onMore && (
-        <span data-anno="home-more" className="contents">
-          <AIconButton label="More" onClick={onMore}>
-            <IconDots size={24} stroke={1.75} />
-          </AIconButton>
-        </span>
-      )}
       {plus && (
         <span data-anno="plus" className="contents">
           <AIconButton label={plus.label} onClick={plus.onClick}>
@@ -188,7 +169,7 @@ function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOve
           <IconSearch size={24} stroke={1.75} />
         </AIconButton>
       )}
-      {tab !== "chat" && !onMenu && (
+      {bell && (
         <AIconButton label={pending ? `Requests, ${pending} waiting` : "Requests"} onClick={onBell}>
           <span className="relative">
             <IconBell size={24} stroke={1.75} />
@@ -208,6 +189,14 @@ function TopBar({ onEditAdd, editDone, onMore, onMenu, menuOpen, title: titleOve
   )
 }
 
+/** The tab bar's icons (Designbase "Android Tab Bar", 20 px): outline, and filled when selected. */
+const NAV_ICON: Partial<Record<TabId, { off: string; on: string }>> = {
+  home: { off: "/android/tab/home.svg", on: "/android/tab/home-sel.svg" },
+  shifts: { off: "/android/tab/shifts.svg", on: "/android/tab/shifts-sel.svg" },
+  money: { off: "/android/tab/money.svg", on: "/android/tab/money-sel.svg" },
+  chat: { off: "/android/tab/chat.svg", on: "/android/tab/chat-sel.svg" },
+}
+const NAV_ORDER: TabId[] = ["home", "shifts", "money", "time", "chat"]
 const maskStyle = (src: string, w: number) => ({ width: w, height: w, maskImage: `url(${src})`, WebkitMaskImage: `url(${src})`, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }) as const
 
 /**
@@ -218,45 +207,39 @@ const maskStyle = (src: string, w: number) => ({ width: w, height: w, maskImage:
  */
 function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: { tabs: TabId[]; /** Null while a page opened from More is showing. */ tab: TabId | null; onTab: (t: TabId) => void; unread: number; onAssistant?: () => void; /** Owners and managers: the More menu. */ more?: { items: MoreItem[]; header: Parameters<typeof MoreMenu>[0]["header"]; onSelect: (id: string) => void }; /** Employees: the Time Clock button, beside the pill. */ clock?: { active: boolean; onOpen: () => void }; /** Fades the whole bar out (the side menu is opening) and takes it out of reach. */ faded?: boolean }) {
   const [moreOpen, setMoreOpen] = useState(false)
-  const cluster = useRef<HTMLDivElement>(null)
-  const [clusterW, setClusterW] = useState(0)
-  useLayoutEffect(() => {
-    const el = cluster.current
-    if (!el) return
-    const measure = () => setClusterW(el.offsetWidth)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
   const moreItem = more?.items.find((m) => m.active)
   const moreOn = !!moreItem
-  const slot = "relative flex h-12 min-w-0 flex-1 items-center justify-center"
-  const selected = <motion.span layoutId="android-tab-selection" transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }} className="absolute inset-y-0 -inset-x-0.5 rounded-full bg-black/[0.08]" />
+  // The design's order: Home, Shifts, then Money (employees) or Messages.
+  // (Owners and managers can rearrange the tabs in Customize: the bar follows the menu's order, Home first.)
+  const menuAt = (t: TabId) => more?.items.findIndex((m) => m.id === `tab:${t}`) ?? -1
+  const ordered = [...tabs].sort((x, y) => (more && menuAt(x) >= 0 && menuAt(y) >= 0 ? menuAt(x) - menuAt(y) : NAV_ORDER.indexOf(x) - NAV_ORDER.indexOf(y)))
+  const item = "relative flex size-12 shrink-0 items-center justify-center rounded-full"
+  const selected = <motion.span layoutId="android-tab-selection" transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }} className="absolute inset-0 rounded-full" style={{ backgroundColor: "var(--m-tab-selected)" }} />
+  const glyph = (src: string, size: number) => <span aria-hidden className="block bg-current" style={maskStyle(src, size)} />
+  const fab = "relative flex size-14 shrink-0 items-center justify-center rounded-[16px] shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] active:opacity-85"
   return (
     <motion.div data-anno="nav-bar" initial={false} animate={{ opacity: faded ? 0 : 1 }} transition={{ duration: 0.2 }} style={{ pointerEvents: faded ? "none" : undefined }} className={cn("absolute inset-x-0 bottom-0 isolate", moreOpen ? "z-30" : "z-20")}>
       <LinearBlur side="bottom" strength={10} className="-z-10" style={{ top: -16 }} />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ top: -16, background: "linear-gradient(to top, color-mix(in srgb, var(--m-surface) 28%, transparent) 15%, transparent)" }} />
-      <nav className="flex w-full items-end gap-3" style={{ padding: "16px 20px 20px", minHeight: 92 }}>
-        {/* Like iOS: the tabs and More share one frosted pill. Its surface is the More menu's, so it grows into the menu. */}
-        <div ref={cluster} className="relative h-14 min-w-0 flex-1">
-          {more ? (
-            <MoreMenu open={moreOpen} onClose={() => setMoreOpen(false)} clusterW={clusterW} items={more.items} header={more.header} onSelect={more.onSelect} />
-          ) : (
-            // No menu (employees): the pill is just the pill.
-            <div aria-hidden className="absolute inset-0 rounded-[28px] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.14),0_4px_18px_rgba(0,0,0,0.14)] backdrop-blur-[22px] backdrop-saturate-[1.6]" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 62%, transparent)" }} />
-          )}
-          <motion.div initial={false} animate={{ opacity: moreOpen ? 0 : 1 }} transition={morphBar(moreOpen)} inert={moreOpen} className="absolute inset-0 flex items-center px-1">
-            {tabs.map((id) => {
+      <nav className="flex w-full items-end justify-center gap-2 px-1 pb-10 pt-3">
+        {/* The pill hugs its four 48 px items (16 px apart, 4 px inside); the More menu opens in the space just above it. */}
+        <div className="relative shrink-0">
+          {more && <MoreMenu open={moreOpen} onClose={() => setMoreOpen(false)} items={more.items} header={more.header} onSelect={more.onSelect} />}
+          {/* The pill's own glass sits apart from the buttons so they can fade without taking it with them; the menu's glass takes over from it. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-full backdrop-blur-[20px] backdrop-saturate-[1.6]" style={{ backgroundColor: "var(--m-tab-glass)", boxShadow: "inset 0 0 0 1px var(--m-tab-edge-in), 0 0 0 0.5px var(--m-tab-edge-out), 0 4px 20px var(--m-tab-lift)", visibility: moreOpen ? "hidden" : "visible", transition: `visibility 0s linear ${moreOpen ? 0 : 0.28}s` }} />
+          <motion.div initial={false} animate={{ opacity: moreOpen ? 0 : 1 }} transition={{ duration: moreOpen ? 0.14 : 0.2, delay: moreOpen ? 0 : 0.14 }} className="relative z-10 flex items-center gap-4 rounded-full p-1" style={{ pointerEvents: moreOpen ? "none" : undefined }}>
+            {ordered.map((id) => {
               const { label, icon } = TABS[id]
-              const on = tab === id
+              const art = NAV_ICON[id] ?? { off: icon, on: icon }
+              // While the menu is open, More takes the selection and the current tab lets go of it (the page doesn't change).
+              const on = tab === id && !moreOpen
               return (
-                <button key={id} onClick={() => onTab(id)} aria-label={id === "chat" && unread > 0 ? `${label}, ${unread} unread` : label} aria-current={on ? "page" : undefined} className={slot} style={{ color: on ? "var(--m-nav-active)" : "var(--m-nav-inactive)" }}>
+                <button key={id} onClick={() => { setMoreOpen(false); onTab(id) }} aria-label={id === "chat" && unread > 0 ? `${label}, ${unread} unread` : label} aria-current={on ? "page" : undefined} className={item} style={{ color: on ? "var(--m-tab-icon-selected)" : "var(--m-tab-icon)" }}>
                   {on && selected}
-                  <span className="relative">
-                    <span aria-hidden className="block bg-current" style={maskStyle(icon, 24)} />
+                  <span className="relative flex size-7 items-center justify-center">
+                    {glyph(on ? art.on : art.off, 20)}
                     {id === "chat" && unread > 0 && (
-                      <span aria-hidden className="bg-[var(--m-badge)] absolute -top-[5px] flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white" style={{ left: 16 }}>
+                      <span aria-hidden className="bg-[var(--m-badge)] absolute -top-[3px] left-[14px] flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none tabular-nums text-white">
                         {unread}
                       </span>
                     )}
@@ -265,26 +248,29 @@ function NavBar({ tabs, tab, onTab, unread, onAssistant, more, clock, faded }: {
               )
             })}
             {more && (
-            <button onClick={() => setMoreOpen(true)} aria-label="More" aria-haspopup="menu" aria-expanded={moreOpen} className={slot} style={{ color: moreOn ? "var(--m-nav-active)" : "var(--m-nav-inactive)" }}>
-              {moreOn && selected}
-              <span className="relative flex size-6 items-center justify-center">{moreItem?.activeIcon ?? <span aria-hidden className="block bg-current" style={maskStyle("/phone/tab-more-fill.svg", 24)} />}</span>
-            </button>
+              <button onClick={() => setMoreOpen((o) => !o)} aria-label="More" aria-haspopup="menu" aria-expanded={moreOpen} className={item} style={{ color: moreOn || moreOpen ? "var(--m-tab-icon-selected)" : "var(--m-tab-icon)" }}>
+                {(moreOn || moreOpen) && selected}
+                <span className="relative flex size-7 items-center justify-center">
+                  {moreOn ? (moreItem?.id === "team" ? glyph("/android/tab/team-sel.svg", 20) : <span className="flex size-5 items-center justify-center [&>svg]:size-5">{moreItem?.activeIcon}</span>) : glyph("/android/tab/more.svg", 20)}
+                </span>
+                {/* While one of its pages is showing, the button wears that page's icon and a small up-down chevron, 3 px in from the right edge. */}
+                {moreOn && <span aria-hidden className="pointer-events-none absolute right-[3px] top-1/2 block size-[10px] -translate-y-1/2 bg-current" style={maskStyle("/android/tab/chevron.svg", 10)} />}
+              </button>
             )}
           </motion.div>
         </div>
         {clock && (
           // Employees: the Time Clock button, a button of its own beside the pill (where managers have the assistant).
-          <button onClick={clock.onOpen} aria-haspopup="dialog" aria-label={clock.active ? "Time clock, clocked in" : "Time clock"} className="text-m-on-surface relative flex size-14 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.14),0_4px_18px_rgba(0,0,0,0.14)] backdrop-blur-[22px] backdrop-saturate-[1.6] active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 62%, transparent)" }}>
+          <button onClick={clock.onOpen} aria-haspopup="dialog" aria-label={clock.active ? "Time clock, clocked in" : "Time clock"} className={fab} style={{ backgroundColor: "var(--m-fab)", color: "var(--m-fab-icon)" }}>
             <span className="relative">
-              <IconClock size={24} stroke={1.75} />
-              {clock.active && <span aria-hidden className="absolute -right-[2px] -top-[2px] size-[9px] rounded-full bg-[#34c759]" />}
+              {glyph("/android/tab/fab-clock.svg", 24)}
+              {clock.active && <span aria-hidden className="absolute -right-[3px] -top-[3px] size-[9px] rounded-full bg-[#34c759] ring-2 ring-[var(--m-fab)]" />}
             </span>
           </button>
         )}
         {onAssistant && (
-          // Frosted like the pill, with the icon in plain ink: the assistant stays quiet until you reach for it.
-          <button onClick={onAssistant} aria-label="Assistant" aria-haspopup="dialog" className="text-m-on-surface relative flex size-14 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.14),0_4px_18px_rgba(0,0,0,0.14)] backdrop-blur-[22px] backdrop-saturate-[1.6] active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--m-high) 62%, transparent)" }}>
-            <span aria-hidden className="block bg-current" style={maskStyle("/android/assistant-solid-24.svg", 24)} />
+          <button onClick={onAssistant} aria-label="Assistant" aria-haspopup="dialog" className={fab} style={{ backgroundColor: "var(--m-fab)", color: "var(--m-fab-icon)" }}>
+            {glyph("/android/tab/fab-assistant.svg", 24)}
           </button>
         )}
       </nav>
@@ -399,58 +385,6 @@ function NavRail({ tabs, tab, onTab, unread, open, onToggle, onProfile, onAssist
   )
 }
 
-/** Plus Group: pick the locations to combine (two or more), then name the group. It shows in the switcher and is selected. */
-function AGroupSheet({ onClose }: { onClose: () => void }) {
-  const wire = useStructure()
-  const locName = useLocName()
-  const add = useGroupsStore((s) => s.add)
-  const setGroup = useLocationStore((s) => s.setGroup)
-  const [step, setStep] = useState<"pick" | "name">("pick")
-  const [picked, setPicked] = useState<string[]>([])
-  const [name, setName] = useState("")
-  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
-  const create = () => { if (name.trim()) { setGroup(add(name, picked)); onClose() } }
-  return (
-    <ASheet
-      title={step === "pick" ? "Combine locations" : "Name group"}
-      onClose={onClose}
-      full
-      footer={
-        <div className="flex gap-3 pb-2">
-          {step === "name" && <button onClick={() => setStep("pick")} className="border-m-outline text-m-primary h-12 flex-1 rounded-full border text-[15px] font-medium active:bg-black/5">Back</button>}
-          {step === "pick" ? (
-            <button disabled={picked.length < 2} onClick={() => setStep("name")} className="bg-m-primary text-m-on-primary h-12 flex-1 rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85 disabled:opacity-40">
-              {picked.length < 2 ? "Choose two or more" : `Next · ${picked.length} locations`}
-            </button>
-          ) : (
-            <button disabled={!name.trim()} onClick={create} className="bg-m-primary text-m-on-primary h-12 flex-1 rounded-full text-[15px] font-medium tracking-[0.1px] active:opacity-85 disabled:opacity-40">Create group</button>
-          )}
-        </div>
-      }
-    >
-      {step === "pick" ? (
-        COMPANIES.map((c, ci) => (
-          <div key={c.name}>
-            <p className="text-m-variant px-1 pb-1 pt-3 text-[14px] font-medium leading-5">{wire ? `Company ${ci + 1}` : c.name}</p>
-            {c.locations.map((l) => (
-              <ACheckRow key={l.id} checked={picked.includes(l.id)} onChange={() => toggle(l.id)}>{wire ? locName(l) : shortLocationName(l)}</ACheckRow>
-            ))}
-          </div>
-        ))
-      ) : (
-        <div className="pt-2">
-          <label className="border-m-outline focus-within:border-m-primary flex h-14 items-center rounded-[4px] border px-4">
-            <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} maxLength={40} placeholder="Group name" aria-label="Group name" className="text-m-on-surface placeholder:text-m-variant min-w-0 flex-1 bg-transparent text-[16px] outline-none" />
-          </label>
-          <p className="text-m-variant px-1 pt-3 text-[14px] leading-5">
-            {picked.map((id) => LOCATIONS.find((l) => l.id === id)).map((l) => (l ? (wire ? locName(l) : shortLocationName(l)) : "")).join(", ")}
-          </p>
-        </div>
-      )}
-    </ASheet>
-  )
-}
-
 /** A location's row in the menu: name over labor share, a wireframe sales-and-labor chart, and today's sales. Also what its overview grows out of. */
 function AndroidMenuRowBody({ l }: { l: Location }) {
   const wire = useStructure()
@@ -488,16 +422,11 @@ function AndroidMenuRowBody({ l }: { l: Location }) {
   )
 }
 
-function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, anchorEl, onPickLocation }: { open: boolean; onClose: () => void; /** Anchor under this element (the rail's Locations row) instead of under the top bar's title. */ anchorEl?: HTMLElement | null; /** Also called when a location is picked (a tablet's Home opens that location's view). */ onPickLocation?: (l: Location) => void; /** Show every location at once. */ onAll?: () => void; /** Plus Group: start combining locations into a named group. */ onNewGroup?: () => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
+function LocationMenu({ open, onClose, onAddLocation, anchorEl, onPickLocation }: { open: boolean; onClose: () => void; /** Anchor under this element (the rail's Locations row) instead of under the top bar's title. */ anchorEl?: HTMLElement | null; /** Also called when a location is picked (a tablet's Home opens that location's view). */ onPickLocation?: (l: Location) => void; /** One location only: the menu offers to add another instead of listing more. */ onAddLocation?: () => void }) {
   const wire = useStructure()
   const id = useLocationStore((s) => s.locationId)
   const setLocation = useLocationStore((s) => s.setLocation)
-  const all = useLocationStore((s) => s.all)
-  const groupId = useLocationStore((s) => s.groupId)
-  const setGroup = useLocationStore((s) => s.setGroup)
-  const groups = useGroupsStore((s) => s.groups)
   const single = useUserTypeStore((s) => s.type) === "oam"
-  const allCounts = useCounts()
   const overlay = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
@@ -536,49 +465,17 @@ function LocationMenu({ open, onClose, onAll, onNewGroup, onAddLocation, anchorE
                 )}
               </>
             )}
-            {!single && onAll && (
-              <button role="menuitemradio" aria-checked={all} onClick={() => { onAll(); onClose() }} className="border-m-outline/30 flex w-full items-center gap-3 border-b px-4 py-2 text-left active:bg-black/10">
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-[16px] font-medium leading-6">All Locations</span>
-                  <span className="text-m-variant flex items-center justify-between gap-2 text-[12px] leading-4">
-                    {LOCATIONS.length} locations
-                    <LocationBadges android {...allCounts} />
-                  </span>
-                </span>
-                {all && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
-              </button>
-            )}
-            {!single && groups.length > 0 && (
-              <div role="group" aria-label="Groups" className="border-m-outline/30 border-b pb-1">
-                <div className="text-m-variant px-4 pb-1 pt-2 text-[14px] font-medium leading-5">Groups</div>
-                {groups.map((g) => (
-                  <button key={g.id} role="menuitemradio" aria-checked={groupId === g.id} onClick={() => { setGroup(g.id); onClose() }} className="flex min-h-14 w-full items-center gap-3 px-4 py-1 text-left active:bg-black/10">
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-[16px] leading-6">{g.name}</span>
-                      <span className="text-m-variant text-[12px] leading-4">{locationsOf(g).length} locations</span>
-                    </span>
-                    {groupId === g.id && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
-                  </button>
-                ))}
-              </div>
-            )}
             {!single && COMPANIES.map((c, ci) => (
               <div key={c.name} role="group" aria-label={wire ? `Company ${ci + 1}` : c.name} className={ci > 0 ? "border-m-outline/30 mt-1 border-t pt-1" : undefined}>
                 <div className="text-m-variant px-4 pb-1 pt-2 text-[14px] font-medium leading-5">{wire ? `Company ${ci + 1}` : c.name}</div>
                 {c.locations.map((l) => (
                   <button key={l.id} role="menuitem" onClick={() => { setLocation(l.id); onPickLocation?.(l); onClose() }} className="flex min-h-14 w-full items-center gap-3 px-4 py-1 text-left active:bg-black/10">
                     <AndroidMenuRowBody l={l} />
-                    {!all && !groupId && l.id === id && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
+                    {l.id === id && <IconCheck size={20} stroke={2} className="text-m-primary shrink-0" />}
                   </button>
                 ))}
               </div>
             ))}
-            {onNewGroup && (
-              <button onClick={() => { onNewGroup(); onClose() }} className="border-m-outline/30 text-m-primary mt-1 flex h-12 w-full items-center gap-3 border-t px-4 text-left text-[16px] font-medium active:bg-black/10">
-                <IconPlus size={20} stroke={2} />
-                Group
-              </button>
-            )}
           </motion.div>
         </div>
       )}
@@ -785,10 +682,18 @@ function LocationBreakdown() {
   )
 }
 
-function HomeManager({ split, onOpen }: { split?: boolean; onOpen: (p: PageSpec) => void }) {
+function HomeManager({ split, onOpen, onEdit }: { split?: boolean; onOpen: (p: PageSpec) => void; /** Customize the dashboard: an Edit button at the top right of the page. */ onEdit?: () => void }) {
   const scope = useScope()
+  const { editing } = useContext(DashboardEditContext)
   const hero = (
     <>
+      {onEdit && !editing && (
+        <div className="-mb-2 flex justify-end">
+          <button onClick={onEdit} data-anno="home-edit" className="text-m-primary -mr-3 flex h-10 items-center rounded-full px-3 text-[16px] font-medium tracking-[0.1px] active:bg-black/10">
+            Edit
+          </button>
+        </div>
+      )}
       <DashboardWidget id="sales">
         <div className="flex flex-col gap-1 py-2">
           <ABar w={150} h={34} />
@@ -1140,7 +1045,7 @@ function ClockTiles({ tiles }: { tiles: ClockTile[] }) {
  * The time clock, as a full page like iOS's sheet: a map, what state you're in, then either the details with a
  * primary Confirm Clock in (pinned under the page), or your shift's progress with the action tiles.
  */
-function ClockPage({ loc, onClose }: { loc: Location; onClose: () => void }) {
+function ClockPage({ loc, onClose, onChangeLocation }: { loc: Location; onClose: () => void; /** Several locations: the Location row goes back to the location step. */ onChangeLocation?: () => void }) {
   const locName = useLocName()
   const st = useClock(loc)
   const clock = useTimeClockStore()
@@ -1187,21 +1092,68 @@ function ClockPage({ loc, onClose }: { loc: Location; onClose: () => void }) {
       ) : (
         <div className="bg-m-container overflow-hidden rounded-[20px]">
           {[
-            ["Location", <span key="l">{locName(loc)}</span>],
+            ["Location", <span key="l" className="flex items-center gap-1">{locName(loc)}{onChangeLocation && <IconSelector size={18} stroke={2} />}</span>],
             [today ? "Shift" : "Next shift", <ABar key="s" w={90} h={12} />],
             ["Role", <span key="r">{role}</span>],
             // The location PIN lives here, where someone needs it to clock in, not on a card in the drawer.
             ["PIN", <ABar key="p" w={56} h={12} />],
-          ].map(([label, value], i) => (
-            <div key={label as string} className={cn("flex min-h-[52px] items-center justify-between gap-4 px-4 text-[16px] leading-6", i > 0 && "border-m-divider border-t")}>
-              <span>{label}</span>
-              <span className="text-m-variant">{value}</span>
-            </div>
-          ))}
+          ].map(([label, value], i) => {
+            const body = (
+              <>
+                <span>{label}</span>
+                <span className="text-m-variant">{value}</span>
+              </>
+            )
+            const cls = cn("flex min-h-[52px] w-full items-center justify-between gap-4 px-4 text-left text-[16px] leading-6", i > 0 && "border-m-divider border-t")
+            return i === 0 && onChangeLocation ? (
+              <button key={label as string} onClick={onChangeLocation} aria-label="Change location" className={cn(cls, "active:bg-black/5")}>{body}</button>
+            ) : (
+              <div key={label as string} className={cls}>{body}</div>
+            )
+          })}
         </div>
       )}
     </div>
   )
+}
+
+/** The first step of the time clock for someone with several locations: which one are they clocking in for? Home has no location to assume. */
+function ClockLocationStep({ onPick }: { onPick: (l: Location) => void }) {
+  const locName = useLocName()
+  const wire = useStructure()
+  return (
+    <div className="flex flex-col gap-4 pt-1">
+      <div>
+        <h2 className="text-m-on-surface text-[24px] leading-8">Where are you working?</h2>
+        <p className="text-m-variant pt-1 text-[14px] leading-5">Choose the location you're clocking in for.</p>
+      </div>
+      <div className="bg-m-container overflow-hidden rounded-[20px]">
+        {LOCATIONS.map((l, i) => {
+          const today = scheduledToday(l)
+          const hint = today ? (wire ? "Scheduled today" : `Scheduled today, ${l.employee.timeClock.shift}`) : `No shift today, next ${nextShiftDay(l)}`
+          return (
+            <button key={l.id} onClick={() => onPick(l)} className={cn("flex min-h-[64px] w-full items-center gap-4 px-4 text-left active:bg-black/5", i > 0 && "border-m-divider border-t")}>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-m-on-surface truncate text-[16px] leading-6">{locName(l)}</span>
+                <span className="text-m-variant text-[14px] leading-5">{hint}</span>
+              </span>
+              <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** The time clock page: pick a location first when there are several (and none is clocked in), then the clock itself. */
+function ClockFlow({ onClose }: { onClose: () => void }) {
+  const id = useClockTargetStore((s) => s.id)
+  const setTarget = useClockTargetStore((s) => s.set)
+  const multi = useUserTypeStore((s) => canSwitchLocation(s.type))
+  const target = LOCATIONS.find((l) => l.id === id)
+  if (!target) return <ClockLocationStep onPick={(l) => setTarget(l.id)} />
+  return <ClockPage loc={target} onClose={onClose} onChangeLocation={multi ? () => setTarget(null) : undefined} />
 }
 
 function TimeCardForm() {
@@ -1432,10 +1384,13 @@ function SettingsPage({ onOpen }: { onOpen: (p: PageSpec) => void }) {
         <IconChevronRight size={20} stroke={2} className="text-m-variant shrink-0" />
       </button>
       <ProfileCarousel onOpen={onOpen} />
+      <section className="pt-2">
+        {row("Billing", <IconCreditCard size={24} stroke={1.75} />, "generic", "Plus · Monthly")}
+        {row("Notifications & Alerts", <IconBell size={24} stroke={1.75} />)}
+      </section>
       <Section title="Account" headerAnno="drawer-account">
         {row("Locations", <IconMapPin size={24} stroke={1.75} />, "locations")}
         {row("Calendar Sync", <IconCalendar size={24} stroke={1.75} />, "generic", "Not Connected")}
-        {row("Notifications & Alerts", <IconBell size={24} stroke={1.75} />)}
         {row("Password & Security", <IconLock size={24} stroke={1.75} />)}
         {row("Support", <IconHelp size={24} stroke={1.75} />)}
       </Section>
@@ -1529,10 +1484,9 @@ function LocationsPage({ multi, focus }: { multi: boolean; /** Opened from one l
 
 function PageBody({ spec, multi, onOpen, onClose }: { spec: PageSpec; multi: boolean; onOpen: (p: PageSpec) => void; onClose: () => void }) {
   const locName = useLocName()
-  const loc = useLocation()
   const tablet = useViewStore((v) => v.device === "tablet")
   switch (spec.kind) {
-    case "clock": return <ClockPage loc={loc} onClose={onClose} />
+    case "clock": return <ClockFlow onClose={onClose} />
     case "locations": return <LocationsPage multi={multi} focus={spec.arg} />
     case "shoutouts": return <div className="flex flex-col gap-3 pt-2">{[0, 1, 2].map((i) => <ACard key={i} h={112}><ALines lines={3} className="pt-1" /></ACard>)}</div>
     case "achievements": return (
@@ -1653,6 +1607,23 @@ const EXTRA_PAGES = {
 } as const
 type ExtraId = keyof typeof EXTRA_PAGES
 
+/** The overflow rows under the line, in the design's order. The ones that are not main pages open as pages over the app. */
+const MORE_REST: { id: string; label: string; Icon: typeof IconCoin }[] = [
+  { id: "earnings", label: "Earnings", Icon: IconCoin },
+  { id: "tasks", label: "Task Manager", Icon: EXTRA_PAGES.tasks.Icon },
+  { id: "payroll", label: "Payroll", Icon: EXTRA_PAGES.payroll.Icon },
+  { id: "timeoff", label: "Time off balance", Icon: IconCalendarClock },
+  { id: "team", label: "Team", Icon: EXTRA_PAGES.team.Icon },
+  { id: "support", label: "Support", Icon: IconHeadset },
+  { id: "developer", label: "Developer", Icon: IconStar },
+]
+const MORE_PAGES: Record<string, PageSpec> = {
+  earnings: EARNINGS,
+  timeoff: { id: "timeoff", kind: "timeoff", title: "Time off balance" },
+  support: { id: "support", kind: "generic", title: "Support" },
+  developer: { id: "developer", kind: "generic", title: "Developer" },
+}
+
 function ExtraPage({ id }: { id: ExtraId }) {
   // Team keeps what it had in Settings: a searchable list of people.
   if (id === "team") {
@@ -1671,62 +1642,6 @@ function ExtraPage({ id }: { id: ExtraId }) {
       </ACard>
       <AList rows={4} />
     </>
-  )
-}
-
-/** The menu under the app: the tabs, then the assistant's past conversations, with a search and New chat; the avatar opens Settings. */
-function AndroidMenu({ tabs, onTab, pending, onBell, onOpenChat, onNewChat, onProfile }: { tabs: TabId[]; onTab: (t: TabId) => void; /** Requests waiting: the badge on the bell. */ pending: number; onBell: () => void; onOpenChat: (title: string) => void; onNewChat: () => void; onProfile: () => void }) {
-  const label = "text-m-outline px-4 pb-1 pt-7 text-[14px] font-medium leading-5"
-  const convos = useLocation().conversations
-  const row = (c: (typeof convos)[number]) => (
-    <button key={c.id} onClick={() => onOpenChat(c.title)} className="flex min-h-10 w-full items-center px-4 text-left active:bg-black/5">
-      <span className="text-m-on-surface truncate text-[16px] leading-6">{c.title}</span>
-    </button>
-  )
-  return (
-    <div className="absolute inset-0 flex flex-col" style={{ paddingTop: "calc(var(--safe-top) + 4px)" }}>
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 pl-4 pr-2">
-        <HomebaseLogo aria-hidden className="text-m-on-surface h-[18px] w-auto" />
-        {/* The notifications (requests) button, moved here from the top right of every page. */}
-        <AIconButton label={pending ? `Requests, ${pending} waiting` : "Requests"} onClick={onBell}>
-          <span className="relative">
-            <IconBell size={24} stroke={1.75} />
-            {pending > 0 && <span className="bg-[var(--m-error)] absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[11px] font-medium leading-none text-white">{pending}</span>}
-          </span>
-        </AIconButton>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto pb-28 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {(
-          <nav aria-label="Tabs">
-            <h3 className={cn(label, "pt-6")}>Tabs</h3>
-            <div className="flex flex-col px-2">
-              {tabs.map((id) => {
-                const { label: text, icon } = TABS[id]
-                return (
-                  <button key={id} onClick={() => onTab(id)} className="text-m-on-surface flex h-10 w-full items-center gap-3 rounded-full px-3 text-left active:bg-black/10">
-                    <span aria-hidden className="block bg-current" style={maskStyle(icon, 22)} />
-                    <span className="text-[16px] font-medium leading-6">{text}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </nav>
-        )}
-        <h3 className={label}>Pinned</h3>
-        {convos.filter((c) => c.pinned).map(row)}
-        <h3 className={label}>Recents</h3>
-        {convos.filter((c) => !c.pinned).map(row)}
-      </div>
-      <div className="absolute inset-x-0 flex items-center justify-between px-5" style={{ bottom: 20 }}>
-        <button onClick={onProfile} aria-label="Settings" aria-haspopup="dialog" data-anno="profile" className="flex size-11 items-center justify-center rounded-full active:opacity-80">
-          <Avatar size={40} />
-        </button>
-        <button onClick={onNewChat} className="flex h-12 items-center gap-2 rounded-[16px] bg-[#8f55e5] px-4 text-[15px] font-medium tracking-[0.1px] text-white shadow-[0_6px_16px_rgba(143,85,229,0.35),0_2px_4px_rgba(0,0,0,0.12)] active:opacity-85">
-          <span aria-hidden className="block bg-white" style={maskStyle("/android/assistant-solid-24.svg", 20)} />
-          New chat
-        </button>
-      </div>
-    </div>
   )
 }
 
@@ -1869,24 +1784,19 @@ export function AndroidApp() {
   const tabs: TabId[] = employee ? ["home", "money", "shifts", "chat"] : ["home", "shifts", "time", "chat"]
   const loc = useLocation()
   const setLocation = useLocationStore((s) => s.setLocation)
-  const setAll = useLocationStore((s) => s.setAll)
-  const [groupOpen, setGroupOpen] = useState(false)
   // The assistant's chat, open over the app as a bottom sheet (not for employees).
   // The menu under the app (the tabs and the assistant's past conversations): phones, not employees.
-  const [menuDrawer, setMenuDrawer] = useState(false)
   const [chat, setChat] = useState<{ title?: string; n: number } | null>(null)
   const [tab, setTab] = useState<TabId>("home")
   // A page opened from the More menu: a main page of its own (the bar stays, and More takes that page's icon).
   const [extra, setExtra] = useState<ExtraId | null>(null)
   const [customizeOpen, setCustomizeOpen] = useState(false)
-  // Customize Dashboard (the ... menu on Home): widgets jiggle and can be removed, the plus adds some back, the check finishes.
+  // Customize Dashboard (the Edit button on Home): widgets jiggle and can be removed, the plus adds some back, the check finishes.
   const [editing, setEditing] = useState(false)
-  const [dashMenu, setDashMenu] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  useEffect(() => { setEditing(false); setDashMenu(false) }, [tab, extra])
+  useEffect(() => { setEditing(false) }, [tab, extra])
   // The rail's Locations row, while its menu is open (the menu hangs from it).
   const [railLocEl, setRailLocEl] = useState<HTMLElement | null>(null)
-  const [account, setAccount] = useState(COMPANIES[0].name)
   const [scrolled, setScrolled] = useState(false)
   const [menu, setMenu] = useState(false)
   // Tablets (600dp and wider in either orientation) swap the bottom bar for a side rail. A phone on its side keeps its
@@ -1920,6 +1830,11 @@ export function AndroidApp() {
   }
   const goTab = (t: TabId) => { setStack([]); setLocOpen(null); setExtra(null); setTab(t) }
   const open = (p: PageSpec) => setStack((s) => (s.some((x) => x.id === p.id) ? s : [...s, p]))
+  // Someone with several locations picks one for the clock first, unless they're already clocked in somewhere.
+  const openClock = () => {
+    setClockTarget(multi ? liveLoc?.id ?? null : loc.id)
+    open(CLOCK)
+  }
   const pop = () => setStack((s) => s.slice(0, -1))
 
   useEffect(() => { setTab("home"); setExtra(null); setStack([]); setLocOpen(null) }, [userType])
@@ -1936,8 +1851,16 @@ export function AndroidApp() {
   const added = useRequestsStore((s) => s.added)
   const scope = useScope()
   const pending = scope.reduce((n, l) => n + pendingFor(l, decided, added).length, 0)
-  const clock = useClock(loc)
+  // The time clock belongs to a location, but Home has none: the dot says whether the person is clocked in anywhere.
   const timeClock = useTimeClockStore()
+  const clockByLoc = useTimeClockStore((s) => s.byLocation)
+  const clockOf = (l: Location) => clockByLoc[l.id] ?? seedClock(l)
+  const liveLoc = LOCATIONS.find((l) => clockOf(l).status !== "out") ?? null
+  const clockedIn = LOCATIONS.some((l) => clockOf(l).status === "in")
+  const clockTargetId = useClockTargetStore((s) => s.id)
+  const setClockTarget = useClockTargetStore((s) => s.set)
+  const clockTarget = LOCATIONS.find((l) => l.id === clockTargetId) ?? null
+  const clock = useClock(clockTarget ?? loc)
 
   // The tab's add action. Phones put it in the top bar with the other actions (a FAB would fight the assistant
   // button); tablets keep a FAB, since the assistant lives in the rail there.
@@ -1979,31 +1902,34 @@ export function AndroidApp() {
 
   // The More menu's items, in the person's own order (Customize, from the top row of the menu).
   const moreOrder = useMoreMenuStore((s) => s.order)
+  // The menu's tab rows wear the outline icons, like every other row (the bar's selected state is the filled one).
+  const outline = (t: TabId) => (NAV_ICON[t] ? <span aria-hidden className="block bg-current" style={maskStyle(NAV_ICON[t].off, 24)} /> : <IconClock size={24} stroke={1.75} />)
   const moreItems: MoreItem[] = inMenuOrder(
     [
-      // The primary tabs first (Time, for owners and managers, is only here), then the rest of the app.
-      ...(["home", "money", "shifts", "time", "chat"] as const).filter((t) => tabs.includes(t)).map((t) => {
+      // The primary tabs first (Time is only here: the bar has no room for it), then the rest of the app.
+      ...(["home", "shifts", "money", "chat", "time"] as const).filter((t) => tabs.includes(t) || t === "time").map((t) => {
         const here = !extra && tab === t
-        return { id: `tab:${t}`, label: TABS[t].label, icon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, activeIcon: <span aria-hidden className="block bg-current" style={maskStyle(TABS[t].icon, 24)} />, current: here, active: t === "time" && here, badge: t === "chat" ? unread : 0 }
+        return { id: `tab:${t}`, label: TABS[t].label, icon: outline(t), activeIcon: outline(t), current: here, active: t === "time" && here, badge: t === "chat" ? unread : 0 }
       }),
+      // Below the line, the overflow, in the design's order (managers; employees have only the tabs).
       ...(employee
         ? []
-        : (Object.entries(EXTRA_PAGES) as [ExtraId, (typeof EXTRA_PAGES)[ExtraId]][]).map(([id, { label, Icon }]) => ({
+        : MORE_REST.map(({ id, label, Icon }) => ({
             id,
             label,
-            icon: <Icon size={24} stroke={1.75} />,
-            activeIcon: <Icon size={24} stroke={2} />,
+            icon: <Icon size={20} stroke={1.75} />,
+            activeIcon: <Icon size={20} stroke={2} />,
             current: extra === id,
             active: extra === id,
           }))),
-      { id: "settings", label: "Settings", icon: <IconSettings size={24} stroke={1.75} /> },
     ],
     moreOrder,
   )
   const onMoreSelect = (id: string) => {
-    if (id.startsWith("tab:")) goTab(id.slice(4) as TabId)
+    if (id === "tab:time" && employee) openClock()
+    else if (id.startsWith("tab:")) goTab(id.slice(4) as TabId)
     else if (id in EXTRA_PAGES) { setStack([]); setLocOpen(null); setExtra(id as ExtraId) }
-    else if (id === "settings") open(SETTINGS)
+    else if (id in MORE_PAGES) open(MORE_PAGES[id])
   }
   const locTitle = useLocTitle(loc)
 
@@ -2022,9 +1948,9 @@ export function AndroidApp() {
             footer={
               p.kind === "assistant" ? <Composer />
               : p.kind === "thread" ? <MessageComposer />
-              : p.kind === "clock" && clock.status === "out" ? (
-                <button onClick={() => timeClock.clockIn(loc.id, clock.role ?? loc.employee.timeClock.role)} disabled={!scheduledToday(loc)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
-                  {scheduledToday(loc) ? "Confirm Clock in" : "No shift to clock in to"}
+              : p.kind === "clock" && clockTarget && clock.status === "out" ? (
+                <button onClick={() => timeClock.clockIn(clockTarget.id, clock.role ?? clockTarget.employee.timeClock.role)} disabled={!scheduledToday(clockTarget)} className="bg-m-primary text-m-on-primary h-12 w-full rounded-full text-[16px] font-medium tracking-[0.1px] active:opacity-85 disabled:bg-[rgba(120,120,128,0.2)] disabled:text-[#8e8e93]">
+                  {scheduledToday(clockTarget) ? "Confirm Clock in" : "No shift to clock in to"}
                 </button>
               )
               : undefined
@@ -2039,34 +1965,13 @@ export function AndroidApp() {
 
   return (
     <AndroidFrame header={<UserTypeToggle />} footer={<PrototypeFooter />}>
-      <DrawerSurface
-        enabled={!rail && !employee && !editing}
-        open={menuDrawer}
-        onOpenChange={setMenuDrawer}
-        surfaceClass="bg-m-surface"
-        drawerClass="bg-m-container"
-        radiusMax={SCREENS.android.phone.radius}
-        drawer={(close) => (
-          <AndroidMenu
-            tabs={tabs}
-            pending={pending}
-            // Requests rise over the menu; closing the sheet just dismisses it.
-            onBell={() => setSheet("requests")}
-            onTab={(t) => { close(); setChat(null); goTab(t) }}
-            onOpenChat={(title) => { close(); setChat((c) => ({ title, n: (c?.n ?? 0) + 1 })) }}
-            onNewChat={() => { close(); setChat((c) => ({ n: (c?.n ?? 0) + 1 })) }}
-            // Settings rises over the menu; closing it just dismisses it.
-            onProfile={() => open(SETTINGS)}
-          />
-        )}
-      >
-      {rail && <NavRail tabs={tabs} tab={extra ? null : tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(SETTINGS)} onAssistant={assistant} locations={{ title: locTitle, open: !!railLocEl, onOpen: setRailLocEl }} more={{ items: moreItems.filter((m) => !m.id.startsWith("tab:") && m.id !== "settings"), onSelect: onMoreSelect }} />}
+      {rail && <NavRail tabs={tabs} tab={extra ? null : tab} onTab={goTab} unread={unread} open={railOpen} onToggle={() => setRailOpen((o) => !o)} onProfile={() => open(ACCOUNT)} onAssistant={assistant} locations={{ title: locTitle, open: !!railLocEl, onOpen: setRailLocEl }} more={{ items: moreItems.filter((m) => !m.id.startsWith("tab:") && m.id !== "settings"), onSelect: onMoreSelect }} />}
       {/* Everything but the overlays lives in this pane, which slides right as the rail expands. */}
       <motion.div initial={false} animate={{ left: railW }} transition={RAIL_EASE} className="absolute inset-y-0 right-0">
       {!extra && tab === "chat" && rail && <MessagesSplit key={loc.id} />}
       {!extra && split && tab !== "chat" && tab !== "money" && (
         <motion.div key={`${tab}:${tab === "home" && multi ? "overview" : loc.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="absolute inset-0">
-          {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager split onOpen={open} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
+          {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee split onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager split onOpen={open} onEdit={() => setEditing(true)} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
           {tab === "shifts" && <ShiftsTab split />}
           {tab === "time" && <TimeTab split filters={timeFilters} onFilter={setFilterSheet} />}
         </motion.div>
@@ -2081,7 +1986,7 @@ export function AndroidApp() {
         className="absolute inset-0 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ paddingTop: "calc(var(--safe-top) + 72px)", paddingBottom: rail ? 120 : 200 }}
       >
-        {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager onOpen={open} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
+        {tab === "home" && <ScopeContext.Provider value={homeScope}><OpenLocationContext.Provider value={multi ? openLocation : null}>{employee ? <HomeEmployee onOpen={open} /> : <DashboardEditContext.Provider value={{ active: true, editing }}><HomeManager onOpen={open} onEdit={() => setEditing(true)} /></DashboardEditContext.Provider>}</OpenLocationContext.Provider></ScopeContext.Provider>}
         {tab === "shifts" && <ShiftsTab />}
         {tab === "time" && <TimeTab filters={timeFilters} onFilter={setFilterSheet} />}
         {tab === "money" && <MoneyTab />}
@@ -2094,60 +1999,44 @@ export function AndroidApp() {
         // The overview has no title: it is the page you land on, and a title would only name the scope.
         title={extra ? EXTRA_PAGES[extra].label : tab === "home" ? "Home" : undefined}
         subtitle={extra && EXTRA_PAGES[extra].scoped ? locTitle : undefined}
-        // Settings is in the More menu for owners and managers on a phone, so no avatar up here.
-        hideProfile={!employee}
-        onMenu={!rail && !employee ? () => setMenuDrawer(true) : undefined}
+        // The profile is in the More menu on a phone (and in the rail on a tablet), so no avatar up here.
+        hideProfile
         onEditAdd={editing && !rail && !employee ? () => setAddOpen(true) : undefined}
         editDone={editing ? () => setEditing(false) : undefined}
-        onMore={!employee && tab === "home" && !extra && !editing ? () => setDashMenu((o) => !o) : undefined}
-        menuOpen={menuDrawer}
         // Home is a fixed overview, so only the other tabs have a switcher.
         canSwitch={extra ? EXTRA_PAGES[extra].scoped : tab !== "home"}
         scrolled={scrolled}
         pending={pending}
-        // The time clock button, top right: on every page of a tablet; on a phone, for owners and managers on Home (employees have the clock bar).
-        showClock={rail || (!employee && tab === "home" && !extra)}
-        clockActive={clock.status === "in"}
+        bell={tab === "home" && !extra}
+        // The time clock button, top right: on every page of a tablet; on a phone, on every tab for employees and on Home for owners and managers.
+        showClock={rail || (employee ? !extra : tab === "home" && !extra)}
+        clockActive={clockedIn}
         rail={rail}
         plus={extra || (rail && tab !== "chat") ? undefined : (plus ?? undefined)}
         onTitle={() => setMenu((m) => !m)}
         onBell={() => setSheet("requests")}
-        onClock={() => open(CLOCK)}
-        onProfile={() => open(SETTINGS)}
+        onClock={openClock}
+        onProfile={() => open(ACCOUNT)}
       />
-      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={employee ? undefined : { items: moreItems, header: { account, accounts: COMPANIES.map((c) => c.name), onAccount: setAccount, onCustomize: () => setCustomizeOpen(true) }, onSelect: onMoreSelect }} clock={employee ? { active: clock.status === "in", onOpen: () => open(CLOCK) } : undefined} faded={menuDrawer} />}
+      {!rail && <NavBar tabs={tabs.filter((t) => t !== "time")} tab={extra ? null : tab} onTab={goTab} unread={unread} onAssistant={assistant} more={{ items: moreItems, header: { avatar: <Avatar size={28} />, name: ANON.name, onProfile: () => open(ACCOUNT), onSettings: () => open(SETTINGS) }, onSelect: onMoreSelect }} />}
       {fab && (
         <div data-anno="fab" className="absolute right-4 z-20" style={{ bottom: 24 }}>
           {fab}
           {addMenu("bottom-16 right-0", "bottom right")}
         </div>
       )}
-      <AnimatePresence>
-        {dashMenu && (
-          <div className="absolute inset-0 z-30" onPointerDown={() => setDashMenu(false)}>
-            <motion.div role="menu" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.15 }} onPointerDown={(e) => e.stopPropagation()} style={{ transformOrigin: "top right", top: "calc(var(--safe-top) + 56px)" }} className="bg-m-high text-m-on-surface absolute right-3 w-[240px] overflow-hidden rounded-[12px] py-2 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
-              <button role="menuitem" onClick={() => { setDashMenu(false); setEditing(true) }} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[16px] active:bg-black/10">
-                <IconLayoutDashboard size={22} stroke={1.5} className="text-m-variant" />
-                Customize dashboard
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
       {!rail && <div className="absolute inset-x-0 top-0 z-30">{addMenu("right-3 top-[calc(var(--safe-top)+56px)]", "top right")}</div>}
       {rail && (
         <LocationMenu
           open={!!railLocEl}
           anchorEl={railLocEl}
           onClose={() => setRailLocEl(null)}
-          onAll={multi ? () => { setAll(true); setLocOpen(null); setStack([]); setExtra(null); setTab("home") } : undefined}
-          onNewGroup={multi ? () => setGroupOpen(true) : undefined}
           onAddLocation={multi ? undefined : () => {}}
           // On Home, picking a location opens its overview in the main area; on other pages it just changes the location.
           onPickLocation={tab === "home" || extra ? (l) => openLocation(l, railLocEl ?? undefined, <span />) : undefined}
         />
       )}
-      <LocationMenu open={menu} onClose={() => setMenu(false)} onAll={multi ? () => setAll(true) : undefined} onNewGroup={multi ? () => setGroupOpen(true) : undefined} onAddLocation={multi ? undefined : () => {}} />
+      <LocationMenu open={menu} onClose={() => setMenu(false)} onAddLocation={multi ? undefined : () => {}} />
       {locOpen && <AndroidLocationView key={locOpen.loc.id} loc={locOpen.loc} from={locOpen.from} clone={locOpen.clone} employee={employee} onClosed={() => setLocOpen(null)} />}
 
 
@@ -2158,7 +2047,6 @@ export function AndroidApp() {
 
 
       {!rail && <AnimatePresence>{chat && <AndroidChat key={chat.n} title={chat.title} onDismiss={() => setChat(null)} />}</AnimatePresence>}
-      </DrawerSurface>
       <AnimatePresence>
         {filterSheet && <TimeFilterSheet key={filterSheet} kind={filterSheet} loc={loc} side={rail} value={timeFilters[filterSheet]} onApply={(v) => { setTimeFilters((f) => ({ ...f, [filterSheet]: v })); setFilterSheet(null) }} onClose={() => setFilterSheet(null)} />}
         {addOpen && (
@@ -2169,7 +2057,6 @@ export function AndroidApp() {
         {sheet === "requests" && <RequestsSheet key="requests" loc={loc} multi={multi} side={rail} onClose={() => setSheet(null)} />}
         {sheet === "shift" && <AddShiftSheet key="shift" loc={loc} onClose={() => setSheet(null)} />}
         {sheet === "event" && <AddEventSheet key="event" loc={loc} onClose={() => setSheet(null)} />}
-        {groupOpen && <AGroupSheet key="group" onClose={() => setGroupOpen(false)} />}
       </AnimatePresence>
       {!rail && <AnimatePresence>{customizeOpen && <CustomizeSheet key="customize" items={moreItems} onClose={() => setCustomizeOpen(false)} />}</AnimatePresence>}
       {!rail && pagesLayer}

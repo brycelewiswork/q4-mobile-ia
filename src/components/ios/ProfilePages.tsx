@@ -168,6 +168,7 @@ export type PageId =
   | "locations"
   | "calendar"
   | "notifications"
+  | "billing"
   | "security"
   | "tax"
   | "bank"
@@ -704,6 +705,26 @@ function Support() {
   )
 }
 
+function Billing() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <GroupLabel>Plan</GroupLabel>
+        <Card className="overflow-hidden">
+          <ListRow first title="Account Plan" trailing="Plus monthly" />
+          <ListRow title="Renews" trailing="Nov 14, 2026" />
+          <ListRow title="Locations included" trailing="4 of 4" />
+        </Card>
+      </div>
+      <Card className="overflow-hidden">
+        <ListRow first chevron onClick={() => undefined} title="Change Plan" />
+        <ListRow chevron onClick={() => undefined} title="Payment Method" />
+        <ListRow chevron onClick={() => undefined} title="Invoices" />
+      </Card>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 
 export const PAGES: Record<PageId, { title: string; Component: ComponentType<PageProps>; action?: "edit" }> = {
@@ -716,6 +737,7 @@ export const PAGES: Record<PageId, { title: string; Component: ComponentType<Pag
   payroll: { title: "Payroll", Component: Payroll },
   locations: { title: "Locations", Component: Locations },
   calendar: { title: "Calendar Sync", Component: Calendar },
+  billing: { title: "Billing", Component: Billing },
   notifications: { title: "Notifications & Alerts", Component: Notifications },
   security: { title: "Password & Security", Component: Security },
   tax: { title: "Tax Information", Component: TaxInformation },

@@ -2,7 +2,7 @@ import { Bar, BarLines } from "@/components/wire/Wire"
 import { ANON, useStructure } from "@/store/useViewStore"
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react"
-import { IconCheck, IconPencil } from "@tabler/icons-react"
+import { IconCheck, IconCreditCard, IconPencil } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { IconStarFilled } from "@tabler/icons-react"
 import { Card, Chevron } from "@/components/ios/list"
@@ -245,9 +245,13 @@ function RowGroup({ rows, onOpen }: { rows: Row[]; onOpen: (p: PageId) => void }
 const ACCOUNT_ROWS: Row[] = [
   { icon: "/phone/row-location.svg", label: "Locations", page: "locations" },
   { icon: "/phone/row-calendar.svg", label: "Calendar Sync", trailing: "Not Connected", page: "calendar" },
-  { icon: "/phone/row-bell.svg", label: "Notifications & Alerts", page: "notifications" },
   { icon: "/phone/row-lock.svg", label: "Password & Security", page: "security" },
   { icon: "/phone/row-help.svg", label: "Support", page: "support" },
+]
+
+const BILLING_ROWS: Row[] = [
+  { icon: <IconCreditCard size={20} stroke={1.75} color="#8F55E5" />, label: "Billing", trailing: "Plus · Monthly", page: "billing" },
+  { icon: "/phone/row-bell.svg", label: "Notifications & Alerts", page: "notifications" },
 ]
 
 const ACTIONS = [
@@ -290,6 +294,8 @@ function Root({ loc, onOpen }: { loc: Location; onOpen: (p: PageId) => void }) {
         </Card>
 
         <Carousel key={loc.id} pages={pages} />
+
+        <RowGroup rows={BILLING_ROWS} onOpen={onOpen} />
 
         <RowGroup rows={ACCOUNT_ROWS} onOpen={onOpen} />
 
@@ -334,8 +340,8 @@ const PAGE_VARIANTS = {
  * The Settings sheet with iOS push navigation: rows push a page in from the
  * right, the back button pops it.
  */
-export function ProfileSheet({ loc, inline, onClose }: { loc: Location; /** Fill the content pane (iPad) instead of rising as a sheet. */ inline?: boolean; onClose: () => void }) {
-  const [nav, setNav] = useState<{ page: PageId | null; dir: Dir; arg?: string }>({ page: null, dir: "push" })
+export function ProfileSheet({ loc, inline, initialPage, onClose }: { loc: Location; /** Open on this page (the avatar goes straight to Account) instead of the Settings list. */ initialPage?: PageId; /** Fill the content pane (iPad) instead of rising as a sheet. */ inline?: boolean; onClose: () => void }) {
+  const [nav, setNav] = useState<{ page: PageId | null; dir: Dir; arg?: string }>({ page: initialPage ?? null, dir: "push" })
   const { page, dir, arg } = nav
   const [editing, setEditing] = useState(false)
   // The Team page's search, whose field is pinned to the bottom of the sheet (Figma "iOS Toolbar", bottom, search).

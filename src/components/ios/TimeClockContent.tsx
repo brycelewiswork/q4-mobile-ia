@@ -6,8 +6,7 @@ import { ContextMenu } from "@/components/ios/ContextMenu"
 import { roleColor } from "@/lib/roleColor"
 import { Popover } from "@/components/ios/Popover"
 import { ListRow } from "@/components/ios/list"
-import { LOCATIONS, type Location } from "@/data/locations"
-import { useLocationStore } from "@/store/useLocationStore"
+import type { Location } from "@/data/locations"
 import { useStructure } from "@/store/useViewStore"
 import { cn } from "@/lib/utils"
 import {
@@ -19,7 +18,6 @@ import {
   useTimeClockStore,
   type ClockStatus,
 } from "@/store/useTimeClockStore"
-import { canSwitchLocation, useUserTypeStore } from "@/store/useUserTypeStore"
 
 // ---------------------------------------------------------------------------
 // Layout. Everything is absolutely positioned inside the sheet, per state.
@@ -225,24 +223,22 @@ const Fade = ({ children }: { children: ReactNode }) => (
  *
  * `close(then)` collapses the sheet into the accessory and runs `then` after.
  */
-export function TimeClockContent({ loc, close }: { loc: Location; close: (then?: () => void) => void }) {
+export function TimeClockContent({ loc, close, onChangeLocation }: { loc: Location; close: (then?: () => void) => void; /** Several locations: the Location row goes back to the location step instead of changing the app's location. */ onChangeLocation?: () => void }) {
   const locName = useLocName()
   const st = useClock(loc)
   const wire = useStructure()
   const clock = useTimeClockStore()
-  const setLocation = useLocationStore((s) => s.setLocation)
 
   const { shift, role: defaultRole, roles } = loc.employee.timeClock
   const role = st.role ?? defaultRole
   const live = st.status !== "out"
   // Only one location a day: elsewhere you can see the next shift but not clock in.
   const today = scheduledToday(loc)
-  const multi = useUserTypeStore((s) => canSwitchLocation(s.type)) // a single-location owner/manager can't switch here
   const L = live ? LAYOUT.live : LAYOUT.out
 
   // Which pull-down is open, and the element it grows from.
-  const [menu, setMenu] = useState<{ kind: "location" | "role"; anchor: HTMLElement } | null>(null)
-  const open = (kind: "location" | "role") => (e: MouseEvent<HTMLElement>) => setMenu({ kind, anchor: e.currentTarget })
+  const [menu, setMenu] = useState<{ kind: "role"; anchor: HTMLElement } | null>(null)
+  const open = (kind: "role") => (e: MouseEvent<HTMLElement>) => setMenu({ kind, anchor: e.currentTarget })
   const closeMenu = () => setMenu(null)
 
   const heading =
@@ -314,7 +310,7 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
       ) : (
         <Fade key="out">
           <FillCard className="absolute inset-x-4" style={{ top: LAYOUT.out.card }}>
-            <ListRow compact first divider="border-black/[0.09]" chevron={multi ? "updown" : undefined} onClick={multi ? open("location") : undefined} title="Location" trailing={<span className="text-[#2c2935]">{locName(loc)}</span>} />
+            <ListRow compact first divider="border-black/[0.09]" chevron={onChangeLocation ? "updown" : undefined} onClick={onChangeLocation} title="Location" trailing={<span className="text-[#2c2935]">{locName(loc)}</span>} />
             <ListRow compact divider="border-black/[0.09]" title={today ? "Shift" : "Next shift"} trailing={wire ? <Bar w={90} h={12} /> : <TimePill>{today ? shift : `${nextShiftDay(loc)} ${shift}`}</TimePill>} />
             <ListRow compact divider="border-black/[0.09]" title="Role" trailing={<RoleTag role={role} onClick={open("role")} />} />
             {/* The location PIN lives here, where someone needs it to clock in, not on a card in Settings. */}
@@ -332,13 +328,6 @@ export function TimeClockContent({ loc, close }: { loc: Location; close: (then?:
         </Fade>
       )}
 
-      <ContextMenu
-        anchor={menu?.kind === "location" ? menu.anchor : null}
-        items={LOCATIONS.map((l) => ({ id: l.id, label: locName(l) }))}
-        selectedId={loc.id}
-        onSelect={setLocation}
-        onClose={closeMenu}
-      />
       <ContextMenu
         anchor={menu?.kind === "role" ? menu.anchor : null}
         items={roles.map((r) => ({ id: r, label: r }))}

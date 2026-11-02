@@ -1,16 +1,10 @@
 /**
- * The bar-to-menu morph (the More menu): one curve and one set of timings for both platforms. Apple's decelerating curve starts
- * fast and settles gently, so the menu seems to pour out of the bar; it closes a little quicker than it opens, and the contents
- * fade on the edges of the motion (out first, in once the shape has mostly formed) instead of crossing in the middle of it.
+ * The More menu's motion: one curve and one set of timings for both platforms. The menu opens in the space above the bar on Apple's
+ * decelerating curve (fast start, gentle settle), and its rows come in from the top down once it has taken form.
  */
 export const MORPH_EASE = [0.32, 0.72, 0, 1] as const
 const OPEN = 0.44
-const CLOSE = 0.3
 
-/** The shape's own transition (height, width). */
-export const morphShape = (open: boolean) => ({ duration: open ? OPEN : CLOSE, ease: MORPH_EASE })
-/** The bar's tabs: fade out at once on opening, back in once the menu has mostly folded away. */
-export const morphBar = (open: boolean) => (open ? { duration: 0.14, ease: "easeOut" as const } : { duration: 0.22, delay: CLOSE * 0.5, ease: "easeOut" as const })
 /** A CSS cubic-bezier as a function: progress in (0..1) to eased progress, solved by bisection on x. */
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
   const axis = (a: number, b: number, t: number) => 3 * a * (1 - t) * (1 - t) * t + 3 * b * (1 - t) * t * t + t * t * t
@@ -51,5 +45,11 @@ export const morphRow = (open: boolean, index: number, count: number) => ({
     : { duration: 0.12, ease: "easeIn" as const },
 })
 
-/** The frosted wash that gives the open menu its body. */
-export const morphWash = (open: boolean) => ({ duration: open ? OPEN * 0.7 : CLOSE, ease: "easeOut" as const })
+
+/** A divider line: it starts with the row above it and gets there faster, a plain fade without the rise, so it doesn't trail the rows. */
+export const morphLine = (open: boolean, index: number, count: number) => ({
+  animate: { opacity: open ? 1 : 0 },
+  transition: open
+    ? { duration: 0.16, delay: ROWS_AFTER + stagger(Math.max(0, index - 1), count), ease: MORPH_EASE }
+    : { duration: 0.12, ease: "easeIn" as const },
+})

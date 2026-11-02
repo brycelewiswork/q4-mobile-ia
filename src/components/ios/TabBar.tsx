@@ -1,11 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react"
-import { animate, motion, useMotionValue } from "motion/react"
-import { IconCheck, IconSelector } from "@tabler/icons-react"
-import { CustomizeIcon } from "@/components/icons/CustomizeIcon"
+import { Fragment, useEffect, useState, type ReactNode } from "react"
+import { motion } from "motion/react"
+import { IconSelector, IconSettings } from "@tabler/icons-react"
 import { LiquidGlass } from "@/components/ui/liquid-glass"
 import { SPRING_FAST } from "@/lib/motion"
-import { morphBar, morphRow, morphShape, morphWash } from "@/lib/morph"
+import { MORPH_EASE, morphLine, morphRow } from "@/lib/morph"
+import { isTabItem } from "@/store/useMoreMenuStore"
 import { cn } from "@/lib/utils"
+import { Initials, SELF_TINT } from "@/components/ios/list"
+import { ANON, useStructure } from "@/store/useViewStore"
 
 const BRAND = "#8f55e5"
 const LABEL_VIBRANT = "#141414"
@@ -136,12 +138,11 @@ export type MoreItem = { id: string; label: string; icon: ReactNode; /** A count
 
 const MORE_ROW = 40
 const MORE_HEAD = 48
-/** The hairline under the header row: 1px plus 4px of air above and below. */
-const MORE_RULE = 9
 /** The menu stops growing here and scrolls: it has to clear the status bar and the Dynamic Island. */
 const MORE_MAX = 640
 const MORE_PAD = 8
-const BAR_H = 62 // the bar's glass: 54 of content plus the 4px it sits outside on each side
+/** The air between the bar's glass and the menu above it. */
+const MORE_GAP = 12
 
 export function TabBar({
   tabs,
@@ -175,22 +176,14 @@ export function TabBar({
   more?: {
     items: MoreItem[]
     onSelect: (id: string) => void
-    /** The top row: the business account on the left (a different thing from the location), Settings on the right. */
-    header?: { account: string; accounts: string[]; onAccount: (name: string) => void; onSettings: () => void }
+    /** The top row: the profile avatar and name on the left (opens Account), the Settings gear on the right. */
+    header?: { onProfile: () => void; onSettings: () => void }
   }
 }) {
-  const [picking, setPicking] = useState(false)
+  const wire = useStructure()
   const [moreOpen, setMoreOpen] = useState(false)
-  const rowCount = (more?.items.length ?? 0) + (more?.header ? 2 : 0)
-  const menuH = Math.min(MORE_MAX, (more?.items.length ?? 0) * MORE_ROW + (more?.header ? MORE_HEAD + MORE_RULE : 0) + MORE_PAD * 2)
-  const glassH = useMotionValue(BAR_H)
-  useEffect(() => {
-    const c = animate(glassH, moreOpen ? menuH : BAR_H, morphShape(moreOpen))
-    return () => c.stop()
-  }, [moreOpen, menuH, glassH])
-  useEffect(() => {
-    if (!moreOpen) setPicking(false)
-  }, [moreOpen])
+  const lastTab = more?.items.reduce((n, m, i) => (isTabItem(m.id) ? i : n), -1) ?? -1
+  const rowCount = (more?.items.length ?? 0) + (more?.header ? 2 : 0) + (lastTab >= 0 ? 1 : 0) + 1
   useEffect(() => {
     if (!moreOpen) return
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false)
@@ -226,105 +219,108 @@ export function TabBar({
         <div data-anno="tab-bar" className="relative flex min-w-0 flex-1 items-center px-[2px]">
           {/* Tapping anywhere outside the open menu puts it away. */}
           {moreOpen && <button aria-label="Close menu" tabIndex={-1} onClick={() => setMoreOpen(false)} className="absolute bottom-0 left-[-40px] -z-10 h-[1400px] w-[600px] cursor-default" />}
-          {/* The glass is one piece: a pill behind the tabs that grows upward into the menu. */}
-          <motion.div className="pointer-events-none absolute -inset-x-1 -bottom-1" style={{ height: glassH }}>
-            <LiquidGlass mode="small" radius={31} className="size-full" />
-            {/* Open, the menu needs more body than the bar: a white wash over the glass, faded in with the morph. */}
-            <motion.div aria-hidden initial={false} animate={{ opacity: moreOpen ? 1 : 0 }} transition={morphWash(moreOpen)} className="absolute inset-0 rounded-[31px]" style={{ backgroundColor: "var(--ios-menu-wash, rgba(255,255,255,0.65))" }} />
-          </motion.div>
+          <GlassBacking />
           {more && (
-            <ul
-              role="menu"
-              aria-label="More"
-              className="absolute inset-x-0 bottom-0 flex flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ height: menuH - 4, padding: `${MORE_PAD}px ${MORE_PAD}px 4px`, pointerEvents: moreOpen ? "auto" : "none" }}
+            // The menu opens in the space just above the bar, which stays as it is. Its glass never fades (that would make it refract nothing until the end of the fade): it grows from the More button's corner and is hidden by visibility once it has shrunk away.
+            <motion.div
+              initial={false}
+              animate={{ scale: moreOpen ? 1 : 0.92, y: moreOpen ? 0 : 10 }}
+              transition={{ duration: moreOpen ? 0.32 : 0.2, ease: MORPH_EASE }}
+              className="absolute inset-x-[-4px] z-10"
+              style={{ bottom: `calc(100% + ${MORE_GAP + 4}px)`, transformOrigin: "100% 100%", pointerEvents: moreOpen ? "auto" : "none", visibility: moreOpen ? "visible" : "hidden", transition: `visibility 0s linear ${moreOpen ? 0 : 0.2}s` }}
             >
-              {more.header && (
-                <motion.li initial={false} {...morphRow(moreOpen, 0, rowCount)} role="none" className="flex shrink-0 items-center justify-between pl-1" style={{ height: MORE_HEAD }}>
-                  <button
-                    onClick={() => setPicking((p) => !p)}
-                    aria-haspopup="listbox"
-                    aria-expanded={picking}
-                    tabIndex={moreOpen ? 0 : -1}
-                    className="flex h-10 min-w-0 items-center gap-2 rounded-full pl-2 pr-2 active:bg-[#787880]/20"
-                  >
-                    <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] text-[14px] font-[590] text-white">
-                      {more.header.account.charAt(0)}
-                    </span>
-                    <span className="truncate text-[15px] font-[590] tracking-[-0.24px] text-[#141414]">{more.header.account}</span>
-                    <IconSelector size={18} stroke={1.75} className="shrink-0 text-[#8a8a8e]" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMoreOpen(false)
-                      more.header?.onSettings()
-                    }}
-                    aria-haspopup="dialog"
-                    aria-label="Customize"
-                    tabIndex={moreOpen ? 0 : -1}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#141414] active:bg-[#787880]/20"
-                  >
-                    <CustomizeIcon size={24} />
-                  </button>
+              <LiquidGlass mode="small" radius={28} className="absolute inset-0" />
+              {/* The menu needs more body than the bar: a wash over the glass. */}
+              <div aria-hidden className="absolute inset-0 rounded-[28px]" style={{ backgroundColor: "var(--ios-menu-wash, rgba(255,255,255,0.65))" }} />
+              <ul
+                role="menu"
+                aria-label="More"
+                className="relative flex flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ maxHeight: MORE_MAX, padding: MORE_PAD }}
+              >
+                {more.header && (
+                  <motion.li initial={false} {...morphRow(moreOpen, 0, rowCount)} role="none" className="flex shrink-0 items-center justify-between pl-1" style={{ height: MORE_HEAD }}>
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false)
+                        more.header?.onProfile()
+                      }}
+                      aria-haspopup="dialog"
+                      aria-label="Account"
+                      tabIndex={moreOpen ? 0 : -1}
+                      className="flex h-10 min-w-0 items-center gap-2 rounded-full pl-1 pr-3 active:bg-[#787880]/20"
+                    >
+                      {wire ? <Initials name={ANON.name} size={32} tint={SELF_TINT} /> : <img src="/phone/avatar.jpg" alt="" className="size-8 shrink-0 rounded-full object-cover" />}
+                      <span className="truncate text-[15px] font-[590] tracking-[-0.24px] text-[#141414]">{wire ? ANON.name : "Bryce Lewis"}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false)
+                        more.header?.onSettings()
+                      }}
+                      aria-haspopup="dialog"
+                      aria-label="Settings"
+                      tabIndex={moreOpen ? 0 : -1}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#141414] active:bg-[#787880]/20"
+                    >
+                      <IconSettings size={24} stroke={1.75} />
+                    </button>
+                  </motion.li>
+                )}
+                {more.header && <motion.li initial={false} {...morphLine(moreOpen, 1, rowCount)} role="separator" className="mx-3 my-1 h-px shrink-0 bg-black/[0.08]" />}
+                {more.items.map((m, i) => {
+                  const at = i + (more.header ? 2 : 0) + (i > lastTab && lastTab >= 0 ? 1 : 0)
+                  return (
+                  <Fragment key={m.id}>
+                  <motion.li initial={false} {...morphRow(moreOpen, at, rowCount)} role="none" className="shrink-0">
+                    <button
+                      role="menuitem"
+                      tabIndex={moreOpen ? 0 : -1}
+                      onClick={() => {
+                        setMoreOpen(false)
+                        more.onSelect(m.id)
+                      }}
+                      aria-current={m.current ? "page" : undefined}
+                      className={cn("flex w-full items-center gap-3 rounded-full px-3 text-left text-[15px] font-[510] tracking-[-0.24px] text-[#141414] active:bg-[#787880]/20", (m.current || m.active) && "bg-[#787880]/20")}
+                      style={{ height: MORE_ROW }}
+                    >
+                      <span className="relative flex size-6 shrink-0 items-center justify-center">{m.icon}</span>
+                      {m.label}
+                      {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
+                    </button>
+                  </motion.li>
+                  {i === lastTab && <motion.li initial={false} {...morphLine(moreOpen, at + 1, rowCount)} role="separator" className="mx-3 my-1 h-px shrink-0 bg-black/[0.08]" />}
+                  </Fragment>
+                  )
+                })}
+                {/* The PIN panel: the clock-in PIN and the benefits link, in a container at the foot of the menu. */}
+                <motion.li initial={false} {...morphRow(moreOpen, rowCount - 1, rowCount)} role="none" className="mt-3 shrink-0">
+                  <div className="flex flex-col overflow-hidden rounded-[22px] bg-[#787880]/[0.12]">
+                    <div className="flex h-10 items-center justify-between px-4 text-[15px] font-[510] tracking-[-0.24px] text-[#141414]">
+                      <span>PIN</span>
+                      <span className="font-[590] tabular-nums">3205</span>
+                    </div>
+                    <div aria-hidden className="mx-4 h-px bg-black/[0.08]" />
+                    <button tabIndex={moreOpen ? 0 : -1} className="flex h-10 items-center px-4 text-left text-[15px] font-[510] tracking-[-0.24px] text-[#8f55e5] active:opacity-60">
+                      Health insurance
+                    </button>
+                  </div>
                 </motion.li>
-              )}
-              {more.header && <motion.li initial={false} {...morphRow(moreOpen, 1, rowCount)} role="separator" className="mx-3 my-1 h-px shrink-0 bg-black/[0.08]" />}
-              {picking && more.header
-                ? more.header.accounts.map((a, i) => (
-                    <motion.li key={a} initial={false} {...morphRow(moreOpen, i + 2, rowCount)} role="none" className="shrink-0">
-                      <button
-                        role="option"
-                        aria-selected={a === more.header?.account}
-                        onClick={() => {
-                          more.header?.onAccount(a)
-                          setPicking(false)
-                        }}
-                        className="flex w-full items-center gap-3 rounded-full px-3 text-left text-[15px] font-[510] tracking-[-0.24px] text-[#141414] active:bg-[#787880]/20"
-                        style={{ height: MORE_ROW }}
-                      >
-                        <span aria-hidden className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#8f55e5]/15 text-[12px] font-[590] text-[#8f55e5]">
-                          {a.charAt(0)}
-                        </span>
-                        <span className="flex-1 truncate">{a}</span>
-                        {a === more.header?.account && <IconCheck size={20} stroke={2} />}
-                      </button>
-                    </motion.li>
-                  ))
-                : more.items.map((m, i) => (
-                <motion.li key={m.id} initial={false} {...morphRow(moreOpen, i + (more.header ? 2 : 0), rowCount)} role="none" className="shrink-0">
-                  <button
-                    role="menuitem"
-                    tabIndex={moreOpen ? 0 : -1}
-                    onClick={() => {
-                      setMoreOpen(false)
-                      more.onSelect(m.id)
-                    }}
-                    aria-current={m.current ? "page" : undefined}
-                    className={cn("flex w-full items-center gap-3 rounded-full px-3 text-left text-[15px] font-[510] tracking-[-0.24px] text-[#141414] active:bg-[#787880]/20", (m.current || m.active) && "bg-[#787880]/20")}
-                    style={{ height: MORE_ROW }}
-                  >
-                    <span className="relative flex size-6 shrink-0 items-center justify-center">{m.icon}</span>
-                    {m.label}
-                    {!!m.badge && <span aria-label={`${m.badge} unread`} className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#8f55e5] px-1.5 text-[12px] font-[590] leading-none tabular-nums text-white">{m.badge}</span>}
-                  </button>
-                </motion.li>
-              ))}
-            </ul>
+              </ul>
+            </motion.div>
           )}
-          <motion.div
-            className="relative flex min-w-0 flex-1 items-center"
-            animate={{ opacity: moreOpen ? 0 : 1 }}
-            transition={morphBar(moreOpen)}
-            style={{ pointerEvents: moreOpen ? "none" : "auto" }}
-            inert={moreOpen}
-          >
+          <div className="relative flex min-w-0 flex-1 items-center">
           {shown.map((t) => {
-            const active = tab === t.id
+            // While the menu is open, More takes the selection and the current tab lets go of it (the page doesn't change).
+            const active = tab === t.id && !moreOpen
             const color = active ? BRAND : LABEL_VIBRANT
             return (
               <button
                 key={t.id}
-                onClick={() => onTab(t.id)}
+                onClick={() => {
+                  setMoreOpen(false)
+                  onTab(t.id)
+                }}
                 aria-label={dots?.[t.id] ? `${t.label}, unread` : t.label}
                 aria-current={active}
                 className="relative flex h-[54px] min-w-0 flex-1 flex-col items-center justify-center"
@@ -349,25 +345,27 @@ export function TabBar({
           })}
           {more && (
             <button
-              onClick={() => setMoreOpen(true)}
+              onClick={() => setMoreOpen((o) => !o)}
               aria-haspopup="menu"
               aria-expanded={moreOpen}
               aria-label="More"
               className="relative flex h-[54px] min-w-0 flex-1 flex-col items-center justify-center"
             >
-              {moreActive && (
+              {(moreActive || moreOpen) && (
                 <motion.span layoutId="tab-selection" transition={SPRING_FAST.snappy} className="absolute -inset-x-[2px] inset-y-0 rounded-full bg-[#787880]/20" />
               )}
+              {/* Beside the icon, not in the flow, so the pill keeps its size: a hint, while one of its pages is showing and the button wears that page's icon, that it still opens the menu. */}
+              {moreActive && <IconSelector aria-hidden size={12} stroke={2.75} className="pointer-events-none absolute left-1/2 top-1/2 ml-[16px] -mt-[6px] text-[#8e8e93]" />}
               <span className="relative flex flex-col items-center gap-[3px]">
                 {moreActive && more.items.find((m) => m.active)?.activeIcon ? (
                   <span className="flex size-7 items-center justify-center text-[#8f55e5]">{more.items.find((m) => m.active)?.activeIcon}</span>
                 ) : (
-                  <Mask src={moreActive ? "/phone/tab-more-fill.svg" : "/phone/tab-more.svg"} color={moreActive ? BRAND : LABEL_VIBRANT} w={28} h={28} />
+                  <Mask src={moreActive || moreOpen ? "/phone/tab-more-fill.svg" : "/phone/tab-more.svg"} color={moreActive || moreOpen ? BRAND : LABEL_VIBRANT} w={28} h={28} />
                 )}
               </span>
             </button>
           )}
-          </motion.div>
+          </div>
         </div>
       )}
       {/* Employees: the Time Clock button, a button of its own beside the bar (where managers have the assistant). */}
